@@ -884,10 +884,10 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
           <p>{ui.illustration}</p>
           <div className="station-controls">
-            <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0 || phase === "travelling"} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
+            <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
             {stopIndex === experienceStops.length - 1
               ? <button className="finish-journey-button" onClick={finishJourney}><em>{ui.finishJourney}</em><span aria-hidden="true">→</span></button>
-              : <button className="station-direction station-next" aria-label={ui.next} disabled={phase === "travelling"} onClick={() => beginTravel(stopIndex + 1)}><em>{ui.next}</em><span aria-hidden="true">→</span></button>}
+              : <button className="station-direction station-next" aria-label={ui.next} onClick={() => beginTravel(stopIndex + 1)}><em>{ui.next}</em><span aria-hidden="true">→</span></button>}
           </div>
         </div>
       </section>
