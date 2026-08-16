@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
+import { access } from "node:fs/promises";
 import test from "node:test";
 import { approvedSourceIds, sources, stops } from "../lib/heritage.ts";
 
-test("all cultural records are sourced and offer three grounded prompts", () => {
+test("all cultural records are sourced and offer three grounded prompts", async () => {
   assert.equal(stops.length, 5);
   assert.equal(stops.flatMap((stop) => stop.hotspots).length, 15);
 
@@ -13,6 +14,8 @@ test("all cultural records are sourced and offer three grounded prompts", () => 
       assert.equal(hotspot.suggestedQuestions.length, 3, `${stop.id}/${hotspot.id} must have three prompts`);
       assert.ok(hotspot.sourceIds.length > 0, `${stop.id}/${hotspot.id} must name a source`);
       assert.ok(hotspot.sourceIds.every((id) => approvedSourceIds.has(id)), `${stop.id}/${hotspot.id} uses only approved sources`);
+      assert.match(hotspot.artifactSprite, /^\/artifacts\/.+\.webp$/, `${stop.id}/${hotspot.id} must use a pixel artifact sprite`);
+      await access(new URL(`../public${hotspot.artifactSprite}`, import.meta.url));
       for (const prompt of hotspot.suggestedQuestions) {
         assert.ok(prompt.vi.trim().length > 10);
         assert.ok(prompt.en.trim().length > 10);
@@ -53,10 +56,15 @@ test("Ca trù ensemble unlock and the five-station reveal contracts stay intact"
 
   const nhaNhac = stops.find((stop) => stop.id === "nha-nhac");
   assert.equal(nhaNhac?.hotspots.length, 3);
-  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.generatorPreset));
+  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.reviewStatus === "pending-rights"));
+  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.src === null));
 
   const pottery = stops.find((stop) => stop.id === "cham-pottery");
   assert.ok(pottery?.hotspots.some((hotspot) => hotspot.id === "hand-shaping"));
+  assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "open-firing")?.audioPreview?.src, "/media/open-fire.mp3");
+
+  const taiTu = stops.find((stop) => stop.id === "don-ca-tai-tu");
+  assert.equal(taiTu?.hotspots.find((hotspot) => hotspot.id === "sixteen-string-zither")?.audioPreview?.src, "/media/dan-tranh-field.mp3");
 });
 
 test("source records distinguish facts from media reuse rights", () => {

@@ -1,7 +1,7 @@
 {
   "project": "Tàu Di Sản Việt Nam",
   "updatedAt": "2026-08-16",
-  "policy": "Only recordings with an explicit reusable licence are served locally. A null audio src is either original browser synthesis or a reference-only item that must not be downloaded or re-hosted. No YouTube extraction or unlicensed substitution is permitted.",
+  "policy": "Only recordings with an explicit reusable licence are served locally. Reference-only items must not be downloaded or re-hosted. No YouTube extraction, fabricated instrument cue or unlicensed substitution is permitted.",
   "rightsSeparation": "MIT applies to source code only. Each media/content item retains the terms recorded in CREDITS.md and public/media/audio-manifest.json; community cultural rights are not relicensed by the code licence.",
   "audioInventory": "public/media/audio-manifest.json",
   "runtimeAudio": {
@@ -13,29 +13,40 @@
       "cham-workyard",
       "southern-riverside"
     ],
-    "interpretiveFoleyPresets": [
-      "clay-work",
-      "open-fire",
-      "dan-day-study",
-      "phach-study",
-      "praise-drum-study",
-      "hue-drum-study",
-      "hue-ensemble-study",
-      "ceremony-space-study",
-      "moon-lute-study",
-      "zither-study",
-      "riverside-study"
-    ],
-    "implementation": "Synthesized in-browser by MIT-licensed generator code with no external samples; includes environmental texture, sustained harmony and a slow electronic bell motif.",
+    "interactionAudioPolicy": "Hotspots play only licensed real recordings or provide reference-only official links. Browser-synthesized object cues were removed.",
+    "implementation": "The six neutral backgrounds are synthesized in-browser by MIT-licensed generator code with no external samples; licensed hotspot recordings are listed in public/media/audio-manifest.json.",
     "culturalBoundary": "Modern neutral background score only; not heritage music, ritual sound, a community field recording, or a claim about craft technique."
   },
   "servedAssets": [
     {
-      "path": "public/og.png",
+      "path": "public/og.webp",
       "kind": "original-generated-social-card",
       "visualScope": "Fictional pixel train interior, ticket conductor, abstract landscape and five-stop route; no ritual reconstruction or specific heritage performance",
       "generator": "OpenAI ImageGen",
       "rightsNote": "Project-generated content asset; not covered by the code-only MIT licence and not an artisan endorsement."
+    },
+    {
+      "path": "public/artifacts/*.webp",
+      "kind": "fifteen-generated-pixel-adaptation-sprites",
+      "generator": "OpenAI ImageGen",
+      "transformation": "Real openly licensed photographs were used as visual references, redrawn into transparent 2D pixel sprites matching public/og.webp; compositions and details were simplified for interaction.",
+      "sources": [
+        "https://commons.wikimedia.org/wiki/File:N%C3%B3n_quai_thao.jpg",
+        "https://commons.wikimedia.org/wiki/File:Quan_Ho-Ensemble.JPG",
+        "https://commons.wikimedia.org/wiki/File:300_bai_Quan_ho.jpg",
+        "https://commons.wikimedia.org/wiki/File:Dan_day_player.jpg",
+        "https://commons.wikimedia.org/wiki/File:Ca_tr%C3%B9_performance.jpg",
+        "https://commons.wikimedia.org/wiki/File:Imperial_orchestra_performing_in_front_of_the_Th%C3%A1i_H%C3%B2a_palace_-_Ch01_sub01_04_vn.jpg",
+        "https://commons.wikimedia.org/wiki/File:Nh%C3%A3_nh%E1%BA%A1c_cung_%C4%91%C3%ACnh_Hu%E1%BA%BF.JPG",
+        "https://www.flickr.com/photos/22490717@N02/3442074085",
+        "https://commons.wikimedia.org/wiki/File:Cham_culture_pottery_and_tools,_Museum_of_Western_Bohemia,_187741.jpg",
+        "https://commons.wikimedia.org/wiki/File:G%E1%BB%91m_B%C3%A0u_Tr%C3%BAc.JPG",
+        "https://www.flickr.com/photos/65749227@N00/6088270137",
+        "https://commons.wikimedia.org/wiki/File:Dan_nguyet_(two-stringed_lute)_-_Vietnam_Museum_of_Ethnology_-_Hanoi,_Vietnam_-_DSC02533.JPG",
+        "https://commons.wikimedia.org/wiki/File:%C3%90%C3%A0n_Tranh.jpg",
+        "https://commons.wikimedia.org/wiki/File:M%C3%B4_h%C3%ACnh_%C4%91%E1%BB%9Dn_ca_t%C3%A0i_t%E1%BB%AD.jpg"
+      ],
+      "rightsNote": "Per-source attribution and licences are recorded in CREDITS.md. Sprites are interpretive illustrations, not documentary images, construction diagrams or artisan endorsements."
     },
     {
       "path": "public/train/hai-van-journey.webp",
@@ -124,7 +135,7 @@
     {
       "path": "public/media/audio-manifest.json",
       "kind": "rights-and-provenance-manifest",
-      "scope": "One licensed local recording, six synthesized ambient presets, eleven interpretive cues, and reference-only pending-rights items"
+      "scope": "Four licensed local recordings, six synthesized neutral ambient presets, and reference-only pending-rights items; no synthesized object cues"
     },
     {
       "path": "public/media/ca-tru-sound-futures.ogg",
@@ -139,6 +150,36 @@
       "role": "heritage-ensemble-excerpt",
       "approvedForPrototype": true,
       "culturalReview": "Source and reuse licence verified; project-level community review still required before on-site release."
+    },
+    {
+      "path": "public/media/clay-sculpting.mp3",
+      "kind": "licensed-context-recording",
+      "source": "https://freesound.org/people/manuelaurreaf/sounds/490100/",
+      "creator": "manuelaurreaf",
+      "license": "CC BY 4.0",
+      "role": "real clay-handling context; not a Chăm artisan or technique recording",
+      "bytes": 193621,
+      "sha256": "89b39108b59cc391bcaf0bd3e67938e2d874c23f053df6460206b9d5c3e21135"
+    },
+    {
+      "path": "public/media/open-fire.mp3",
+      "kind": "licensed-context-recording",
+      "source": "https://freesound.org/people/kingsrow/sounds/181563/",
+      "creator": "kingsrow",
+      "license": "CC0 1.0",
+      "role": "real fire context; not documentation of a specific Chăm firing",
+      "bytes": 920315,
+      "sha256": "f06ff554e43415d6fe1d83d00d964c93f8a3b1c1ec7c5b59e4e6c4383dd4c591"
+    },
+    {
+      "path": "public/media/dan-tranh-field.mp3",
+      "kind": "licensed-field-recording",
+      "source": "https://freesound.org/people/TRP/sounds/574668/",
+      "creator": "TRP",
+      "license": "CC0 1.0",
+      "role": "tuning a zither-like đàn tranh instrument in Hội An; not a model Đờn ca tài tử performance",
+      "bytes": 717984,
+      "sha256": "4e8778307eb6bc9d894d538e7cb8bac0d1a8d12ca692e35866c6561b88efcecd"
     },
     {
       "path": "public/scenes/01-quan-ho.webp",

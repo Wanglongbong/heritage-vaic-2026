@@ -32,18 +32,7 @@ type AudioPreview = {
     | "hanoi-room"
     | "hue-courtyard"
     | "cham-workyard"
-    | "southern-riverside"
-    | "clay-work"
-    | "open-fire"
-    | "dan-day-study"
-    | "phach-study"
-    | "praise-drum-study"
-    | "hue-drum-study"
-    | "hue-ensemble-study"
-    | "ceremony-space-study"
-    | "moon-lute-study"
-    | "zither-study"
-    | "riverside-study";
+    | "southern-riverside";
 };
 
 type Soundscape = {
@@ -65,11 +54,6 @@ type ExperienceStop = Omit<HeritageStop, "soundscape" | "hotspots"> & {
 type AmbientScene = {
   gain: GainNode;
   sources: AudioScheduledSourceNode[];
-};
-
-type ForegroundFoley = {
-  sources: AudioScheduledSourceNode[];
-  timer: number;
 };
 
 const experienceStops = stops as ExperienceStop[];
@@ -225,14 +209,13 @@ function audioFor(hotspot: ExperienceHotspot): AudioPreview | null {
 }
 
 function isPlayableAudio(preview: AudioPreview | null) {
-  return Boolean(preview?.src || preview?.generatorPreset);
+  return Boolean(preview?.src);
 }
 
 function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
   const contextRef = useRef<AudioContext | null>(null);
   const masterRef = useRef<GainNode | null>(null);
   const ambienceRef = useRef<GainNode | null>(null);
-  const foregroundRef = useRef<ForegroundFoley | null>(null);
   const activeSceneRef = useRef<AmbientScene | null>(null);
   const environmentRef = useRef(environment);
   const enabledRef = useRef(false);
@@ -384,129 +367,6 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
     ambience.gain.setTargetAtTime(ducked ? 0 : 0.082, context.currentTime, 0.12);
   }, [ducked]);
 
-  const stopFoley = useCallback(() => {
-    const foreground = foregroundRef.current;
-    if (!foreground) return;
-    window.clearTimeout(foreground.timer);
-    foreground.sources.forEach((source) => {
-      try { source.stop(); } catch { /* source may already be stopped */ }
-    });
-    foregroundRef.current = null;
-  }, []);
-
-  const playFoley = useCallback((preset: AudioPreview["generatorPreset"], onEnded: () => void) => {
-    const supported = new Set<AudioPreview["generatorPreset"]>([
-      "clay-work", "open-fire", "dan-day-study", "phach-study", "praise-drum-study",
-      "hue-drum-study", "hue-ensemble-study", "ceremony-space-study", "moon-lute-study",
-      "zither-study", "riverside-study",
-    ]);
-    if (!preset || !supported.has(preset)) return false;
-    enable();
-    stopFoley();
-    const context = contextRef.current;
-    const master = masterRef.current;
-    if (!context || !master) return false;
-
-    const bus = context.createGain();
-    bus.gain.value = preset === "clay-work" ? 0.38 : preset === "open-fire" ? 0.29 : 0.34;
-    bus.connect(master);
-    const sources: AudioScheduledSourceNode[] = [];
-    const duration = preset === "clay-work" || preset === "open-fire" ? 4.8 : 3.8;
-
-    if (preset === "clay-work") {
-      for (let stroke = 0; stroke < 6; stroke += 1) {
-        const buffer = context.createBuffer(1, Math.floor(context.sampleRate * 0.55), context.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let index = 0; index < data.length; index += 1) {
-          const envelope = Math.sin(Math.PI * index / data.length);
-          data[index] = (Math.random() * 2 - 1) * envelope * 0.34;
-        }
-        const source = context.createBufferSource();
-        const filter = context.createBiquadFilter();
-        const strokeGain = context.createGain();
-        source.buffer = buffer;
-        filter.type = "bandpass";
-        filter.frequency.value = 430 + stroke * 37;
-        filter.Q.value = 0.7;
-        strokeGain.gain.value = 0.42;
-        source.connect(filter).connect(strokeGain).connect(bus);
-        source.start(context.currentTime + stroke * 0.72);
-        sources.push(source);
-      }
-    } else if (preset === "open-fire") {
-      const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let index = 0; index < data.length; index += 1) {
-        const crackle = Math.random() > 0.992 ? Math.random() * 1.4 : 0;
-        data[index] = (Math.random() * 2 - 1) * 0.08 + crackle;
-      }
-      const source = context.createBufferSource();
-      const filter = context.createBiquadFilter();
-      const fireGain = context.createGain();
-      source.buffer = buffer;
-      filter.type = "lowpass";
-      filter.frequency.value = 1_900;
-      fireGain.gain.value = 0.5;
-      source.connect(filter).connect(fireGain).connect(bus);
-      source.start();
-      sources.push(source);
-    } else {
-      const profiles: Record<string, { frequencies: number[]; strikes: number; interval: number; type: OscillatorType; decay: number; noise?: boolean }> = {
-        "dan-day-study": { frequencies: [146.8, 196, 174.6], strikes: 4, interval: .72, type: "triangle", decay: .52 },
-        "phach-study": { frequencies: [980, 1320], strikes: 8, interval: .36, type: "square", decay: .055, noise: true },
-        "praise-drum-study": { frequencies: [92, 76], strikes: 5, interval: .62, type: "sine", decay: .24, noise: true },
-        "hue-drum-study": { frequencies: [70, 88, 62], strikes: 5, interval: .68, type: "sine", decay: .34, noise: true },
-        "hue-ensemble-study": { frequencies: [196, 246.9, 293.7, 220], strikes: 7, interval: .46, type: "triangle", decay: .42 },
-        "ceremony-space-study": { frequencies: [130.8, 196], strikes: 4, interval: .82, type: "sine", decay: .72 },
-        "moon-lute-study": { frequencies: [196, 261.6, 220, 293.7], strikes: 6, interval: .48, type: "triangle", decay: .38 },
-        "zither-study": { frequencies: [293.7, 392, 329.6, 440], strikes: 8, interval: .38, type: "triangle", decay: .48 },
-        "riverside-study": { frequencies: [174.6, 220, 261.6], strikes: 5, interval: .66, type: "sine", decay: .68 },
-      };
-      const profile = profiles[preset];
-      for (let strike = 0; strike < profile.strikes; strike += 1) {
-        const startAt = context.currentTime + strike * profile.interval;
-        const oscillator = context.createOscillator();
-        const strikeGain = context.createGain();
-        oscillator.type = profile.type;
-        oscillator.frequency.setValueAtTime(profile.frequencies[strike % profile.frequencies.length], startAt);
-        if (preset.includes("drum")) oscillator.frequency.exponentialRampToValueAtTime(42, startAt + profile.decay);
-        strikeGain.gain.setValueAtTime(0.0001, startAt);
-        strikeGain.gain.exponentialRampToValueAtTime(preset === "phach-study" ? .11 : .19, startAt + .008);
-        strikeGain.gain.exponentialRampToValueAtTime(0.0001, startAt + profile.decay);
-        oscillator.connect(strikeGain).connect(bus);
-        oscillator.start(startAt);
-        oscillator.stop(startAt + profile.decay + .04);
-        sources.push(oscillator);
-        if (profile.noise) {
-          const hitBuffer = context.createBuffer(1, Math.floor(context.sampleRate * Math.max(.06, profile.decay)), context.sampleRate);
-          const hitData = hitBuffer.getChannelData(0);
-          for (let index = 0; index < hitData.length; index += 1) hitData[index] = (Math.random() * 2 - 1) * Math.exp(-10 * index / hitData.length);
-          const hit = context.createBufferSource();
-          const hitFilter = context.createBiquadFilter();
-          const hitGain = context.createGain();
-          hit.buffer = hitBuffer;
-          hitFilter.type = "bandpass";
-          hitFilter.frequency.value = preset === "phach-study" ? 1_900 : 280;
-          hitGain.gain.value = preset === "phach-study" ? .18 : .12;
-          hit.connect(hitFilter).connect(hitGain).connect(bus);
-          hit.start(startAt);
-          sources.push(hit);
-        }
-      }
-    }
-
-    const timer = window.setTimeout(() => {
-      foregroundRef.current = null;
-      sources.forEach((source) => {
-        try { source.stop(); } catch { /* source has naturally ended */ }
-      });
-      bus.disconnect();
-      onEnded();
-    }, duration * 1_000);
-    foregroundRef.current = { sources, timer };
-    return true;
-  }, [enable, stopFoley]);
-
   useEffect(() => {
     const onVisibility = () => {
       const context = contextRef.current;
@@ -520,14 +380,13 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
 
   useEffect(() => () => {
     stopTimersRef.current.forEach(window.clearTimeout);
-    stopFoley();
     activeSceneRef.current?.sources.forEach((source) => {
       try { source.stop(); } catch { /* source may already be stopped */ }
     });
     if (contextRef.current) void contextRef.current.close();
-  }, [stopFoley]);
+  }, []);
 
-  return { enable, playFoley, stopFoley };
+  return { enable };
 }
 
 export function HeritageGame() {
@@ -548,7 +407,7 @@ export function HeritageGame() {
   const stop = experienceStops[stopIndex];
   const pendingStop = experienceStops[pendingStopIndex];
   const ambienceEnvironment = phase === "heritage" ? stop.soundscape?.generatorPreset || stop.id : "carriage";
-  const { enable: enableAmbient, playFoley, stopFoley } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying));
+  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying));
 
   useEffect(() => {
     const imageSources = [
@@ -566,7 +425,10 @@ export function HeritageGame() {
         image.src = source;
         void image.decode().catch(() => undefined);
       });
-      const licensedAudio = experienceStops.flatMap((item) => item.unlock?.audio.src ? [item.unlock.audio.src] : []);
+      const licensedAudio = experienceStops.flatMap((item) => [
+        ...item.hotspots.flatMap((hotspot) => hotspot.audioPreview?.src ? [hotspot.audioPreview.src] : []),
+        ...(item.unlock?.audio.src ? [item.unlock.audio.src] : []),
+      ]);
       licensedAudio.forEach((source) => { const audio = new Audio(source); audio.preload = "auto"; });
     }, 180);
     return () => window.clearTimeout(idle);
@@ -600,7 +462,6 @@ export function HeritageGame() {
   }, [muted]);
 
   const stopPreview = useCallback(() => {
-    stopFoley();
     const audio = previewAudioRef.current;
     if (audio) {
       audio.pause();
@@ -609,7 +470,7 @@ export function HeritageGame() {
     }
     previewAudioRef.current = null;
     setPreviewPlaying(null);
-  }, [stopFoley]);
+  }, []);
 
   useEffect(() => () => {
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
@@ -646,12 +507,6 @@ export function HeritageGame() {
     const key = keyOverride || `${stop.id}:${hotspot.id}`;
     const currentAudio = previewAudioRef.current;
 
-    if (previewPlaying === key && preview.generatorPreset) {
-      stopFoley();
-      setPreviewPlaying(null);
-      return;
-    }
-
     if (previewPlaying === key && currentAudio) {
       if (currentAudio.paused) {
         void currentAudio.play().then(() => setPreviewPlaying(key)).catch(() => setPreviewPlaying(null));
@@ -663,11 +518,6 @@ export function HeritageGame() {
     }
 
     stopPreview();
-    if (preview.generatorPreset) {
-      const started = playFoley(preview.generatorPreset, () => setPreviewPlaying(null));
-      if (started) setPreviewPlaying(key);
-      return;
-    }
     if (!preview.src) return;
     const audio = new Audio(preview.src);
     audio.preload = "auto";
@@ -867,7 +717,7 @@ function Ending({
 }) {
   const ui = copy[language];
   return <section className="ending-screen" aria-labelledby="ending-title">
-    <Image className="ending-cover-image" src="/og.png" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
+    <Image className="ending-cover-image" src="/og.webp" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
     <div className="ending-vignette" aria-hidden="true" />
     <div className="ending-language" aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}>
       <button className={language === "vi" ? "active" : ""} aria-pressed={language === "vi"} onClick={() => onLanguage("vi")}>VI</button>
@@ -889,7 +739,7 @@ function Ending({
 function Intro({ language, onLanguage, onStart }: { language: Language; onLanguage: (language: Language) => void; onStart: () => void }) {
   const ui = copy[language];
   return <section className="intro-screen" aria-labelledby="intro-title">
-    <Image className="intro-cover-image" src="/og.png" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
+    <Image className="intro-cover-image" src="/og.webp" alt="Tàu Di Sản Việt Nam — Chạm vào ký ức đang sống" fill priority unoptimized sizes="100vw" />
     <div className="intro-noise" aria-hidden="true" />
     <div className="intro-brand"><span>T</span><b>{ui.brand}</b></div>
     <div className="intro-language intro-language-top" aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}>
@@ -1010,6 +860,8 @@ function RecordDrawer({
   const note = localized(preview?.note, language);
   const role = preview?.role === "heritage-ensemble-excerpt"
     ? (language === "vi" ? "Trích đoạn trình diễn di sản có giấy phép" : "Licensed heritage ensemble excerpt")
+    : preview?.role === "licensed-field-recording"
+      ? (language === "vi" ? "Bản ghi thực có giấy phép" : "Licensed real-world recording")
     : preview?.role === "interpretive-foley"
       ? (language === "vi" ? "Hiệu ứng minh họa do game tạo mới" : "Newly generated interpretive foley")
       : preview?.role === "official-reference"
@@ -1056,11 +908,11 @@ function RecordDrawer({
         <div><span className="record-mark">✦</span><p><b>{ui.askTitle}</b><small>{ui.askHint}</small></p></div>
         <dl>
           <div><dt>{language === "vi" ? "Bối cảnh" : "Context"}</dt><dd>{stop.description[language]}</dd></div>
-          <div><dt>{language === "vi" ? "Giới hạn diễn giải" : "Interpretive boundary"}</dt><dd>{language === "vi" ? "Chỉ trình bày dữ kiện có trong hồ sơ nguồn; âm hiệu minh họa không được coi là bản ghi di sản." : "Only source-backed facts are presented; interpretive cues are not heritage recordings."}</dd></div>
+          <div><dt>{language === "vi" ? "Giới hạn diễn giải" : "Interpretive boundary"}</dt><dd>{language === "vi" ? "Chỉ trình bày dữ kiện có trong hồ sơ nguồn; mọi bản ghi bối cảnh đều được ghi rõ và không được coi là bản trình diễn di sản nếu nguồn không xác nhận như vậy." : "Only source-backed facts are presented; contextual recordings are explicitly labelled and are not treated as heritage performances unless their source confirms that role."}</dd></div>
         </dl>
       </section>
 
-      <HandTrackingViewer language={language} pottery={stop.id === "cham-pottery" && hotspot.id === "hand-shaping"} label={hotspot.label[language]} />
+      <HandTrackingViewer language={language} spriteSrc={hotspot.artifactSprite} malleable={stop.id === "cham-pottery" && hotspot.id === "hand-shaping"} label={hotspot.label[language]} />
 
       <section className="source-stack">
         {sourceRecords.map((source) => source && <article key={source.id}>

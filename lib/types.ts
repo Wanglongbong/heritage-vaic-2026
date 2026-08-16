@@ -25,6 +25,7 @@ export type AudioReviewStatus =
 export type AudioRole =
   | "heritage-ensemble-excerpt"
   | "official-reference"
+  | "licensed-field-recording"
   | "modern-ambient"
   | "interpretive-foley";
 
@@ -55,18 +56,7 @@ export type AudioAsset = {
     | "hanoi-room"
     | "hue-courtyard"
     | "cham-workyard"
-    | "southern-riverside"
-    | "clay-work"
-    | "open-fire"
-    | "dan-day-study"
-    | "phach-study"
-    | "praise-drum-study"
-    | "hue-drum-study"
-    | "hue-ensemble-study"
-    | "ceremony-space-study"
-    | "moon-lute-study"
-    | "zither-study"
-    | "riverside-study";
+    | "southern-riverside";
 };
 
 export type MediaAsset = {
@@ -82,6 +72,7 @@ export type MediaAsset = {
 
 export type Hotspot = {
   id: string;
+  artifactSprite: string;
   label: LocalizedText;
   kicker: LocalizedText;
   story: LocalizedText;

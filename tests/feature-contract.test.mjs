@@ -1,16 +1,17 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
 test("ships the carriage, grounded train artwork, story dialogue, hand tracking and rights-aware previews", async () => {
-  const [ui, handTracking, heritage, css, cover, landscape, track, carriage, conductor, train] = await Promise.all([
+  const [ui, handTracking, heritage, css, cover, artifacts, landscape, track, carriage, conductor, train] = await Promise.all([
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
     readFile(new URL("components/hand-tracking-viewer.tsx", projectRoot), "utf8"),
     readFile(new URL("lib/heritage.ts", projectRoot), "utf8"),
     readFile(new URL("app/globals.css", projectRoot), "utf8"),
-    readFile(new URL("public/og.png", projectRoot)),
+    readFile(new URL("public/og.webp", projectRoot)),
+    readdir(new URL("public/artifacts/", projectRoot)),
     readFile(new URL("public/train/coastal-transit-v2.webp", projectRoot)),
     readFile(new URL("public/train/straight-track-v2.png", projectRoot)),
     readFile(new URL("public/train/heritage-carriage.webp", projectRoot)),
@@ -27,11 +28,11 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(ui, /typewriter-line/);
   assert.match(ui, /experienceStops\.map\(\(item, index\)/);
   assert.match(ui, /new Audio\(preview\.src\)/);
-  assert.match(ui, /dan-day-study/);
+  assert.doesNotMatch(ui, /dan-day-study|phach-study|open-fire-study|playFoley/);
   assert.match(heritage, /ca-tru-sound-futures/);
   assert.match(ui, /official-audio-link/);
   assert.match(ui, /ducked \? 0 : 0\.082/);
-  assert.match(ui, /\/og\.png/);
+  assert.match(ui, /\/og\.webp/);
   assert.match(ui, /\/train\/coastal-transit-v2\.webp/);
   assert.match(ui, /\/train\/straight-track-v2\.png/);
   assert.match(ui, /\/train\/heritage-carriage\.webp/);
@@ -59,9 +60,11 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(css, /env\(safe-area-inset-bottom/);
   assert.doesNotMatch(css, /\.pixel-train-side/);
   assert.match(css, /\.hand-viewer/);
+  assert.match(css, /\.tracked-object img/);
   assert.match(css, /\.scene\.nha-nhac-locked/);
   assert.match(css, /\.official-audio-link/);
-  assert.ok(cover.byteLength > 500_000);
+  assert.ok(cover.byteLength > 300_000);
+  assert.equal(artifacts.filter((name) => name.endsWith(".webp")).length, 15);
   assert.ok(landscape.byteLength > 250_000);
   assert.ok(track.byteLength > 250_000);
   assert.ok(carriage.byteLength > 200_000);
@@ -73,5 +76,6 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(handTracking, /numHands: 2/);
   assert.match(handTracking, /no images are sent or stored/);
   assert.match(handTracking, /requestAnimationFrame/);
+  assert.match(handTracking, /spriteSrc/);
   assert.doesNotMatch(ui, /youtube|youtu\.be/i);
 });

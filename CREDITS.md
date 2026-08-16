@@ -21,19 +21,25 @@ Các liên kết này xác nhận dữ kiện văn hóa. Chúng không tự đ�
 
 Nguồn mô tả đây là phần trình diễn gồm giọng Ca trù, đàn đáy và trống. Vì vậy game luôn ghi nhãn **đoạn trích cả nhóm**, không tuyên bố đây là âm thanh tách riêng của đàn đáy, phách hay trống chầu.
 
-Đây là bản ghi di sản duy nhất hiện được game phục vụ cục bộ. Thông tin máy đọc được nằm trong `public/media/audio-manifest.json`.
+Đây là bản ghi trình diễn di sản duy nhất hiện được game phục vụ cục bộ. Ba tệp bối cảnh thực khác cũng được phục vụ với nhãn giới hạn rõ ràng:
+
+- `public/media/clay-sculpting.mp3`: [Spreading](https://freesound.org/people/manuelaurreaf/sounds/490100/) của manuelaurreaf, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Đây là tiếng thao tác đất nói chung, không phải bản ghi nghệ nhân Chăm hay bằng chứng về kỹ thuật nghề.
+- `public/media/open-fire.mp3`: [Fire Crackling 01.wav](https://freesound.org/people/kingsrow/sounds/181563/) của kingsrow, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Đây là tiếng lửa thật tạo bối cảnh, không phải tư liệu một lần nung gốm Chăm cụ thể.
+- `public/media/dan-tranh-field.mp3`: [Hoi Ann tuning zither like Dan Tranh instrument](https://freesound.org/people/TRP/sounds/574668/) của TRP, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Đây là bản ghi thực địa khi chỉnh dây nhạc cụ giống đàn tranh tại Hội An, không phải tiết mục Đờn ca tài tử mẫu.
+
+Thông tin máy đọc được, thời lượng, kích thước và mã kiểm tra tệp nằm trong `public/media/audio-manifest.json`.
 
 ## Bản ghi đang chờ quyền
 
-Quan họ, Nhã nhạc và Đờn ca tài tử hiện chỉ có liên kết tham chiếu đến hồ sơ UNESCO. Chưa xác nhận được giấy phép tái sử dụng cho bản ghi phù hợp, nên các mục này có `src: null`, trạng thái `pending-rights`, và **không tải xuống, trích xuất, phát thay hoặc lưu lại**.
+Quan họ, Nhã nhạc, tiếng đàn kìm riêng và toàn bộ cuộc đàn Đờn ca tài tử hiện chỉ có liên kết tham chiếu đến hồ sơ UNESCO. Chưa xác nhận được giấy phép tái sử dụng cho bản ghi phù hợp, nên các mục này có `src: null`, trạng thái `pending-rights`, và **không tải xuống, trích xuất, phát thay hoặc lưu lại**.
 
 Không dùng một nhạc cụ gần giống để giả làm nhạc cụ được mô tả. Không trích âm thanh từ YouTube hoặc nền tảng khác nếu chủ thể quyền chưa cấp phép rõ ràng. Khi có bản ghi mới, cần lưu bằng chứng về người biểu diễn, người ghi/nhà sản xuất, chủ thể quyền, giấy phép, phạm vi lãnh thổ, thời hạn, quyền rút lại và yêu cầu ghi công.
 
-## Âm thanh mới do dự án tạo
+## Nhạc nền mới do dự án tạo
 
 Sáu lớp nhạc nền nhẹ — toa tàu và năm ga — được tổng hợp trong trình duyệt bằng mã của prototype, gồm không gian môi trường, hòa âm kéo dài và mô-típ chuông điện tử chậm; không lấy mẫu từ bản ghi bên ngoài. Đây là **thiết kế âm thanh hiện đại trung tính**, không phải âm nhạc truyền thống, bản ghi thực địa hay mô phỏng giai điệu di sản.
 
-Mười một âm hiệu tương tác cũng được tổng hợp trong trình duyệt: thao tác đất, lửa, ba vai trò Ca trù, ba điểm Nhã nhạc và ba điểm Đờn ca tài tử. Chúng chỉ giúp phân biệt thao tác hoặc vai trò nghe, không phải âm thanh thực địa, không mô tả bí quyết nghề, không tái tạo làn điệu/kỹ thuật trình diễn và không được ghi nhãn là tiếng nhạc cụ thật. Mã tạo âm thanh thuộc giấy phép MIT cùng mã nguồn dự án; không có tệp ghi âm được cấp phép riêng dưới tên cộng đồng.
+Các âm hiệu vật phẩm tổng hợp trước đây đã bị loại bỏ. Mã tổng hợp chỉ còn tạo sáu lớp nhạc nền hiện đại trung tính; vật phẩm chỉ phát bản ghi thật có quyền rõ ràng hoặc hiển thị liên kết nguồn đang chờ quyền.
 
 ## Hand tracking và quyền riêng tư
 
@@ -41,7 +47,15 @@ Tính năng quan sát hiện vật dùng MediaPipe Tasks Vision trong trình duy
 
 ## Minh họa pixel
 
-Năm cảnh trong `public/scenes/` và ảnh giới thiệu là minh họa gốc do OpenAI ImageGen tạo cho prototype dựa trên phần mô tả công khai trong các hồ sơ UNESCO. Chúng là không gian diễn giải, không phải ảnh tư liệu, bản phục dựng nghi lễ hoặc lời xác nhận của nghệ nhân.
+Năm cảnh trong `public/scenes/` và ảnh bìa đầu hành trình `public/og.webp` là minh họa gốc do OpenAI ImageGen tạo cho prototype dựa trên phần mô tả công khai trong các hồ sơ UNESCO. Chúng là không gian diễn giải, không phải ảnh tư liệu, bản phục dựng nghi lễ hoặc lời xác nhận của nghệ nhân.
+
+Mười lăm sprite trong `public/artifacts/` được OpenAI ImageGen tạo lại theo pixel 2D nền trong suốt, dùng ảnh thật có giấy phép mở làm tham chiếu hình dáng. Mỗi sprite là minh họa tương tác, không phải ảnh tư liệu hay sơ đồ cấu tạo. Nguồn theo nhóm:
+
+- Quan họ: [Nón quai thao](https://commons.wikimedia.org/wiki/File:N%C3%B3n_quai_thao.jpg), Petr Ruzicka, CC BY 2.0; [Quan Ho-Ensemble](https://commons.wikimedia.org/wiki/File:Quan_Ho-Ensemble.JPG), Chrisvomberg, CC BY-SA 3.0; [300 bai Quan ho](https://commons.wikimedia.org/wiki/File:300_bai_Quan_ho.jpg), Chinhatm, CC BY-SA 4.0.
+- Ca trù: [Dan day player](https://commons.wikimedia.org/wiki/File:Dan_day_player.jpg), spotter_nl, CC BY 2.0; [Ca trù performance](https://commons.wikimedia.org/wiki/File:Ca_tr%C3%B9_performance.jpg), Michael Coghlan, CC BY-SA 2.0. Phách và trống chầu được đối chiếu trong bối cảnh ảnh trình diễn, không tuyên bố là bản sao của một hiện vật cụ thể.
+- Nhã nhạc: [Imperial orchestra performing in front of the Thái Hòa palace](https://commons.wikimedia.org/wiki/File:Imperial_orchestra_performing_in_front_of_the_Th%C3%A1i_H%C3%B2a_palace_-_Ch01_sub01_04_vn.jpg), phạm vi công cộng; [Nhã nhạc cung đình Huế](https://commons.wikimedia.org/wiki/File:Nh%C3%A3_nh%E1%BA%A1c_cung_%C4%91%C3%ACnh_Hu%E1%BA%BF.JPG), Lưu Ly, phạm vi công cộng; [DGJ_1178 - Ngo Mon Gate](https://www.flickr.com/photos/22490717@N02/3442074085), Dennis Jarvis, CC BY-SA 2.0.
+- Gốm Chăm: [Cham culture pottery and tools](https://commons.wikimedia.org/wiki/File:Cham_culture_pottery_and_tools,_Museum_of_Western_Bohemia,_187741.jpg), Zde, CC BY-SA 4.0; [Gốm Bàu Trúc](https://commons.wikimedia.org/wiki/File:G%E1%BB%91m_B%C3%A0u_Tr%C3%BAc.JPG), Liftold, CC BY-SA 3.0; [experimental woodfiring day 10](https://www.flickr.com/photos/65749227@N00/6088270137), robynejay, CC BY-SA 2.0. Ảnh lửa chỉ tham chiếu bố cục nung ngoài trời nói chung, không được coi là tư liệu một lần nung Chăm.
+- Đờn ca tài tử: [Dan nguyet — Vietnam Museum of Ethnology](https://commons.wikimedia.org/wiki/File:Dan_nguyet_(two-stringed_lute)_-_Vietnam_Museum_of_Ethnology_-_Hanoi,_Vietnam_-_DSC02533.JPG), Daderot, CC0; [Ðàn Tranh](https://commons.wikimedia.org/wiki/File:%C3%90%C3%A0n_Tranh.jpg), Eustaquio Santimano, CC BY 2.0; [Mô hình đờn ca tài tử](https://commons.wikimedia.org/wiki/File:M%C3%B4_h%C3%ACnh_%C4%91%E1%BB%9Dn_ca_t%C3%A0i_t%E1%BB%AD.jpg), Bùi Thụy Đào Nguyên, CC BY-SA 3.0.
 
 Các hình tàu và bối cảnh đường sắt mới cũng do OpenAI ImageGen tạo, nhưng được dự án xem và ghi công như các bản chuyển thể pixel từ ảnh đường sắt Việt Nam có giấy phép mở:
 

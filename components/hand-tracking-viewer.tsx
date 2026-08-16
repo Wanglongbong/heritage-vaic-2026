@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { PointerEvent, useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import type { Language } from "@/lib/types";
@@ -35,7 +36,7 @@ const text = {
   },
 } as const;
 
-export function HandTrackingViewer({ language, pottery = false, label }: { language: Language; pottery?: boolean; label: string }) {
+export function HandTrackingViewer({ language, spriteSrc, malleable = false, label }: { language: Language; spriteSrc: string; malleable?: boolean; label: string }) {
   const ui = text[language];
   const [trackingState, setTrackingState] = useState<TrackingState>("idle");
   const [handCount, setHandCount] = useState(0);
@@ -142,7 +143,7 @@ export function HandTrackingViewer({ language, pottery = false, label }: { langu
         if (hands[0]) {
           const palm = hands[0][9];
           const next = { rotateY: (0.5 - palm.x) * 78, rotateX: (palm.y - 0.5) * 54 };
-          if (pottery && hands[1]) {
+          if (malleable && hands[1]) {
             const otherPalm = hands[1][9];
             const distance = Math.hypot(palm.x - otherPalm.x, palm.y - otherPalm.y);
             Object.assign(next, { width: Math.min(1.3, Math.max(.76, .58 + distance * 1.45)), height: Math.min(1.18, Math.max(.82, 1.22 - distance * .42)) });
@@ -177,8 +178,9 @@ export function HandTrackingViewer({ language, pottery = false, label }: { langu
     <div className="hand-viewer-copy"><span>◫ HAND TRACKING · LOCAL</span><h3>{ui.title}</h3><p>{ui.intro}</p></div>
     <div className="hand-viewer-stage" onPointerDown={(event) => { draggingRef.current = true; event.currentTarget.setPointerCapture(event.pointerId); }} onPointerMove={onPointerMove} onPointerUp={() => { draggingRef.current = false; }} onPointerCancel={() => { draggingRef.current = false; }}>
       <div className="camera-feed" data-active={trackingState === "running"}><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} /></div>
-      <div ref={objectRef} className={`tracked-object ${pottery ? "tracked-pottery" : "tracked-artifact"}`} style={{ "--object-rx": "-8deg", "--object-ry": "16deg", "--pot-width": 1, "--pot-height": 1 } as CSSProperties}>
-        <i /><b>{label}</b><span />
+      <div ref={objectRef} className={`tracked-object ${malleable ? "is-malleable" : ""}`} style={{ "--object-rx": "-8deg", "--object-ry": "16deg", "--pot-width": 1, "--pot-height": 1 } as CSSProperties}>
+        <Image src={spriteSrc} alt={label} fill unoptimized sizes="(max-width: 640px) 72vw, 340px" draggable={false} />
+        <b>{label}</b>
       </div>
       <small>{status}</small>
     </div>
