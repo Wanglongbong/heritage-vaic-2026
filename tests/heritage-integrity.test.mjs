@@ -25,6 +25,7 @@ test("every audio asset carries rights metadata and never extracts YouTube", () 
   const assets = stops.flatMap((stop) => [
     stop.soundscape,
     ...stop.hotspots.flatMap((hotspot) => hotspot.audioPreview ? [hotspot.audioPreview] : []),
+    ...(stop.unlock ? [stop.unlock.audio] : []),
   ]);
 
   for (const asset of assets) {
@@ -42,6 +43,20 @@ test("every audio asset carries rights metadata and never extracts YouTube", () 
     }
     if (asset.kind === "synthesized") assert.ok(asset.generatorPreset, `${asset.id} needs a generator preset`);
   }
+});
+
+test("Ca trù ensemble unlock and the five-station reveal contracts stay intact", () => {
+  const caTru = stops.find((stop) => stop.id === "ca-tru");
+  assert.deepEqual(caTru?.unlock?.requiredHotspotIds, ["dan-day", "phach", "praise-drum"]);
+  assert.equal(caTru?.unlock?.audio.durationSeconds, 22);
+  assert.equal(caTru?.unlock?.audio.reviewStatus, "approved-local");
+
+  const nhaNhac = stops.find((stop) => stop.id === "nha-nhac");
+  assert.equal(nhaNhac?.hotspots.length, 3);
+  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.generatorPreset));
+
+  const pottery = stops.find((stop) => stop.id === "cham-pottery");
+  assert.ok(pottery?.hotspots.some((hotspot) => hotspot.id === "hand-shaping"));
 });
 
 test("source records distinguish facts from media reuse rights", () => {

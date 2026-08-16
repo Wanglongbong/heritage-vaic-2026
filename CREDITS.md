@@ -7,6 +7,7 @@ Tàu Di Sản Việt Nam là prototype diễn giải. Nội dung văn hóa chỉ
 Các trang được truy cập ngày 2026-07-17:
 
 - [Dân ca Quan họ Bắc Ninh](https://ich.unesco.org/en/RL/quan-h-bc-ninh-folk-songs-00183)
+- [Chương trình hát Quan họ trên thuyền tại Lễ hội trái cây Bắc Ninh 2025](https://svhttdl.bacninh.gov.vn/vi/news/-/details/188850/chuong-trinh-nghe-thuat-hat-dan-ca-quan-ho-tren-thuyen-tai-le-hoi-trai-cay-bac-ninh-2025-81095830), Sở Văn hóa, Thể thao và Du lịch tỉnh Bắc Ninh — chỉ dùng tên tiết mục công khai, không sao chép lời ca hoặc bản ghi.
 - [Hát Ca trù](https://ich.unesco.org/en/USL/ca-tru-singing-00309)
 - [Nhã nhạc, âm nhạc cung đình Việt Nam](https://ich.unesco.org/en/RL/nha-nhac-vietnamese-court-music-00074)
 - [Nghệ thuật làm gốm của người Chăm](https://ich.unesco.org/en/USL/art-of-pottery-making-of-chm-people-01574)
@@ -32,7 +33,11 @@ Không dùng một nhạc cụ gần giống để giả làm nhạc cụ đư�
 
 Sáu lớp nhạc nền nhẹ — toa tàu và năm ga — được tổng hợp trong trình duyệt bằng mã của prototype, gồm không gian môi trường, hòa âm kéo dài và mô-típ chuông điện tử chậm; không lấy mẫu từ bản ghi bên ngoài. Đây là **thiết kế âm thanh hiện đại trung tính**, không phải âm nhạc truyền thống, bản ghi thực địa hay mô phỏng giai điệu di sản.
 
-Hai hiệu ứng cho thao tác đất và lửa cũng được tổng hợp trong trình duyệt. Chúng chỉ hỗ trợ hoạt ảnh, không phải âm thanh thực địa, không mô tả bí quyết nghề và không đại diện cho một lần làm/nung gốm Chăm thực tế. Mã tạo âm thanh thuộc giấy phép MIT cùng mã nguồn dự án; không có tệp ghi âm được cấp phép riêng dưới tên cộng đồng.
+Mười một âm hiệu tương tác cũng được tổng hợp trong trình duyệt: thao tác đất, lửa, ba vai trò Ca trù, ba điểm Nhã nhạc và ba điểm Đờn ca tài tử. Chúng chỉ giúp phân biệt thao tác hoặc vai trò nghe, không phải âm thanh thực địa, không mô tả bí quyết nghề, không tái tạo làn điệu/kỹ thuật trình diễn và không được ghi nhãn là tiếng nhạc cụ thật. Mã tạo âm thanh thuộc giấy phép MIT cùng mã nguồn dự án; không có tệp ghi âm được cấp phép riêng dưới tên cộng đồng.
+
+## Hand tracking và quyền riêng tư
+
+Tính năng quan sát hiện vật dùng MediaPipe Tasks Vision trong trình duyệt. Chỉ sau khi người chơi chủ động bấm bật và cấp quyền, hình camera mới được xử lý cục bộ để lấy tọa độ bàn tay; game không tải khung hình lên máy chủ và không lưu ảnh, video hoặc dữ liệu sinh trắc học. Mô hình/WASM được tải từ hạ tầng công khai của Google MediaPipe và jsDelivr. Khi camera bị từ chối hoặc không hỗ trợ, kéo chuột/chạm vẫn hoạt động đầy đủ.
 
 ## Minh họa pixel
 

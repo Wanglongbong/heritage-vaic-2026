@@ -1,15 +1,15 @@
 # Tàu Di Sản Việt Nam
 
-Một trải nghiệm point-and-click góc nhìn thứ nhất đưa người chơi lên chuyến tàu pixel Bắc–Nam. Người chơi nói hoặc chọn một trong năm ga, khám phá đồ vật trong cảnh và mở hồ sơ song ngữ có nguồn, quyền sử dụng và trạng thái kiểm duyệt rõ ràng.
+Một trải nghiệm point-and-click góc nhìn thứ nhất đưa người chơi lên chuyến tàu pixel Bắc–Nam. Người chơi nhận vé từ nhân vật soát vé, chọn một trong năm ga, khám phá đồ vật và mở hồ sơ song ngữ có nguồn, quyền sử dụng cùng trạng thái kiểm duyệt rõ ràng.
 
 ## Trải nghiệm chính
 
 - Landing page hiện tại dẫn vào khoang tàu pixel chuyển động nhẹ.
-- Trưởng tàu kiểm vé bằng hội thoại chữ và hỏi điểm đến.
-- Nút giữ để nói ghi tối đa 6 giây. Bản public hiện dùng **mock API minh bạch**: tệp chỉ được kiểm tra định dạng, không phân tích nội dung hoặc lưu lại, rồi trả về lệnh mẫu đi Huế có nhãn “mô phỏng”. Năm nút chọn ga trực tiếp vẫn hoạt động thật.
+- Nhân viên soát vé xuất hiện trong khoang tàu toàn màn hình; lời thoại bật dần ở cửa sổ phía dưới và đưa ra năm tấm vé chọn ga.
 - Năm ga: Quan họ Kinh Bắc, Ca trù Hà Nội, Nhã nhạc Huế, gốm Chăm và Đờn ca tài tử Nam Bộ.
-- Hotspot phát sáng khi con trỏ đến gần; khi mở sẽ phát bản ghi được cấp phép nếu có, hiện hoạt ảnh khái quát hoặc mở hồ sơ tư liệu.
-- Mỗi hồ sơ có ba câu hỏi gợi ý. Trưởng tàu AI chỉ được trả lời từ ngữ cảnh và danh sách nguồn đã duyệt, đồng thời phải trả về mã nguồn hợp lệ.
+- Hotspot phát sáng khi con trỏ đến gần; khi mở sẽ phát bản ghi được cấp phép nếu có, phát âm hiệu diễn giải được ghi nhãn rõ hoặc mở hồ sơ tư liệu chi tiết.
+- Ca trù mở khóa đoạn trình diễn Sound Futures 22 giây sau khi người chơi khảo sát đàn đáy, phách và trống chầu. Cảnh Nhã nhạc sáng dần sau khi mở đủ ba dấu mốc.
+- Mỗi hồ sơ có bàn quan sát hand tracking: camera chỉ bật khi người chơi cấp quyền, xử lý khung hình cục bộ và luôn có chế độ kéo chuột/chạm thay thế. Điểm tạo hình gốm hỗ trợ hai tay để thay đổi hình khối minh họa.
 - Nhạc nền là soundscape hiện đại, trung tính, được tạo riêng cho trải nghiệm; không được trình bày như âm nhạc di sản.
 - Sổ di sản lưu tiến độ trên thiết bị và có thể xuất metadata JSON.
 
@@ -17,7 +17,7 @@ Một trải nghiệm point-and-click góc nhìn thứ nhất đưa người ch�
 
 Độ trung thực văn hóa là ràng buộc cao nhất của dự án:
 
-- Không coi nội dung AI là lời nghệ nhân hoặc thẩm quyền cộng đồng.
+- Không dùng nội dung AI sinh tự do làm lời nghệ nhân hoặc thẩm quyền cộng đồng.
 - Không mô phỏng bí quyết, nghi lễ hoặc âm thanh nhạc cụ khi chưa có căn cứ và quyền sử dụng rõ ràng.
 - Âm thanh biểu diễn tổng thể phải được ghi nhãn đúng; không gọi một bản hòa tấu là âm thanh riêng của một nhạc cụ.
 - Thiếu nguồn thì hệ thống từ chối trả lời, không đoán.
@@ -31,11 +31,10 @@ Yêu cầu Node.js 22.13 trở lên.
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Mặc định `MOCK_VOICE_API=true`, vì vậy không cần khóa để trình diễn luồng giọng nói. Muốn thử phiên âm thật ở môi trường riêng, đặt `MOCK_VOICE_API=false` cùng `OPENAI_API_KEY` trong `.env.local`. Không đưa khóa vào mã nguồn, trình duyệt hoặc GitHub. Nếu không có khóa, hỏi đáp vẫn dùng chế độ tư liệu tĩnh đã kiểm chứng và API giọng nói tự giữ chế độ mock.
+Phiên bản này không cần biến môi trường hoặc khóa API. Luồng giọng nói/GPT cũ đã được gỡ khỏi giao diện và khỏi các route public; nội dung hiện vật được đóng gói từ hồ sơ nguồn đã duyệt.
 
 Kiểm tra bản phát hành:
 
@@ -44,12 +43,9 @@ npm run lint
 npm test
 ```
 
-## API
+## Quyền riêng tư và khóa API
 
-- `POST /api/transcribe`: nhận `multipart/form-data` gồm `audio`, `language` và `sessionId`; tệp tối đa 3 MB. Ở chế độ mặc định, API xác thực tệp rồi trả về lệnh mẫu đi Huế với `mock: true`; ứng dụng không phân tích hay lưu âm thanh.
-- `POST /api/guide`: nhận ga, hotspot, câu hỏi, ngôn ngữ và `sessionId`; câu trả lời dùng OpenAI Responses API với Structured Outputs.
-
-Giới hạn tốt nhất theo phiên trình duyệt: 6 lượt phiên âm/phút và 12 câu hỏi/phút. Đây là lớp bảo vệ cho prototype, không thay thế rate limiting phân tán ở quy mô sản xuất.
+Repository không chứa khóa API và bản public không còn endpoint GPT/phiên âm. Hand tracking tải thư viện/mô hình MediaPipe rồi xử lý camera trong trình duyệt; không tải ảnh camera lên backend và không lưu dữ liệu cá nhân.
 
 ## Quyền sử dụng
 

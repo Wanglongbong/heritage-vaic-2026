@@ -57,7 +57,16 @@ export type AudioAsset = {
     | "cham-workyard"
     | "southern-riverside"
     | "clay-work"
-    | "open-fire";
+    | "open-fire"
+    | "dan-day-study"
+    | "phach-study"
+    | "praise-drum-study"
+    | "hue-drum-study"
+    | "hue-ensemble-study"
+    | "ceremony-space-study"
+    | "moon-lute-study"
+    | "zither-study"
+    | "riverside-study";
 };
 
 export type MediaAsset = {
@@ -99,20 +108,9 @@ export type HeritageStop = {
   sourceIds: string[];
   soundscape: AudioAsset;
   hotspots: Hotspot[];
-};
-
-export type GuideRequest = {
-  sessionId: string;
-  stopId: string;
-  hotspotId: string;
-  question: string;
-  language: Language;
-};
-
-export type GuideResponse = {
-  answer: string;
-  sourceIds: string[];
-  grounded: boolean;
-  refusalReason: string | null;
-  mode: "ai" | "verified-fallback" | "refusal";
+  unlock?: {
+    requiredHotspotIds: string[];
+    audio: AudioAsset;
+    message: LocalizedText;
+  };
 };

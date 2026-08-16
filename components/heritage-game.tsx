@@ -2,7 +2,6 @@
 
 import Image from "next/image";
 import {
-  FormEvent,
   PointerEvent,
   useCallback,
   useEffect,
@@ -11,12 +10,11 @@ import {
   useState,
 } from "react";
 import type { CSSProperties } from "react";
+import { HandTrackingViewer } from "@/components/hand-tracking-viewer";
 import { getSource, stops } from "@/lib/heritage";
-import type { GuideResponse, HeritageStop, Hotspot, Language, LocalizedText } from "@/lib/types";
+import type { HeritageStop, Hotspot, Language, LocalizedText } from "@/lib/types";
 
 type JourneyPhase = "landing" | "carriage" | "travelling" | "heritage" | "ending";
-type TranscriptionStatus = "matched" | "ambiguous" | "no-match";
-
 type AudioPreview = {
   id?: string;
   kind?: "local-audio" | "official-source" | "synthesized";
@@ -36,7 +34,16 @@ type AudioPreview = {
     | "cham-workyard"
     | "southern-riverside"
     | "clay-work"
-    | "open-fire";
+    | "open-fire"
+    | "dan-day-study"
+    | "phach-study"
+    | "praise-drum-study"
+    | "hue-drum-study"
+    | "hue-ensemble-study"
+    | "ceremony-space-study"
+    | "moon-lute-study"
+    | "zither-study"
+    | "riverside-study";
 };
 
 type Soundscape = {
@@ -46,23 +53,13 @@ type Soundscape = {
   generatorPreset?: AudioPreview["generatorPreset"];
 };
 
-type ExperienceHotspot = Omit<Hotspot, "audioPreview" | "suggestedQuestions"> & {
+type ExperienceHotspot = Omit<Hotspot, "audioPreview"> & {
   audioPreview?: AudioPreview;
-  suggestedQuestions?: LocalizedText[];
 };
 
 type ExperienceStop = Omit<HeritageStop, "soundscape" | "hotspots"> & {
   soundscape?: Soundscape;
   hotspots: ExperienceHotspot[];
-};
-
-type TranscriptionResponse = {
-  transcript?: string;
-  status?: TranscriptionStatus;
-  destinationId?: string | null;
-  stopId?: string | null;
-  mock?: boolean;
-  error?: string;
 };
 
 type AmbientScene = {
@@ -76,9 +73,6 @@ type ForegroundFoley = {
 };
 
 const experienceStops = stops as ExperienceStop[];
-const MAX_RECORDING_BYTES = 3 * 1024 * 1024;
-const MAX_RECORDING_MS = 6_000;
-
 const copy = {
   vi: {
     brand: "TÀU DI SẢN",
@@ -98,11 +92,8 @@ const copy = {
     next: "Ga kế tiếp",
     previous: "Ga trước",
     finishJourney: "Kết thúc hành trình",
-    askTitle: "Hỏi Trưởng tàu AI",
-    askHint: "Chỉ trả lời từ hồ sơ đang mở và luôn dẫn nguồn.",
-    askPlaceholder: "Vì sao chi tiết này quan trọng?",
-    ask: "Hỏi",
-    asking: "Đang đối chiếu nguồn…",
+    askTitle: "Hồ sơ hiện vật",
+    askHint: "Thông tin cần thiết được đối chiếu trực tiếp với nguồn bên dưới.",
     close: "Đóng",
     rights: "Quyền sử dụng",
     reviewedBy: "Đối chiếu bởi",
@@ -117,37 +108,14 @@ const copy = {
     audioPending: "Chưa phát trong game",
     audioPendingBody: "Bản ghi chưa có quyền tái sử dụng rõ ràng nên game không sao chép hoặc phát lại. Thông tin nguồn vẫn có ở cuối hồ sơ.",
     ambientNote: "Nhạc nền hiện đại do game tổng hợp — không phải bản ghi hay mô phỏng âm nhạc di sản.",
-    aiFallback: "Chế độ tư liệu kiểm chứng",
-    aiLive: "OpenAI · câu trả lời có rào nguồn",
     arrival: "TÀU ĐANG VÀO GA",
     allStops: "Tuyến di sản",
     mute: "Tắt tiếng",
     unmute: "Bật tiếng",
-    suggestions: "Gợi ý để hỏi từ hồ sơ",
-    carriageKicker: "KHOANG 01 · TÀU BẮC — NAM",
     conductor: "NHÂN VIÊN SOÁT VÉ",
-    conductorQuestion: "Chào mừng bạn lên tàu. Vé của bạn sẽ đi đến ga nào?",
-    conductorBody: "Hãy nói tên một trong năm điểm đến. Tôi sẽ đối chiếu tên ga trong tối đa 6 giây và không lưu bản ghi.",
-    mockConductorBody: "Bản demo dùng giọng nói mô phỏng. Bạn vẫn có thể nói để nhập vai; vé mẫu sẽ đưa bạn đến Huế.",
-    mockBadge: "VOICE API · MÔ PHỎNG",
-    mockResult: "KẾT QUẢ MẪU · ÂM THANH KHÔNG ĐƯỢC PHÂN TÍCH",
-    micStart: "Nói điểm đến",
-    micStop: "Gửi lời thoại",
-    listening: "Đang nghe…",
-    transcribing: "Đang nhận diện điểm đến…",
-    mockTranscribing: "Đang chạy API mô phỏng…",
-    micHint: "Ví dụ: “Tôi muốn đi Huế” hoặc “Đưa tôi đến Hà Nội”",
-    transcript: "Tôi nghe thấy",
-    matched: "Đã nhận vé. Tàu sắp chuyển bánh.",
-    ambiguous: "Có nhiều hơn một điểm đến. Hãy nói lại chỉ một tên ga.",
-    noMatch: "Chưa nhận ra điểm đến. Bạn có thể nói lại hoặc chọn ga bên dưới.",
-    micDenied: "Trình duyệt chưa được cấp quyền micro. Hãy cho phép micro hoặc chọn ga bên dưới.",
-    micUnsupported: "Trình duyệt này chưa hỗ trợ ghi âm. Bạn vẫn có thể chọn ga bên dưới.",
-    micError: "Chưa gửi được giọng nói. Hãy thử lại hoặc chọn ga bên dưới.",
-    micLarge: "Bản ghi vượt quá 3 MB. Hãy thử lại với câu ngắn hơn.",
-    chooseInstead: "Hoặc chọn một vé",
-    privacy: "Âm thanh chỉ được gửi để nhận diện ga, không được lưu trong Sổ di sản.",
-    mockPrivacy: "Bản ghi demo chỉ được kiểm tra định dạng rồi bỏ; không phân tích nội dung và không lưu.",
+    conductorQuestion: "Chào mừng bạn lên Tàu Di Sản.",
+    conductorDialogue: "Tôi đã chuẩn bị năm tấm vé. Hãy chọn một ga; đoàn tàu sẽ đưa bạn đến đúng không gian di sản ấy.",
+    conductorPrompt: "Chọn điểm đến trên vé",
     backLanding: "Về trang đầu",
     travellingTo: "ĐANG RỜI KHOANG · ĐI ĐẾN",
     neutralSound: "Nhạc nền hành trình đang phát",
@@ -176,11 +144,8 @@ const copy = {
     next: "Next stop",
     previous: "Previous stop",
     finishJourney: "Complete the journey",
-    askTitle: "Ask the AI conductor",
-    askHint: "Answers only from the open record, with sources.",
-    askPlaceholder: "Why does this detail matter?",
-    ask: "Ask",
-    asking: "Checking the source…",
+    askTitle: "Object record",
+    askHint: "Essential information is checked directly against the sources below.",
     close: "Close",
     rights: "Usage rights",
     reviewedBy: "Cross-checked by",
@@ -195,37 +160,14 @@ const copy = {
     audioPending: "Not played in the game",
     audioPendingBody: "No clear reuse permission is available, so the game does not copy or replay this recording. Its source remains listed at the end of the record.",
     ambientNote: "The modern background score is generated by the game — it is not a heritage recording or musical imitation.",
-    aiFallback: "Verified archive mode",
-    aiLive: "OpenAI · source-bounded answer",
     arrival: "NOW ARRIVING",
     allStops: "Heritage line",
     mute: "Mute",
     unmute: "Sound on",
-    suggestions: "Questions grounded in this record",
-    carriageKicker: "CARRIAGE 01 · NORTH — SOUTH",
     conductor: "TICKET CONDUCTOR",
-    conductorQuestion: "Welcome aboard. Which station should I write on your ticket?",
-    conductorBody: "Say one of the five destinations. I will match the station name within 6 seconds and will not retain the recording.",
-    mockConductorBody: "This demo uses a mock voice flow. You can still speak in character; the sample ticket will take you to Huế.",
-    mockBadge: "VOICE API · MOCK",
-    mockResult: "SAMPLE RESULT · AUDIO WAS NOT ANALYSED",
-    micStart: "Say your destination",
-    micStop: "Send dialogue",
-    listening: "Listening…",
-    transcribing: "Recognising your destination…",
-    mockTranscribing: "Running the mock API…",
-    micHint: "For example: “Take me to Huế” or “I want to visit Hà Nội”",
-    transcript: "I heard",
-    matched: "Ticket accepted. The train is about to depart.",
-    ambiguous: "More than one destination was heard. Please say just one station.",
-    noMatch: "No destination was recognised. Try again or choose a station below.",
-    micDenied: "Microphone permission is unavailable. Allow it or choose a station below.",
-    micUnsupported: "Audio recording is not supported here. You can still choose a station below.",
-    micError: "The voice request could not be sent. Try again or choose a station below.",
-    micLarge: "The recording is over 3 MB. Please try a shorter request.",
-    chooseInstead: "Or choose a ticket",
-    privacy: "Audio is sent only to recognise a station and is not stored in your heritage journal.",
-    mockPrivacy: "The demo recording is checked only for file validity, then discarded; its content is not analysed or stored.",
+    conductorQuestion: "Welcome aboard the Heritage Express.",
+    conductorDialogue: "I have prepared five tickets. Choose a station and the train will carry you into that living-heritage setting.",
+    conductorPrompt: "Choose a destination ticket",
     backLanding: "Back to the opening",
     travellingTo: "LEAVING THE CARRIAGE · BOUND FOR",
     neutralSound: "Journey background music is playing",
@@ -236,14 +178,6 @@ const copy = {
     replayJourney: "Travel again",
     returnLastStop: "Return to the final stop",
   },
-};
-
-const stationVoiceExamples: Record<string, LocalizedText> = {
-  "quan-ho": { vi: "Đi Bắc Ninh", en: "Take me to Bắc Ninh" },
-  "ca-tru": { vi: "Đi Hà Nội", en: "Take me to Hà Nội" },
-  "nha-nhac": { vi: "Đi Huế", en: "Take me to Huế" },
-  "cham-pottery": { vi: "Đi Ninh Thuận", en: "Take me to Ninh Thuận" },
-  "don-ca-tai-tu": { vi: "Đi Nam Bộ", en: "Take me to Southern Viet Nam" },
 };
 
 const ambientProfiles: Record<string, { base: number; filter: number; air: number; pulse: number }> = {
@@ -271,10 +205,6 @@ const scorePatterns: Record<string, number[]> = {
   "don-ca-tai-tu": [0, 7, 11, 9],
 };
 
-function createSessionId() {
-  return window.crypto.randomUUID();
-}
-
 function localized(value: LocalizedText | string | undefined, language: Language) {
   if (!value) return "";
   return typeof value === "string" ? value : value[language];
@@ -295,62 +225,7 @@ function audioFor(hotspot: ExperienceHotspot): AudioPreview | null {
 }
 
 function isPlayableAudio(preview: AudioPreview | null) {
-  return Boolean(preview?.src || preview?.generatorPreset === "clay-work" || preview?.generatorPreset === "open-fire");
-}
-
-function suggestedQuestions(hotspot: ExperienceHotspot): LocalizedText[] {
-  if (hotspot.suggestedQuestions && hotspot.suggestedQuestions.length > 0) {
-    return hotspot.suggestedQuestions.slice(0, 3);
-  }
-
-  if (hotspot.interaction === "audio") {
-    return [
-      {
-        vi: `${hotspot.label.vi} giữ vai trò gì trong tổng thể thực hành này?`,
-        en: `What role does ${hotspot.label.en} play in this practice?`,
-      },
-      {
-        vi: `Chi tiết ${hotspot.label.vi} phối hợp với những thành phần khác như thế nào?`,
-        en: `How does ${hotspot.label.en} work with the other elements?`,
-      },
-      {
-        vi: `Tri thức liên quan đến ${hotspot.label.vi} được truyền dạy và bảo vệ ra sao?`,
-        en: `How is knowledge related to ${hotspot.label.en} transmitted and safeguarded?`,
-      },
-    ];
-  }
-
-  if (hotspot.interaction === "animation") {
-    return [
-      {
-        vi: `Hồ sơ đã kiểm chứng mô tả ${hotspot.label.vi} qua những bước chính nào?`,
-        en: `Which main steps of ${hotspot.label.en} are documented in the verified record?`,
-      },
-      {
-        vi: `Vì sao kỹ năng này cần được học trực tiếp từ người thực hành?`,
-        en: "Why must this skill be learned directly from practitioners?",
-      },
-      {
-        vi: `Cộng đồng đang gìn giữ thực hành này như thế nào?`,
-        en: "How is the community safeguarding this practice?",
-      },
-    ];
-  }
-
-  return [
-    {
-      vi: `${hotspot.label.vi} cho biết gì về không gian văn hóa này?`,
-      en: `What does ${hotspot.label.en} reveal about this cultural setting?`,
-    },
-    {
-      vi: `Chi tiết này liên hệ như thế nào với thực hành di sản đang sống?`,
-      en: "How does this detail relate to the living heritage practice?",
-    },
-    {
-      vi: `Nguồn tư liệu nào xác nhận câu chuyện về ${hotspot.label.vi}?`,
-      en: `Which source verifies the account of ${hotspot.label.en}?`,
-    },
-  ];
+  return Boolean(preview?.src || preview?.generatorPreset);
 }
 
 function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
@@ -475,7 +350,7 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
       const master = context.createGain();
       const ambience = context.createGain();
       master.gain.value = mutedRef.current ? 0 : 1;
-      ambience.gain.value = duckedRef.current ? 0.018 : 0.082;
+      ambience.gain.value = duckedRef.current ? 0 : 0.082;
       ambience.connect(master).connect(context.destination);
       contextRef.current = context;
       masterRef.current = master;
@@ -506,7 +381,7 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
     const ambience = ambienceRef.current;
     if (!context || !ambience) return;
     ambience.gain.cancelScheduledValues(context.currentTime);
-    ambience.gain.setTargetAtTime(ducked ? 0.018 : 0.082, context.currentTime, 0.12);
+    ambience.gain.setTargetAtTime(ducked ? 0 : 0.082, context.currentTime, 0.12);
   }, [ducked]);
 
   const stopFoley = useCallback(() => {
@@ -520,7 +395,12 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
   }, []);
 
   const playFoley = useCallback((preset: AudioPreview["generatorPreset"], onEnded: () => void) => {
-    if (preset !== "clay-work" && preset !== "open-fire") return false;
+    const supported = new Set<AudioPreview["generatorPreset"]>([
+      "clay-work", "open-fire", "dan-day-study", "phach-study", "praise-drum-study",
+      "hue-drum-study", "hue-ensemble-study", "ceremony-space-study", "moon-lute-study",
+      "zither-study", "riverside-study",
+    ]);
+    if (!preset || !supported.has(preset)) return false;
     enable();
     stopFoley();
     const context = contextRef.current;
@@ -528,10 +408,10 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
     if (!context || !master) return false;
 
     const bus = context.createGain();
-    bus.gain.value = preset === "clay-work" ? 0.38 : 0.29;
+    bus.gain.value = preset === "clay-work" ? 0.38 : preset === "open-fire" ? 0.29 : 0.34;
     bus.connect(master);
     const sources: AudioScheduledSourceNode[] = [];
-    const duration = 4.8;
+    const duration = preset === "clay-work" || preset === "open-fire" ? 4.8 : 3.8;
 
     if (preset === "clay-work") {
       for (let stroke = 0; stroke < 6; stroke += 1) {
@@ -553,7 +433,7 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
         source.start(context.currentTime + stroke * 0.72);
         sources.push(source);
       }
-    } else {
+    } else if (preset === "open-fire") {
       const buffer = context.createBuffer(1, Math.floor(context.sampleRate * duration), context.sampleRate);
       const data = buffer.getChannelData(0);
       for (let index = 0; index < data.length; index += 1) {
@@ -570,6 +450,49 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
       source.connect(filter).connect(fireGain).connect(bus);
       source.start();
       sources.push(source);
+    } else {
+      const profiles: Record<string, { frequencies: number[]; strikes: number; interval: number; type: OscillatorType; decay: number; noise?: boolean }> = {
+        "dan-day-study": { frequencies: [146.8, 196, 174.6], strikes: 4, interval: .72, type: "triangle", decay: .52 },
+        "phach-study": { frequencies: [980, 1320], strikes: 8, interval: .36, type: "square", decay: .055, noise: true },
+        "praise-drum-study": { frequencies: [92, 76], strikes: 5, interval: .62, type: "sine", decay: .24, noise: true },
+        "hue-drum-study": { frequencies: [70, 88, 62], strikes: 5, interval: .68, type: "sine", decay: .34, noise: true },
+        "hue-ensemble-study": { frequencies: [196, 246.9, 293.7, 220], strikes: 7, interval: .46, type: "triangle", decay: .42 },
+        "ceremony-space-study": { frequencies: [130.8, 196], strikes: 4, interval: .82, type: "sine", decay: .72 },
+        "moon-lute-study": { frequencies: [196, 261.6, 220, 293.7], strikes: 6, interval: .48, type: "triangle", decay: .38 },
+        "zither-study": { frequencies: [293.7, 392, 329.6, 440], strikes: 8, interval: .38, type: "triangle", decay: .48 },
+        "riverside-study": { frequencies: [174.6, 220, 261.6], strikes: 5, interval: .66, type: "sine", decay: .68 },
+      };
+      const profile = profiles[preset];
+      for (let strike = 0; strike < profile.strikes; strike += 1) {
+        const startAt = context.currentTime + strike * profile.interval;
+        const oscillator = context.createOscillator();
+        const strikeGain = context.createGain();
+        oscillator.type = profile.type;
+        oscillator.frequency.setValueAtTime(profile.frequencies[strike % profile.frequencies.length], startAt);
+        if (preset.includes("drum")) oscillator.frequency.exponentialRampToValueAtTime(42, startAt + profile.decay);
+        strikeGain.gain.setValueAtTime(0.0001, startAt);
+        strikeGain.gain.exponentialRampToValueAtTime(preset === "phach-study" ? .11 : .19, startAt + .008);
+        strikeGain.gain.exponentialRampToValueAtTime(0.0001, startAt + profile.decay);
+        oscillator.connect(strikeGain).connect(bus);
+        oscillator.start(startAt);
+        oscillator.stop(startAt + profile.decay + .04);
+        sources.push(oscillator);
+        if (profile.noise) {
+          const hitBuffer = context.createBuffer(1, Math.floor(context.sampleRate * Math.max(.06, profile.decay)), context.sampleRate);
+          const hitData = hitBuffer.getChannelData(0);
+          for (let index = 0; index < hitData.length; index += 1) hitData[index] = (Math.random() * 2 - 1) * Math.exp(-10 * index / hitData.length);
+          const hit = context.createBufferSource();
+          const hitFilter = context.createBiquadFilter();
+          const hitGain = context.createGain();
+          hit.buffer = hitBuffer;
+          hitFilter.type = "bandpass";
+          hitFilter.frequency.value = preset === "phach-study" ? 1_900 : 280;
+          hitGain.gain.value = preset === "phach-study" ? .18 : .12;
+          hit.connect(hitFilter).connect(hitGain).connect(bus);
+          hit.start(startAt);
+          sources.push(hit);
+        }
+      }
     }
 
     const timer = window.setTimeout(() => {
@@ -607,7 +530,7 @@ function useAmbientAudio(environment: string, muted: boolean, ducked: boolean) {
   return { enable, playFoley, stopFoley };
 }
 
-export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" | "live" }) {
+export function HeritageGame() {
   const [language, setLanguage] = useState<Language>("vi");
   const [phase, setPhase] = useState<JourneyPhase>("landing");
   const [stopIndex, setStopIndex] = useState(0);
@@ -618,7 +541,6 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
-  const [sessionId, setSessionId] = useState("heritage_browser_session");
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -629,23 +551,37 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
   const { enable: enableAmbient, playFoley, stopFoley } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying));
 
   useEffect(() => {
+    const imageSources = [
+      "/train/coastal-transit-v2.webp",
+      "/train/straight-track-v2.png",
+      "/train/heritage-express.webp",
+      "/train/heritage-carriage.webp",
+      "/characters/ticket-conductor-v2.png",
+      ...experienceStops.map((item) => item.scene),
+    ];
+    const idle = window.setTimeout(() => {
+      imageSources.forEach((source) => {
+        const image = new window.Image();
+        image.decoding = "async";
+        image.src = source;
+        void image.decode().catch(() => undefined);
+      });
+      const licensedAudio = experienceStops.flatMap((item) => item.unlock?.audio.src ? [item.unlock.audio.src] : []);
+      licensedAudio.forEach((source) => { const audio = new Audio(source); audio.preload = "auto"; });
+    }, 180);
+    return () => window.clearTimeout(idle);
+  }, []);
+
+  useEffect(() => {
     const savedLanguage = window.localStorage.getItem("heritage-language");
     const savedVisited = window.localStorage.getItem("heritage-visited");
     const savedMuted = window.localStorage.getItem("heritage-muted");
-    const savedSession = window.sessionStorage.getItem("heritage-session-id");
     const restore = window.setTimeout(() => {
       if (savedLanguage === "vi" || savedLanguage === "en") setLanguage(savedLanguage);
       if (savedVisited) {
         try { setVisited(new Set(JSON.parse(savedVisited) as string[])); } catch { /* ignore invalid local state */ }
       }
       if (savedMuted === "true") setMuted(true);
-      if (savedSession && /^[A-Za-z0-9_-]{16,64}$/.test(savedSession)) {
-        setSessionId(savedSession);
-      } else {
-        const nextSession = createSessionId();
-        window.sessionStorage.setItem("heritage-session-id", nextSession);
-        setSessionId(nextSession);
-      }
     }, 0);
     return () => window.clearTimeout(restore);
   }, []);
@@ -703,14 +639,14 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
     setMuted((value) => !value);
   }
 
-  function playPreview(hotspot: ExperienceHotspot) {
+  function playPreview(hotspot: ExperienceHotspot, keyOverride?: string) {
     const preview = audioFor(hotspot);
     if (!preview || !isPlayableAudio(preview)) return;
     enableAmbient();
-    const key = `${stop.id}:${hotspot.id}`;
+    const key = keyOverride || `${stop.id}:${hotspot.id}`;
     const currentAudio = previewAudioRef.current;
 
-    if (previewPlaying === key && (preview.generatorPreset === "clay-work" || preview.generatorPreset === "open-fire")) {
+    if (previewPlaying === key && preview.generatorPreset) {
       stopFoley();
       setPreviewPlaying(null);
       return;
@@ -727,7 +663,7 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
     }
 
     stopPreview();
-    if (preview.generatorPreset === "clay-work" || preview.generatorPreset === "open-fire") {
+    if (preview.generatorPreset) {
       const started = playFoley(preview.generatorPreset, () => setPreviewPlaying(null));
       if (started) setPreviewPlaying(key);
       return;
@@ -768,7 +704,7 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
       setStopIndex(index);
       setPhase("heritage");
       travelTimerRef.current = null;
-    }, 3_150);
+    }, 2_650);
   }
 
   function resetToLanding() {
@@ -812,6 +748,8 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
 
   const visitedCount = visited.size;
   const stopVisited = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
+  const stopUnlockOpen = Boolean(stop.unlock?.requiredHotspotIds.every((id) => visited.has(`${stop.id}:${id}`)));
+  const nhaNhacRevealed = stop.id !== "nha-nhac" || stopVisited === stop.hotspots.length;
 
   return (
     <main className="game-shell" style={{ "--stop-accent": stop.palette } as CSSProperties}>
@@ -847,12 +785,13 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
         <div className="train-frame" aria-hidden="true"><span className="frame-top" /><span className="frame-left" /><span className="frame-right" /><span className="frame-bottom" /></div>
         <div
           ref={sceneRef}
-          className="scene"
+          className={`scene ${stop.id === "nha-nhac" ? (nhaNhacRevealed ? "nha-nhac-revealed" : "nha-nhac-locked") : ""}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={() => setActiveHotspotId(null)}
           style={{ backgroundImage: `linear-gradient(180deg, transparent 68%, rgba(8, 8, 7, .2)), url(${stop.scene})` }}
           aria-label={`${stop.title[language]} — ${stop.description[language]}`}
         >
+          {stop.id === "nha-nhac" && !nhaNhacRevealed && <div className="scene-discovery-progress">{language === "vi" ? `MỞ ${stopVisited}/3 DẤU MỐC ĐỂ ĐÁNH THỨC TOÀN CẢNH` : `OPEN ${stopVisited}/3 MARKERS TO REVEAL THE FULL SCENE`}</div>}
           <div className="scene-heading">
             <span>GA {stop.number} · {stop.location[language]}</span>
             <h1>{stop.title[language]}</h1>
@@ -894,7 +833,7 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
       </>}
 
       {phase === "landing" && <Intro language={language} onLanguage={setLanguage} onStart={() => { enableAmbient(); setPhase("carriage"); }} />}
-      {phase === "carriage" && <Carriage language={language} muted={muted} sessionId={sessionId} voiceApiMode={voiceApiMode} onLanguage={setLanguage} onToggleMuted={toggleMuted} onBack={resetToLanding} onDestination={beginTravel} onAudioActivate={enableAmbient} />}
+      {phase === "carriage" && <Carriage language={language} muted={muted} onLanguage={setLanguage} onToggleMuted={toggleMuted} onBack={resetToLanding} onDestination={beginTravel} onAudioActivate={enableAmbient} />}
       {phase === "travelling" && <TravelScreen stop={pendingStop} language={language} />}
       {phase === "ending" && <Ending language={language} onLanguage={setLanguage} onReplay={replayJourney} onReturn={() => setPhase("heritage")} />}
       {phase === "heritage" && <div className="ambient-disclosure" role="note">♪ {ui.neutralSound}<span>{ui.ambientNote}</span></div>}
@@ -903,9 +842,11 @@ export function HeritageGame({ voiceApiMode = "mock" }: { voiceApiMode?: "mock" 
         stop={stop}
         hotspot={openHotspot}
         language={language}
-        sessionId={sessionId}
         previewPlaying={previewPlaying === `${stop.id}:${openHotspot.id}`}
         onTogglePreview={() => playPreview(openHotspot)}
+        unlock={stopUnlockOpen ? stop.unlock : undefined}
+        unlockPlaying={previewPlaying === `${stop.id}:unlock`}
+        onToggleUnlock={() => stop.unlock && playPreview({ ...openHotspot, audioPreview: stop.unlock.audio }, `${stop.id}:unlock`)}
         onClose={() => { setOpenHotspot(null); stopPreview(); }}
       />}
       {archiveOpen && <Archive language={language} visited={visited} onClose={() => setArchiveOpen(false)} />}
@@ -970,8 +911,6 @@ function Intro({ language, onLanguage, onStart }: { language: Language; onLangua
 function Carriage({
   language,
   muted,
-  sessionId,
-  voiceApiMode,
   onLanguage,
   onToggleMuted,
   onBack,
@@ -980,8 +919,6 @@ function Carriage({
 }: {
   language: Language;
   muted: boolean;
-  sessionId: string;
-  voiceApiMode: "mock" | "live";
   onLanguage: (language: Language) => void;
   onToggleMuted: () => void;
   onBack: () => void;
@@ -989,131 +926,19 @@ function Carriage({
   onAudioActivate: () => void;
 }) {
   const ui = copy[language];
-  const [recording, setRecording] = useState(false);
-  const [processing, setProcessing] = useState(false);
-  const [transcript, setTranscript] = useState("");
-  const [resultStatus, setResultStatus] = useState<TranscriptionStatus | null>(null);
-  const [mockedResult, setMockedResult] = useState(false);
-  const [error, setError] = useState("");
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const stopTimerRef = useRef<number | null>(null);
-  const departTimerRef = useRef<number | null>(null);
-  const cancelledRef = useRef(false);
+  const [dialogueReady, setDialogueReady] = useState(false);
 
-  const clearStream = useCallback(() => {
-    streamRef.current?.getTracks().forEach((track) => track.stop());
-    streamRef.current = null;
-    if (stopTimerRef.current) window.clearTimeout(stopTimerRef.current);
-    stopTimerRef.current = null;
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDialogueReady(true), 520);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => () => {
-    cancelledRef.current = true;
-    if (departTimerRef.current) window.clearTimeout(departTimerRef.current);
-    if (recorderRef.current?.state === "recording") recorderRef.current.stop();
-    clearStream();
-  }, [clearStream]);
-
-  async function sendRecording(blob: Blob) {
-    if (blob.size > MAX_RECORDING_BYTES) {
-      setError(ui.micLarge);
-      setProcessing(false);
-      return;
-    }
-
-    const extension = blob.type.includes("ogg") ? "ogg" : blob.type.includes("mp4") ? "m4a" : "webm";
-    const formData = new FormData();
-    formData.append("audio", blob, `destination.${extension}`);
-    formData.append("language", language);
-    formData.append("sessionId", sessionId);
-
-    try {
-      const response = await fetch("/api/transcribe", { method: "POST", body: formData });
-      const payload = await response.json() as TranscriptionResponse;
-      if (!response.ok) throw new Error(payload.error || "transcription_failed");
-      if (cancelledRef.current) return;
-      const destinationId = payload.destinationId || payload.stopId || null;
-      const destinationIndex = destinationId ? experienceStops.findIndex((stop) => stop.id === destinationId) : -1;
-      const nextStatus: TranscriptionStatus = payload.status || (destinationIndex >= 0 ? "matched" : "no-match");
-      setTranscript(payload.transcript || "");
-      setResultStatus(nextStatus);
-      setMockedResult(payload.mock === true);
-      if (nextStatus === "matched" && destinationIndex >= 0) {
-        departTimerRef.current = window.setTimeout(() => onDestination(destinationIndex), payload.mock ? 1_800 : 1_050);
-      }
-    } catch {
-      if (!cancelledRef.current) setError(ui.micError);
-    } finally {
-      if (!cancelledRef.current) setProcessing(false);
-    }
-  }
-
-  async function startRecording() {
-    setError("");
-    setTranscript("");
-    setResultStatus(null);
-    setMockedResult(false);
+  function chooseDestination(index: number) {
     onAudioActivate();
-
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setError(ui.micUnsupported);
-      return;
-    }
-
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-      });
-      if (cancelledRef.current) {
-        stream.getTracks().forEach((track) => track.stop());
-        return;
-      }
-      const preferredMime = MediaRecorder.isTypeSupported("audio/webm;codecs=opus") ? "audio/webm;codecs=opus" : "";
-      const recorder = preferredMime ? new MediaRecorder(stream, { mimeType: preferredMime }) : new MediaRecorder(stream);
-      streamRef.current = stream;
-      recorderRef.current = recorder;
-      chunksRef.current = [];
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data);
-      };
-      recorder.onstop = () => {
-        const mimeType = recorder.mimeType || preferredMime || "audio/webm";
-        const blob = new Blob(chunksRef.current, { type: mimeType });
-        clearStream();
-        setRecording(false);
-        if (!cancelledRef.current) {
-          setProcessing(true);
-          void sendRecording(blob);
-        }
-      };
-      recorder.onerror = () => {
-        clearStream();
-        setRecording(false);
-        setError(ui.micError);
-      };
-      recorder.start(250);
-      setRecording(true);
-      stopTimerRef.current = window.setTimeout(() => {
-        if (recorder.state === "recording") recorder.stop();
-      }, MAX_RECORDING_MS);
-    } catch (caught) {
-      const denied = caught instanceof DOMException && (caught.name === "NotAllowedError" || caught.name === "SecurityError");
-      setError(denied ? ui.micDenied : ui.micError);
-      clearStream();
-    }
+    onDestination(index);
   }
 
-  function toggleRecording() {
-    if (processing) return;
-    if (recording && recorderRef.current?.state === "recording") recorderRef.current.stop();
-    else void startRecording();
-  }
-
-  const resultCopy = resultStatus === "matched" ? ui.matched : resultStatus === "ambiguous" ? ui.ambiguous : resultStatus === "no-match" ? ui.noMatch : "";
-
-  return <section className="carriage-screen" aria-labelledby="carriage-title" aria-busy={processing}>
+  return <section className="carriage-screen" aria-labelledby="carriage-title">
     <div className="carriage-stage" aria-hidden="true">
       <Image className="carriage-backdrop" src="/train/heritage-carriage.webp" alt="" fill priority unoptimized sizes="100vw" />
       <span className="carriage-light-sweep" />
@@ -1125,36 +950,17 @@ function Carriage({
       <div><button onClick={onToggleMuted} aria-label={muted ? ui.unmute : ui.mute}>{muted ? "◌" : "♪"}</button><button onClick={() => onLanguage(language === "vi" ? "en" : "vi")}>{language === "vi" ? "EN" : "VI"}</button></div>
     </div>
 
-    <div className="conductor-panel story-dialogue">
-      <span className="carriage-kicker">● {ui.carriageKicker}</span>
-      <div className="dialogue-label"><i /> {ui.conductor}</div>
+    <div className={`conductor-panel story-dialogue compact-dialogue ${dialogueReady ? "dialogue-ready" : ""}`}>
+      <div className="dialogue-speaker"><i /> {ui.conductor}</div>
       <h1 id="carriage-title">{ui.conductorQuestion}</h1>
-      {voiceApiMode === "mock" && <span className="voice-mode">{ui.mockBadge}</span>}
-      <p>{voiceApiMode === "mock" ? ui.mockConductorBody : ui.conductorBody}</p>
-
-      <div className="voice-console story-mic-row">
-        <button className={`voice-button ${recording ? "recording" : ""}`} onClick={toggleRecording} disabled={processing} aria-pressed={recording} aria-label={recording ? ui.micStop : ui.micStart}>
-          <span className="mic-symbol"><i /></span>
-          <b>{processing ? (voiceApiMode === "mock" ? ui.mockTranscribing : ui.transcribing) : recording ? ui.micStop : ui.micStart}</b>
-          <small>{recording ? ui.listening : ui.micHint}</small>
-          {recording && <em className="recording-progress" />}
-        </button>
-        <div className="voice-privacy">◇ {voiceApiMode === "mock" ? ui.mockPrivacy : ui.privacy}</div>
-      </div>
-
-      {(transcript || resultCopy || error) && <div className={`voice-result ${resultStatus || "error"}`} role="status" aria-live="polite">
-        {mockedResult && <small>{ui.mockResult}</small>}
-        {transcript && <p><span>{ui.transcript}</span> “{transcript}”</p>}
-        {(resultCopy || error) && <b>{error || resultCopy}</b>}
-      </div>}
-
+      <p className="typewriter-line">{ui.conductorDialogue}</p>
       <div className="station-choice">
-        <span>{ui.chooseInstead}</span>
+        <span>{ui.conductorPrompt}</span>
         <div>
-          {experienceStops.map((item, index) => <button key={item.id} onClick={() => onDestination(index)}>
+          {experienceStops.map((item, index) => <button key={item.id} onClick={() => chooseDestination(index)}>
             <small>{item.number}</small>
             <b>{item.location[language].split("·")[0]}</b>
-            <em>“{stationVoiceExamples[item.id]?.[language]}”</em>
+            <em>{item.title[language]}</em>
           </button>)}
         </div>
       </div>
@@ -1178,52 +984,27 @@ function RecordDrawer({
   stop,
   hotspot,
   language,
-  sessionId,
   previewPlaying,
   onTogglePreview,
+  unlock,
+  unlockPlaying,
+  onToggleUnlock,
   onClose,
 }: {
   stop: ExperienceStop;
   hotspot: ExperienceHotspot;
   language: Language;
-  sessionId: string;
   previewPlaying: boolean;
   onTogglePreview: () => void;
+  unlock?: NonNullable<ExperienceStop["unlock"]>;
+  unlockPlaying: boolean;
+  onToggleUnlock: () => void;
   onClose: () => void;
 }) {
   const ui = copy[language];
-  const [question, setQuestion] = useState("");
-  const [answer, setAnswer] = useState<GuideResponse | null>(null);
-  const [loading, setLoading] = useState(false);
   const sourceRecords = hotspot.sourceIds.map(getSource).filter(Boolean);
   const preview = audioFor(hotspot);
   const playablePreview = isPlayableAudio(preview);
-  const questions = suggestedQuestions(hotspot);
-
-  async function askQuestion(nextQuestion: string) {
-    const trimmed = nextQuestion.trim();
-    if (!trimmed || loading) return;
-    setQuestion(trimmed);
-    setLoading(true);
-    setAnswer(null);
-    try {
-      const response = await fetch("/api/guide", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ stopId: stop.id, hotspotId: hotspot.id, question: trimmed, language, sessionId }),
-      });
-      const payload = await response.json() as GuideResponse;
-      if (!response.ok) throw new Error("guide_failed");
-      setAnswer(payload);
-    } catch {
-      setAnswer({ answer: language === "vi" ? "Hiện chưa kết nối được kho tư liệu. Hãy đọc thẻ nguồn bên dưới." : "The archive is temporarily unavailable. Please use the source card below.", sourceIds: [], grounded: false, refusalReason: "network", mode: "refusal" });
-    } finally { setLoading(false); }
-  }
-
-  function ask(event: FormEvent) {
-    event.preventDefault();
-    void askQuestion(question);
-  }
 
   const credit = localized(preview?.credit, language);
   const note = localized(preview?.note, language);
@@ -1256,16 +1037,30 @@ function RecordDrawer({
         <span>◇ {ui.audioPending}</span>
         <p>{ui.audioPendingBody}</p>
         {(credit || note || preview?.license) && <small>{credit || note}{preview?.license ? ` · ${preview.license}` : ""}</small>}
+        {hotspot.media?.kind === "official-link" && hotspot.media.sourceUrl && <a className="official-audio-link" href={hotspot.media.sourceUrl} target="_blank" rel="noreferrer">
+          {language === "vi" ? "Mở tư liệu tại nguồn chính thức" : "Open media at the official source"} ↗
+        </a>}
+      </div>}
+      {unlock && <div className="media-card direct-audio-card unlocked-ensemble">
+        <span>◆ {language === "vi" ? "HỒ SƠ ÂM THANH ĐÃ MỞ KHÓA" : "AUDIO RECORD UNLOCKED"}</span>
+        <p>{unlock.message[language]}</p>
+        <button onClick={onToggleUnlock} aria-pressed={unlockPlaying}>
+          <span className={`sound-wave ${unlockPlaying ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
+          <b>{unlockPlaying ? ui.pauseAudio : (language === "vi" ? "Nghe toàn bộ nhóm Ca trù · 22 giây" : "Hear the full Ca trù group · 22 seconds")}</b>
+          <em>{unlock.audio.credit[language]} · {unlock.audio.license}</em>
+        </button>
       </div>}
       {hotspot.media?.kind === "animation" && <div className={`craft-animation ${stop.id === "cham-pottery" ? "pottery-animation" : "rhythm-animation"}`} aria-label={ui.animationNote}><div className="animation-stage"><i /><i /><i /><i /><span /></div><small>{ui.animationNote}</small></div>}
 
-      <form className="guide-box" onSubmit={ask}>
-        <div><span className="conductor-mark">AI</span><p><b>{ui.askTitle}</b><small>{ui.askHint}</small></p></div>
-        <div className="question-suggestions"><span>{ui.suggestions}</span>{questions.map((item) => <button type="button" key={item.vi} disabled={loading} onClick={() => void askQuestion(item[language])}>{item[language]}</button>)}</div>
-        <label><span className="sr-only">{ui.askTitle}</span><input maxLength={300} value={question} onChange={(event) => setQuestion(event.target.value)} placeholder={ui.askPlaceholder} /><button aria-label={ui.ask} disabled={loading || !question.trim()}>{loading ? "···" : "→"}</button></label>
-        {loading && <span className="checking" role="status">{ui.asking}</span>}
-        {answer && <div className={`guide-answer ${answer.grounded ? "grounded" : "refused"}`} aria-live="polite"><span>{answer.mode === "ai" ? ui.aiLive : ui.aiFallback}</span><p>{answer.answer}</p>{answer.sourceIds.length > 0 && <small>{ui.verified}: {answer.sourceIds.join(", ")}</small>}</div>}
-      </form>
+      <section className="object-record-summary">
+        <div><span className="record-mark">✦</span><p><b>{ui.askTitle}</b><small>{ui.askHint}</small></p></div>
+        <dl>
+          <div><dt>{language === "vi" ? "Bối cảnh" : "Context"}</dt><dd>{stop.description[language]}</dd></div>
+          <div><dt>{language === "vi" ? "Giới hạn diễn giải" : "Interpretive boundary"}</dt><dd>{language === "vi" ? "Chỉ trình bày dữ kiện có trong hồ sơ nguồn; âm hiệu minh họa không được coi là bản ghi di sản." : "Only source-backed facts are presented; interpretive cues are not heritage recordings."}</dd></div>
+        </dl>
+      </section>
+
+      <HandTrackingViewer language={language} pottery={stop.id === "cham-pottery" && hotspot.id === "hand-shaping"} label={hotspot.label[language]} />
 
       <section className="source-stack">
         {sourceRecords.map((source) => source && <article key={source.id}>
@@ -1307,6 +1102,6 @@ function Archive({ language, visited, onClose }: { language: Language; visited: 
       <p>{hotspot.story[language]}</p>
       <small>✓ {hotspot.sourceIds.join(" · ")}</small>
     </article>)}</div>}
-    <footer><button disabled={records.length === 0} onClick={exportArchive}>{ui.export} ↓</button><span>LOCAL ONLY · NO CAMERA · NO PERSONAL DATA</span></footer>
+    <footer><button disabled={records.length === 0} onClick={exportArchive}>{ui.export} ↓</button><span>CAMERA LOCAL ONLY · NO UPLOAD · NO PERSONAL DATA</span></footer>
   </div>;
 }

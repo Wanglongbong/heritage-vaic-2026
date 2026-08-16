@@ -51,7 +51,7 @@ test("ships five sourced stops and fifteen interactive records", async () => {
   assert.equal((heritage.match(/interaction: "(?:story|audio|animation)"/g) ?? []).length, 15);
   assert.equal((heritage.match(/scene: "\/scenes\//g) ?? []).length, 5);
   assert.match(heritage, /UNESCO Intangible Cultural Heritage/);
-  assert.match(page, /<HeritageGame voiceApiMode=/);
+  assert.match(page, /<HeritageGame \/>/);
   assert.match(layout, /title: "Tàu Di Sản Việt Nam"/);
   assert.match(css, /\.hotspot\.near/);
   assert.match(css, /prefers-reduced-motion/);

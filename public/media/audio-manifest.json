@@ -1,7 +1,7 @@
 {
   "project": "Tàu Di Sản Việt Nam",
-  "version": 1,
-  "updatedAt": "2026-07-17",
+  "version": 2,
+  "updatedAt": "2026-08-16",
   "policy": {
     "vi": "Chỉ phục vụ cục bộ bản ghi có giấy phép tái sử dụng rõ ràng. src bằng null nghĩa là âm thanh được tổng hợp trong trình duyệt hoặc bản ghi chỉ dùng làm tham chiếu và tuyệt đối không được tải/lưu lại.",
     "en": "Only recordings with an explicit reuse licence are served locally. A null src means either browser synthesis or a reference-only recording that must not be downloaded or re-hosted."
@@ -125,6 +125,114 @@
       "reviewStatus": "approved-original",
       "note": { "vi": "Không phải bản ghi một lần nung gốm Chăm thực tế.", "en": "Not a recording of an actual Chăm pottery firing." },
       "generatorPreset": "open-fire"
+    },
+    {
+      "id": "study-dan-day",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu dây trầm cho điểm Đàn đáy do game tổng hợp.", "en": "Browser-synthesized low-string cue for the Đàn đáy point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi nghệ nhân và không tái tạo kỹ thuật Ca trù.", "en": "Not an artisan recording or a reconstruction of Ca trù technique." },
+      "generatorPreset": "dan-day-study"
+    },
+    {
+      "id": "study-phach",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu gõ gỗ cho điểm Phách do game tổng hợp.", "en": "Browser-synthesized wooden cue for the Phách point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi nghệ nhân và không tái tạo kỹ thuật Ca trù.", "en": "Not an artisan recording or a reconstruction of Ca trù technique." },
+      "generatorPreset": "phach-study"
+    },
+    {
+      "id": "study-praise-drum",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu trống cho điểm Trống chầu do game tổng hợp.", "en": "Browser-synthesized drum cue for the praise-drum point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi nghệ nhân và không thay thế tiếng trống chầu thật.", "en": "Not an artisan recording or a substitute for an authentic praise drum." },
+      "generatorPreset": "praise-drum-study"
+    },
+    {
+      "id": "study-hue-drum",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu trầm cho điểm bộ trống Đại nhạc do game tổng hợp.", "en": "Browser-synthesized low cue for the Đại nhạc drum point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi Nhã nhạc hoặc âm thanh nghi lễ.", "en": "Not a Nhã nhạc recording or ceremonial sound." },
+      "generatorPreset": "hue-drum-study"
+    },
+    {
+      "id": "study-hue-ensemble",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu nhiều lớp cho điểm dàn nhạc do game tổng hợp.", "en": "Browser-synthesized layered cue for the court-ensemble point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi Nhã nhạc và không tái tạo bài bản cung đình.", "en": "Not a Nhã nhạc recording or a reconstruction of court repertoire." },
+      "generatorPreset": "hue-ensemble-study"
+    },
+    {
+      "id": "study-ceremony-space",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu không gian cho bối cảnh nghi lễ do game tổng hợp.", "en": "Browser-synthesized spatial cue for the ceremonial-context point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi một nghi lễ thật.", "en": "Not a recording of an actual ceremony." },
+      "generatorPreset": "ceremony-space-study"
+    },
+    {
+      "id": "study-moon-lute",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu dây gảy cho điểm Đàn kìm do game tổng hợp.", "en": "Browser-synthesized plucked-string cue for the moon-lute point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi đàn kìm và không tái tạo bài bản tài tử.", "en": "Not a moon-lute recording or a reconstruction of tài tử repertoire." },
+      "generatorPreset": "moon-lute-study"
+    },
+    {
+      "id": "study-zither",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu dây ngân cho điểm Đàn tranh do game tổng hợp.", "en": "Browser-synthesized resonant-string cue for the zither point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi đàn tranh và không tái tạo bài bản tài tử.", "en": "Not a zither recording or a reconstruction of tài tử repertoire." },
+      "generatorPreset": "zither-study"
+    },
+    {
+      "id": "study-riverside",
+      "src": null,
+      "sourceUrl": "https://github.com/Wanglongbong/tau-di-san-viet-nam/blob/main/CREDITS.md",
+      "creator": "Tàu Di Sản Việt Nam prototype",
+      "license": "MIT (generator code); no sampled recording",
+      "credit": { "vi": "Âm hiệu không gian cho cuộc đàn bên sông do game tổng hợp.", "en": "Browser-synthesized spatial cue for the riverside-session point." },
+      "role": "interpretive-foley",
+      "reviewStatus": "approved-original",
+      "note": { "vi": "Không phải bản ghi sinh hoạt Đờn ca tài tử thực tế.", "en": "Not a field recording of an actual Đờn ca tài tử gathering." },
+      "generatorPreset": "riverside-study"
     },
     {
       "id": "quan-ho-official-recording-reference",

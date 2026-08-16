@@ -1,6 +1,6 @@
 {
   "project": "Tàu Di Sản Việt Nam",
-  "updatedAt": "2026-07-18",
+  "updatedAt": "2026-08-16",
   "policy": "Only recordings with an explicit reusable licence are served locally. A null audio src is either original browser synthesis or a reference-only item that must not be downloaded or re-hosted. No YouTube extraction or unlicensed substitution is permitted.",
   "rightsSeparation": "MIT applies to source code only. Each media/content item retains the terms recorded in CREDITS.md and public/media/audio-manifest.json; community cultural rights are not relicensed by the code licence.",
   "audioInventory": "public/media/audio-manifest.json",
@@ -15,7 +15,16 @@
     ],
     "interpretiveFoleyPresets": [
       "clay-work",
-      "open-fire"
+      "open-fire",
+      "dan-day-study",
+      "phach-study",
+      "praise-drum-study",
+      "hue-drum-study",
+      "hue-ensemble-study",
+      "ceremony-space-study",
+      "moon-lute-study",
+      "zither-study",
+      "riverside-study"
     ],
     "implementation": "Synthesized in-browser by MIT-licensed generator code with no external samples; includes environmental texture, sustained harmony and a slow electronic bell motif.",
     "culturalBoundary": "Modern neutral background score only; not heritage music, ritual sound, a community field recording, or a claim about craft technique."
@@ -115,7 +124,7 @@
     {
       "path": "public/media/audio-manifest.json",
       "kind": "rights-and-provenance-manifest",
-      "scope": "Local recording, six synthesized ambient presets, two interpretive foley presets, and reference-only pending-rights items"
+      "scope": "One licensed local recording, six synthesized ambient presets, eleven interpretive cues, and reference-only pending-rights items"
     },
     {
       "path": "public/media/ca-tru-sound-futures.ogg",
