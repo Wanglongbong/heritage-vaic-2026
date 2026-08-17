@@ -16,6 +16,10 @@ test("all cultural records are sourced and offer three grounded prompts", async 
       assert.ok(hotspot.sourceIds.every((id) => approvedSourceIds.has(id)), `${stop.id}/${hotspot.id} uses only approved sources`);
       assert.match(hotspot.artifactSprite, /^\/artifacts\/.+\.webp$/, `${stop.id}/${hotspot.id} must use a pixel artifact sprite`);
       await access(new URL(`../public${hotspot.artifactSprite}`, import.meta.url));
+      const base = hotspot.artifactSprite.split("/").at(-1).replace(/\.webp$/, "");
+      for (const view of ["front", "right", "back", "left"]) {
+        await access(new URL(`../public/artifacts/turn/${base}-${view}.webp`, import.meta.url));
+      }
       for (const prompt of hotspot.suggestedQuestions) {
         assert.ok(prompt.vi.trim().length > 10);
         assert.ok(prompt.en.trim().length > 10);

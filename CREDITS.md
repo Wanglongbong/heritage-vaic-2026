@@ -43,13 +43,13 @@ Các âm hiệu vật phẩm tổng hợp trước đây đã bị loại bỏ. 
 
 ## Hand tracking và quyền riêng tư
 
-Tính năng quan sát hiện vật dùng MediaPipe Tasks Vision trong trình duyệt. Chỉ sau khi người chơi chủ động bấm bật và cấp quyền, hình camera mới được xử lý cục bộ để lấy tọa độ bàn tay; game không tải khung hình lên máy chủ và không lưu ảnh, video hoặc dữ liệu sinh trắc học. Mô hình/WASM được tải từ hạ tầng công khai của Google MediaPipe và jsDelivr. Khi camera bị từ chối hoặc không hỗ trợ, kéo chuột/chạm vẫn hoạt động đầy đủ.
+Tính năng quan sát hiện vật dùng MediaPipe Tasks Vision trong trình duyệt. Cách phân vai tay phải/tay trái và bộ lọc ổn định ba khung hình được điều chỉnh từ dự án cục bộ `HandPilot-Mac`/“HandPilot Native” của chủ repository: tay phải xoay bốn hướng, tay trái mở/nắm để đổi mức phóng đại. Chỉ sau khi người chơi chủ động bấm bật và cấp quyền, hình camera mới được xử lý cục bộ để lấy tọa độ bàn tay; game không tải khung hình lên máy chủ và không lưu ảnh, video hoặc dữ liệu sinh trắc học. Mô hình/WASM được tải từ hạ tầng công khai của Google MediaPipe và jsDelivr. Khi camera bị từ chối hoặc không hỗ trợ, kéo chuột/chạm và bốn nút chọn mặt vẫn hoạt động đầy đủ.
 
 ## Minh họa pixel
 
 Năm cảnh trong `public/scenes/` và ảnh bìa đầu hành trình `public/og.webp` là minh họa gốc do OpenAI ImageGen tạo cho prototype dựa trên phần mô tả công khai trong các hồ sơ UNESCO. Chúng là không gian diễn giải, không phải ảnh tư liệu, bản phục dựng nghi lễ hoặc lời xác nhận của nghệ nhân.
 
-Mười lăm sprite trong `public/artifacts/` được OpenAI ImageGen tạo lại theo pixel 2D nền trong suốt, dùng ảnh thật có giấy phép mở làm tham chiếu hình dáng. Mỗi sprite là minh họa tương tác, không phải ảnh tư liệu hay sơ đồ cấu tạo. Nguồn theo nhóm:
+Mười lăm sprite chính trong `public/artifacts/` được OpenAI ImageGen tạo lại theo pixel 2D nền trong suốt, dùng ảnh thật có giấy phép mở làm tham chiếu hình dáng. Sáu mươi góc nhìn trong `public/artifacts/turn/` tiếp tục lấy chính các sprite đã duyệt đó làm khóa nhận dạng, gồm bốn hướng trước–phải–sau–trái cho mỗi điểm tương tác. Mỗi sprite là minh họa quan sát, không phải ảnh tư liệu, mô hình quét 3D hay sơ đồ cấu tạo. Các mặt bên/sau do mô hình suy diễn bảo thủ, không được dùng làm bằng chứng về hoa văn, kết cấu, trang phục hoặc kỹ thuật chưa thấy trong nguồn. Nguồn theo nhóm:
 
 - Quan họ: [Nón quai thao](https://commons.wikimedia.org/wiki/File:N%C3%B3n_quai_thao.jpg), Petr Ruzicka, CC BY 2.0; [Quan Ho-Ensemble](https://commons.wikimedia.org/wiki/File:Quan_Ho-Ensemble.JPG), Chrisvomberg, CC BY-SA 3.0; [300 bai Quan ho](https://commons.wikimedia.org/wiki/File:300_bai_Quan_ho.jpg), Chinhatm, CC BY-SA 4.0.
 - Ca trù: [Dan day player](https://commons.wikimedia.org/wiki/File:Dan_day_player.jpg), spotter_nl, CC BY 2.0; [Ca trù performance](https://commons.wikimedia.org/wiki/File:Ca_tr%C3%B9_performance.jpg), Michael Coghlan, CC BY-SA 2.0. Phách và trống chầu được đối chiếu trong bối cảnh ảnh trình diễn, không tuyên bố là bản sao của một hiện vật cụ thể.

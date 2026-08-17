@@ -5,13 +5,14 @@ import test from "node:test";
 const projectRoot = new URL("../", import.meta.url);
 
 test("ships the carriage, grounded train artwork, story dialogue, hand tracking and rights-aware previews", async () => {
-  const [ui, handTracking, heritage, css, cover, artifacts, landscape, track, carriage, conductor, train] = await Promise.all([
+  const [ui, handTracking, heritage, css, cover, artifacts, turnViews, landscape, track, carriage, conductor, train] = await Promise.all([
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
     readFile(new URL("components/hand-tracking-viewer.tsx", projectRoot), "utf8"),
     readFile(new URL("lib/heritage.ts", projectRoot), "utf8"),
     readFile(new URL("app/globals.css", projectRoot), "utf8"),
     readFile(new URL("public/og.webp", projectRoot)),
     readdir(new URL("public/artifacts/", projectRoot)),
+    readdir(new URL("public/artifacts/turn/", projectRoot)),
     readFile(new URL("public/train/coastal-transit-v2.webp", projectRoot)),
     readFile(new URL("public/train/straight-track-v2.png", projectRoot)),
     readFile(new URL("public/train/heritage-carriage.webp", projectRoot)),
@@ -65,6 +66,7 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(css, /\.official-audio-link/);
   assert.ok(cover.byteLength > 300_000);
   assert.equal(artifacts.filter((name) => name.endsWith(".webp")).length, 15);
+  assert.equal(turnViews.filter((name) => name.endsWith(".webp")).length, 60);
   assert.ok(landscape.byteLength > 250_000);
   assert.ok(track.byteLength > 250_000);
   assert.ok(carriage.byteLength > 200_000);
@@ -77,5 +79,7 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(handTracking, /no images are sent or stored/);
   assert.match(handTracking, /requestAnimationFrame/);
   assert.match(handTracking, /spriteSrc/);
+  assert.match(handTracking, /assignHandRoles/);
+  assert.match(handTracking, /updateStableFace/);
   assert.doesNotMatch(ui, /youtube|youtu\.be/i);
 });

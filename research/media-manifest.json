@@ -49,6 +49,15 @@
       "rightsNote": "Per-source attribution and licences are recorded in CREDITS.md. Sprites are interpretive illustrations, not documentary images, construction diagrams or artisan endorsements."
     },
     {
+      "path": "public/artifacts/turn/*.webp",
+      "kind": "sixty-generated-four-direction-pixel-views",
+      "generator": "OpenAI ImageGen built-in mode plus local chroma-key removal",
+      "inputAssets": "The fifteen grounded sprites in public/artifacts/*.webp",
+      "viewOrder": ["front", "right", "back", "left"],
+      "transformation": "Each source sprite was kept as an identity reference while conservative right, back and left views were generated, keyed to transparency, cropped and encoded as WebP.",
+      "culturalBoundary": "Interpretive four-view illusion only; not a scanned 3D object, documentary view, construction diagram, or evidence for unseen motifs and techniques."
+    },
+    {
       "path": "public/train/hai-van-journey.webp",
       "kind": "generated-pixel-adaptation",
       "source": "https://commons.wikimedia.org/wiki/File:Hai_Van_Pass,_Vietnam,_North-South_Railway.jpg",
