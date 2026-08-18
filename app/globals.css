@@ -445,6 +445,13 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 
 .hand-viewer { margin: 24px 46px 0; padding: 18px; background: linear-gradient(145deg,#111815,#0b100e); border: 1px solid rgba(214,173,103,.3); overflow: hidden; }
 .hand-viewer-copy > span { color: var(--gold); font: 800 7px var(--mono); letter-spacing: .11em; }.hand-viewer-copy h3 { margin: 8px 0 5px; font: 600 20px var(--serif); }.hand-viewer-copy p { max-width: 630px; margin: 0; color: var(--muted); font-size: 9px; line-height: 1.5; }
+.hand-guide { margin-top:12px; padding:10px 11px; color:rgba(239,229,207,.78); background:rgba(214,173,103,.055); border:1px solid rgba(214,173,103,.18); }
+.hand-guide > b { display:block; margin-bottom:8px; color:var(--gold); font:800 7px var(--mono); text-transform:uppercase; letter-spacing:.1em; }
+.hand-guide > div { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:7px; }
+.hand-guide p { display:flex; align-items:center; gap:7px; min-width:0; margin:0; font-size:7px; line-height:1.35; }
+.hand-guide p i { display:grid; flex:0 0 25px; place-items:center; width:25px; height:25px; color:#17140d; background:var(--gold); border-radius:50%; font:900 12px var(--sans); font-style:normal; }
+.hand-guide p strong { display:block; color:#fff4dc; font:800 7px var(--mono); }
+.hand-guide > small { display:block; margin-top:8px; padding-top:7px; color:var(--green); border-top:1px solid rgba(143,181,139,.16); font:700 7px/1.4 var(--mono); }
 .hand-viewer-stage { position: relative; height: 300px; margin-top: 15px; overflow: hidden; touch-action: none; cursor: grab; background: radial-gradient(circle at 50% 45%,rgba(214,173,103,.17),transparent 38%),linear-gradient(135deg,#2e322f,#111513); border: 1px solid rgba(255,255,255,.1); perspective: 850px; }
 .hand-viewer-stage:active { cursor: grabbing; }.hand-viewer-stage > small { position: absolute; z-index: 5; left: 11px; bottom: 10px; padding: 7px 9px; color: rgba(255,255,255,.84); background: rgba(6,9,7,.72); font: 700 7px var(--mono); }
 .camera-feed { position: absolute; z-index: 1; inset: 0; opacity: 0; transition: opacity .35s ease; }.camera-feed[data-active="true"] { opacity: .34; }.camera-feed video { display: none; }.camera-feed canvas { width: 100%; height: 100%; object-fit: cover; }
@@ -535,6 +542,8 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   .ambient-disclosure { left: 12px; bottom: calc(84px + env(safe-area-inset-bottom)); max-width: 190px; }
   .direct-audio-card > button { grid-template-columns: 62px 1fr; }
   .compact-dialogue .typewriter-line { font-size: 10px; }
+  .hand-guide > div { grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px 7px; }
+  .hand-guide p { align-items:flex-start; font-size:6.5px; }
   .hand-viewer-stage { height: 250px; }
   .object-view-switcher { left:8px; right:8px; top:8px; display:grid; grid-template-columns:repeat(4,1fr); }
   .object-view-switcher button { justify-content:center; padding:0 4px; font-size:5px; }

@@ -30,6 +30,14 @@ const text = {
     fallback: "Kéo ngang để xem đủ bốn mặt",
     views: ["Mặt trước", "Mặt phải", "Mặt sau", "Mặt trái"],
     swap: "Đổi vai tay trái / phải",
+    guideTitle: "Cách điều khiển",
+    guide: [
+      { icon: "↔", label: "Tay phải", action: "Di chuyển ngang để xoay 4 mặt" },
+      { icon: "✋", label: "Tay trái", action: "Xòe để phóng to · nắm để thu nhỏ" },
+      { icon: "⇄", label: "Nhận sai tay?", action: "Bấm nút đổi vai tay bên dưới" },
+      { icon: "☝", label: "Không dùng camera", action: "Kéo hiện vật hoặc chọn từng mặt" },
+    ],
+    potteryGuide: "Riêng gốm: đưa hai tay gần hoặc xa nhau để thay đổi hình khối minh họa.",
   },
   en: {
     title: "Object observation table",
@@ -45,6 +53,14 @@ const text = {
     fallback: "Drag horizontally to see all four sides",
     views: ["Front", "Right", "Back", "Left"],
     swap: "Swap left / right roles",
+    guideTitle: "How to control",
+    guide: [
+      { icon: "↔", label: "Right hand", action: "Move sideways to rotate through 4 views" },
+      { icon: "✋", label: "Left hand", action: "Open to zoom in · close to zoom out" },
+      { icon: "⇄", label: "Hands reversed?", action: "Use the role-swap button below" },
+      { icon: "☝", label: "Without camera", action: "Drag the object or choose a view" },
+    ],
+    potteryGuide: "Pottery only: move both hands closer or farther apart to reshape the illustration.",
   },
 } as const;
 
@@ -245,6 +261,13 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
 
   return <section className="hand-viewer" aria-label={`${ui.title}: ${label}`}>
     <div className="hand-viewer-copy"><span>◫ HAND TRACKING · LOCAL</span><h3>{ui.title}</h3><p>{ui.intro}</p></div>
+    <aside className="hand-guide" aria-label={ui.guideTitle}>
+      <b>{ui.guideTitle}</b>
+      <div>
+        {ui.guide.map((item) => <p key={item.label}><i aria-hidden="true">{item.icon}</i><span><strong>{item.label}</strong>{item.action}</span></p>)}
+      </div>
+      {malleable && <small>◎ {ui.potteryGuide}</small>}
+    </aside>
     <div className="hand-viewer-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => { draggingRef.current = false; }} onPointerCancel={() => { draggingRef.current = false; }}>
       <div className="camera-feed" data-active={trackingState === "running"}><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} /></div>
       <div ref={objectRef} className={`tracked-object ${malleable ? "is-malleable" : ""}`} style={{ "--object-rx": "-8deg", "--object-ry": "0deg", "--object-zoom": 1, "--pot-width": 1, "--pot-height": 1 } as CSSProperties}>

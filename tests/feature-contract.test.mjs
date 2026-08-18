@@ -81,5 +81,9 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(handTracking, /spriteSrc/);
   assert.match(handTracking, /assignHandRoles/);
   assert.match(handTracking, /updateStableFace/);
+  assert.match(handTracking, /Cách điều khiển/);
+  assert.match(handTracking, /Di chuyển ngang để xoay 4 mặt/);
+  assert.match(handTracking, /Xòe để phóng to · nắm để thu nhỏ/);
+  assert.match(css, /\.hand-guide/);
   assert.doesNotMatch(ui, /youtube|youtu\.be/i);
 });
