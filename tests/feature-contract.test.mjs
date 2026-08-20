@@ -4,10 +4,11 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
-test("ships the carriage, grounded train artwork, story dialogue, hand tracking and rights-aware previews", async () => {
-  const [ui, handTracking, heritage, css, cover, artifacts, turnViews, landscape, track, carriage, conductor, train] = await Promise.all([
+test("ships the carriage, memory-lantern loop, heritage passport, grounded media and hand tracking", async () => {
+  const [ui, handTracking, passportExport, heritage, css, cover, artifacts, turnViews, landscape, track, carriage, conductor, train] = await Promise.all([
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
     readFile(new URL("components/hand-tracking-viewer.tsx", projectRoot), "utf8"),
+    readFile(new URL("lib/passport-export.ts", projectRoot), "utf8"),
     readFile(new URL("lib/heritage.ts", projectRoot), "utf8"),
     readFile(new URL("app/globals.css", projectRoot), "utf8"),
     readFile(new URL("public/og.webp", projectRoot)),
@@ -23,6 +24,12 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(ui, /"landing" \| "carriage" \| "travelling" \| "heritage" \| "ending"/);
   assert.match(ui, /Chạm vào ký ức đang sống\./);
   assert.match(ui, /finishJourney/);
+  assert.match(ui, /ĐÈN KÝ ỨC/);
+  assert.match(ui, /memory-color-patch/);
+  assert.match(ui, /StationSeal/);
+  assert.match(ui, /CON DẤU DI SẢN/);
+  assert.match(ui, /Hộ chiếu di sản/);
+  assert.match(ui, /heritage-seals-v1/);
   assert.match(ui, /className="ending-screen"/);
   assert.doesNotMatch(ui, /new MediaRecorder|fetch\("\/api\/transcribe"|fetch\("\/api\/guide"|Hỏi Trưởng tàu AI/);
   assert.match(ui, /compact-dialogue/);
@@ -61,6 +68,10 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(css, /env\(safe-area-inset-bottom/);
   assert.doesNotMatch(css, /\.pixel-train-side/);
   assert.match(css, /\.hand-viewer/);
+  assert.match(css, /\.memory-darkness/);
+  assert.match(css, /\.station-seal-card/);
+  assert.match(css, /\.passport-seal-strip/);
+  assert.match(css, /\.camera-popout/);
   assert.match(css, /\.tracked-object img/);
   assert.match(css, /\.scene\.nha-nhac-locked/);
   assert.match(css, /\.official-audio-link/);
@@ -84,6 +95,13 @@ test("ships the carriage, grounded train artwork, story dialogue, hand tracking 
   assert.match(handTracking, /Cách điều khiển/);
   assert.match(handTracking, /Di chuyển ngang để xoay 4 mặt/);
   assert.match(handTracking, /Xòe để phóng to · nắm để thu nhỏ/);
+  assert.match(handTracking, /createPortal/);
+  assert.match(handTracking, /Cửa sổ nhận diện bàn tay/);
+  assert.match(handTracking, /mô phỏng giáo dục/);
+  assert.match(handTracking, /shapingProgress/);
+  assert.match(passportExport, /pdfmake\/build\/pdfmake/);
+  assert.match(passportExport, /downloadPassportPdf/);
+  assert.match(passportExport, /Usage rights/);
   assert.match(css, /\.hand-guide/);
   assert.doesNotMatch(ui, /youtube|youtu\.be/i);
 });

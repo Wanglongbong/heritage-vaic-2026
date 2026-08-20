@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { CSSProperties } from "react";
 import {
   assignHandRoles,
@@ -38,6 +39,12 @@ const text = {
       { icon: "☝", label: "Không dùng camera", action: "Kéo hiện vật hoặc chọn từng mặt" },
     ],
     potteryGuide: "Riêng gốm: đưa hai tay gần hoặc xa nhau để thay đổi hình khối minh họa.",
+    cameraTitle: "Cửa sổ nhận diện bàn tay",
+    shapingTitle: "Tạo hình bằng hai tay",
+    shapingProgress: "Tiến độ mô phỏng",
+    shapingDone: "Đã hoàn tất mô phỏng tạo hình",
+    shapingBoundary: "Đây là mô phỏng giáo dục, không tái tạo đầy đủ tay nghề hoặc bí quyết của nghệ nhân Chăm.",
+    shapingFallback: "Không dùng camera? Kéo thanh này để thử thay đổi hình khối.",
   },
   en: {
     title: "Object observation table",
@@ -61,15 +68,22 @@ const text = {
       { icon: "☝", label: "Without camera", action: "Drag the object or choose a view" },
     ],
     potteryGuide: "Pottery only: move both hands closer or farther apart to reshape the illustration.",
+    cameraTitle: "Hand recognition window",
+    shapingTitle: "Two-hand shaping",
+    shapingProgress: "Simulation progress",
+    shapingDone: "Shaping simulation completed",
+    shapingBoundary: "This educational simulation does not reproduce the full skill or protected knowledge of Chăm practitioners.",
+    shapingFallback: "No camera? Use this slider to explore the illustrative form.",
   },
 } as const;
 
-export function HandTrackingViewer({ language, spriteSrc, malleable = false, label }: { language: Language; spriteSrc: string; malleable?: boolean; label: string }) {
+export function HandTrackingViewer({ language, spriteSrc, malleable = false, label, onComplete }: { language: Language; spriteSrc: string; malleable?: boolean; label: string; onComplete?: () => void }) {
   const ui = text[language];
   const [trackingState, setTrackingState] = useState<TrackingState>("idle");
   const [handCount, setHandCount] = useState(0);
   const [activeView, setActiveView] = useState(0);
   const [swapHands, setSwapHands] = useState(false);
+  const [shapingProgress, setShapingProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const objectRef = useRef<HTMLDivElement>(null);
@@ -80,10 +94,26 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
   const swapHandsRef = useRef(false);
   const pointerStartRef = useRef({ x: 0, yaw: 0 });
   const previousHandsRef = useRef(0);
+  const lastHandDistanceRef = useRef<number | null>(null);
+  const shapingProgressRef = useRef(0);
+  const completedRef = useRef(false);
+  const onCompleteRef = useRef(onComplete);
   const poseRef = useRef({ yaw: 0, rotateX: -8, rotateY: 0, width: 1, height: 1, zoom: 1 });
   const stableFaceRef = useRef({ candidate: 0, frames: 0, committed: 0 });
   const spriteBase = spriteSrc.split("/").pop()?.replace(/\.webp$/i, "") ?? "artifact";
   const viewSources = useMemo(() => FOUR_VIEWS.map((view) => `/artifacts/turn/${spriteBase}-${view}.webp`), [spriteBase]);
+
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
+
+  function completeShaping(progress: number) {
+    const next = Math.min(100, Math.max(shapingProgressRef.current, progress));
+    shapingProgressRef.current = next;
+    setShapingProgress((current) => Math.abs(current - next) >= 1 ? Math.round(next) : current);
+    if (next >= 100 && !completedRef.current) {
+      completedRef.current = true;
+      onCompleteRef.current?.();
+    }
+  }
 
   function applyPose(next: Partial<typeof poseRef.current>, smoothing = 0.22, stabilizeFace = true) {
     const pose = poseRef.current;
@@ -126,6 +156,7 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     previousHandsRef.current = 0;
+    lastHandDistanceRef.current = null;
     setHandCount(0);
     setTrackingState("idle");
   }
@@ -218,6 +249,12 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
             const otherPalm = roles.left[9];
             const distance = Math.hypot(palm.x - otherPalm.x, palm.y - otherPalm.y);
             Object.assign(next, { width: Math.min(1.3, Math.max(.76, .58 + distance * 1.45)), height: Math.min(1.18, Math.max(.82, 1.22 - distance * .42)) });
+            const previousDistance = lastHandDistanceRef.current;
+            if (previousDistance !== null) {
+              const movement = Math.abs(distance - previousDistance);
+              if (movement > .004 && movement < .12) completeShaping(shapingProgressRef.current + movement * 185);
+            }
+            lastHandDistanceRef.current = distance;
           }
           applyPose(next, 0.2, true);
         } else if (roles.left) {
@@ -252,6 +289,12 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
     applyPose({ yaw: index * 90 }, 1, false);
   }
 
+  function shapeWithSlider(value: number) {
+    const width = value / 100;
+    applyPose({ width, height: Math.min(1.18, Math.max(.82, 1.18 - Math.abs(width - 1) * .8)) }, .8, false);
+    completeShaping(Math.abs(value - 100) * 4.2);
+  }
+
   const status = trackingState === "loading" ? ui.loading
     : trackingState === "running" ? `${ui.running} · ${handCount} ${ui.hands}`
       : trackingState === "denied" ? ui.denied
@@ -260,6 +303,7 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
             : ui.fallback;
 
   return <section className="hand-viewer" aria-label={`${ui.title}: ${label}`}>
+    <video className="camera-source" ref={videoRef} muted playsInline />
     <div className="hand-viewer-copy"><span>◫ HAND TRACKING · LOCAL</span><h3>{ui.title}</h3><p>{ui.intro}</p></div>
     <aside className="hand-guide" aria-label={ui.guideTitle}>
       <b>{ui.guideTitle}</b>
@@ -269,7 +313,7 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
       {malleable && <small>◎ {ui.potteryGuide}</small>}
     </aside>
     <div className="hand-viewer-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => { draggingRef.current = false; }} onPointerCancel={() => { draggingRef.current = false; }}>
-      <div className="camera-feed" data-active={trackingState === "running"}><video ref={videoRef} muted playsInline /><canvas ref={canvasRef} /></div>
+      {malleable && <div className={`pottery-hand-overlay ${shapingProgress >= 100 ? "completed" : ""}`} aria-hidden="true"><span>✋</span><i>↔</i><span>🤚</span></div>}
       <div ref={objectRef} className={`tracked-object ${malleable ? "is-malleable" : ""}`} style={{ "--object-rx": "-8deg", "--object-ry": "0deg", "--object-zoom": 1, "--pot-width": 1, "--pot-height": 1 } as CSSProperties}>
         {viewSources.map((source, index) => <Image key={source} className={`tracked-object-face ${activeView === index ? "is-active" : ""}`} src={source} alt={activeView === index ? `${label} · ${ui.views[index]}` : ""} aria-hidden={activeView !== index} fill unoptimized sizes="(max-width: 640px) 72vw, 340px" draggable={false} />)}
         <b>{label}</b>
@@ -280,9 +324,20 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
       </nav>
       <small>{status}</small>
     </div>
+    {malleable && <section className="pottery-shaping-panel" aria-label={ui.shapingTitle}>
+      <div><b>{shapingProgress >= 100 ? `✓ ${ui.shapingDone}` : ui.shapingTitle}</b><span>{ui.shapingProgress} · {shapingProgress}%</span></div>
+      <div className="shaping-meter"><i style={{ width: `${shapingProgress}%` }} /></div>
+      <label><span>{ui.shapingFallback}</span><input type="range" min="76" max="130" defaultValue="100" onChange={(event) => shapeWithSlider(Number(event.target.value))} /></label>
+      <p>{ui.shapingBoundary}</p>
+    </section>}
     <div className="tracking-actions">
       <button type="button" className="tracking-toggle" onClick={trackingState === "running" ? stopTracking : startTracking} disabled={trackingState === "loading"}>{trackingState === "running" ? ui.stop : ui.start}</button>
       <button type="button" className="tracking-swap" onClick={() => setSwapHands((value) => { const next = !value; swapHandsRef.current = next; return next; })} aria-pressed={swapHands}>{ui.swap}</button>
     </div>
+    {(trackingState === "loading" || trackingState === "running") && typeof document !== "undefined" && createPortal(<aside className="camera-popout" aria-label={ui.cameraTitle}>
+      <header><span><i /> {ui.cameraTitle}</span><button type="button" onClick={stopTracking} aria-label={ui.stop}>×</button></header>
+      <div><canvas ref={canvasRef} /></div>
+      <footer><b>{trackingState === "loading" ? ui.loading : `${handCount} ${ui.hands}`}</b><small>{ui.running}</small></footer>
+    </aside>, document.body)}
   </section>;
 }
