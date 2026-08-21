@@ -26,6 +26,8 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /finishJourney/);
   assert.match(ui, /ĐÈN KÝ ỨC/);
   assert.match(ui, /memory-color-patch/);
+  assert.match(ui, /station-reveal-card/);
+  assert.match(ui, /TOÀN CẢNH ĐÃ THỨC/);
   assert.match(ui, /StationSeal/);
   assert.match(ui, /CON DẤU DI SẢN/);
   assert.match(ui, /Hộ chiếu di sản/);
@@ -70,7 +72,10 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(css, /\.hand-viewer/);
   assert.match(css, /\.memory-darkness/);
   assert.match(css, /\.station-seal-card/);
+  assert.match(css, /\.station-reveal-card/);
   assert.match(css, /\.passport-seal-strip/);
+  assert.match(css, /\.passport-book/);
+  assert.match(css, /\.passport-hero/);
   assert.match(css, /\.camera-popout/);
   assert.match(css, /\.tracked-object img/);
   assert.match(css, /\.scene\.nha-nhac-locked/);
@@ -104,4 +109,9 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(passportExport, /Usage rights/);
   assert.match(css, /\.hand-guide/);
   assert.doesNotMatch(ui, /youtube|youtu\.be/i);
+
+  const closeRecordFlow = ui.slice(ui.indexOf("function closeRecord"), ui.indexOf("function requestSeal"));
+  const collectSealFlow = ui.slice(ui.indexOf("function collectSeal"), ui.indexOf("function beginTravel"));
+  assert.doesNotMatch(closeRecordFlow, /setSealStopId/);
+  assert.doesNotMatch(collectSealFlow, /beginTravel|finishJourney/);
 });

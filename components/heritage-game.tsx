@@ -73,10 +73,13 @@ const copy = {
     memoryLamp: "ĐÈN KÝ ỨC",
     memoryHint: "Soi tìm 3 dấu vết. Mỗi vật phẩm sẽ trả lại một phần màu sắc cho không gian.",
     memoryProgress: "dấu vết đã thức",
+    sceneRestored: "TOÀN CẢNH ĐÃ THỨC",
+    sceneRestoredBody: "Màu sắc đã trở lại. Hãy dành một nhịp quan sát toàn cảnh trước khi đóng dấu hành trình.",
+    claimSeal: "Tôi đã xem · Nhận con dấu",
     stationLocked: "Tìm đủ 3 vật phẩm để nhận con dấu",
     sealEarned: "CON DẤU DI SẢN",
     sealBody: "Bạn đã tìm đủ ba dấu vết và đánh thức toàn cảnh. Con dấu này ghi nhận một chặng khám phá, không thay thế sự công nhận của cộng đồng chủ thể.",
-    continueJourney: "Lên tàu đi ga kế tiếp",
+    continueJourney: "Đồng ý · Giữ dấu và xem toàn cảnh",
     openPassport: "Mở Hộ chiếu di sản",
     explored: "đã mở",
     archive: "Sổ di sản",
@@ -137,10 +140,13 @@ const copy = {
     memoryLamp: "MEMORY LANTERN",
     memoryHint: "Find 3 traces. Each discovery returns a layer of colour to the living setting.",
     memoryProgress: "traces awakened",
+    sceneRestored: "THE WHOLE SCENE IS AWAKE",
+    sceneRestoredBody: "Colour has returned. Take a moment to view the restored scene before stamping your journey.",
+    claimSeal: "I have looked · Receive seal",
     stationLocked: "Find all 3 objects to earn this station seal",
     sealEarned: "HERITAGE STATION SEAL",
     sealBody: "You found all three traces and revealed the full scene. This seal records a learning journey; it does not replace recognition by the source community.",
-    continueJourney: "Board for the next station",
+    continueJourney: "Accept · Keep seal and view scene",
     openPassport: "Open heritage passport",
     explored: "opened",
     archive: "Heritage journal",
@@ -556,8 +562,6 @@ export function HeritageGame() {
       else if (openHotspot) {
         setOpenHotspot(null);
         stopPreview();
-        const completed = stop.hotspots.every((hotspot) => visited.has(`${stop.id}:${hotspot.id}`));
-        if (completed && !sealed.has(stop.id)) setSealStopId(stop.id);
       } else if (phase === "carriage") setPhase("landing");
       else if (phase === "ending") setPhase("heritage");
     };
@@ -614,23 +618,17 @@ export function HeritageGame() {
   function closeRecord() {
     setOpenHotspot(null);
     stopPreview();
-    const completed = stop.hotspots.every((hotspot) => visited.has(`${stop.id}:${hotspot.id}`));
-    if (completed && !sealed.has(stop.id)) setSealStopId(stop.id);
+  }
+
+  function requestSeal() {
+    if (stationComplete && !stationSealed) setSealStopId(stop.id);
   }
 
   function collectSeal() {
     if (!sealStopId) return;
-    const completedStopIndex = experienceStops.findIndex((item) => item.id === sealStopId);
     const nextSealed = new Set(sealed).add(sealStopId);
     setSealed(nextSealed);
     setSealStopId(null);
-    if (nextSealed.size === experienceStops.length) {
-      finishJourney();
-    } else {
-      let nextIndex = (completedStopIndex + 1) % experienceStops.length;
-      while (nextSealed.has(experienceStops[nextIndex].id)) nextIndex = (nextIndex + 1) % experienceStops.length;
-      beginTravel(nextIndex);
-    }
   }
 
   function beginTravel(index: number) {
@@ -776,6 +774,10 @@ export function HeritageGame() {
               <span className="hotspot-label"><small>{hotspot.kicker[language]}</small><b>{hotspot.label[language]}</b>{playable && <em>♪ {ui.playAudio}</em>}</span>
             </button>;
           })}
+          {stationComplete && !stationSealed && !openHotspot && <aside className="station-reveal-card" role="status">
+            <div><i aria-hidden="true">✦</i><span><b>{ui.sceneRestored}</b><small>{ui.sceneRestoredBody}</small></span></div>
+            <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
+          </aside>}
         </div>
         <div className="scene-footer">
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
@@ -808,13 +810,13 @@ export function HeritageGame() {
         onInteractionComplete={() => setPotteryShaped(true)}
         onClose={closeRecord}
       />}
-      {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} finalSeal={sealed.size === experienceStops.length - 1} onContinue={collectSeal} />}
+      {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} onContinue={collectSeal} />}
       {archiveOpen && <Archive language={language} visited={visited} sealed={sealed} onClose={() => setArchiveOpen(false)} />}
     </main>
   );
 }
 
-function StationSeal({ language, stop, finalSeal, onContinue }: { language: Language; stop: ExperienceStop; finalSeal: boolean; onContinue: () => void }) {
+function StationSeal({ language, stop, onContinue }: { language: Language; stop: ExperienceStop; onContinue: () => void }) {
   const ui = copy[language];
   return <div className="seal-overlay" role="dialog" aria-modal="true" aria-labelledby="seal-title">
     <section className="station-seal-card" style={{ "--seal-accent": stop.palette } as CSSProperties}>
@@ -824,7 +826,7 @@ function StationSeal({ language, stop, finalSeal, onContinue }: { language: Lang
       <h2 id="seal-title">{stop.title[language]}</h2>
       <p>{stop.location[language]}</p>
       <small>{ui.sealBody}</small>
-      <button type="button" onClick={onContinue}>{finalSeal ? ui.openPassport : ui.continueJourney}<b>→</b></button>
+      <button type="button" onClick={onContinue}>{ui.continueJourney}<b>→</b></button>
     </section>
   </div>;
 }
@@ -1078,15 +1080,30 @@ function Archive({ language, visited, sealed, passport = false, onClose }: { lan
   }
 
   return <div className={`archive-overlay ${passport ? "passport-overlay" : ""}`} role="dialog" aria-modal="true" aria-label={passport ? ui.passport : ui.archive}>
-    <header><div><span>{passport ? "PASSPORT" : "ARCHIVE"} / {records.length.toString().padStart(2, "0")}</span><h2>{passport ? ui.passport : ui.archive}</h2><p>{passport ? ui.passportIntro : ui.archiveIntro}</p></div><button onClick={onClose} aria-label={ui.close}>×</button></header>
-    <div className="passport-seal-strip" aria-label={language === "vi" ? "Các con dấu đã nhận" : "Earned station seals"}>{experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><b>{stop.number}</b><small>{stop.title[language]}</small></span>)}</div>
-    {records.length === 0 ? <div className="archive-empty"><i>◇</i><p>{ui.emptyArchive}</p></div> : <div className="archive-grid">{records.map(({ stop, hotspot }, index) => <article key={`${stop.id}:${hotspot.id}`}>
-      <span>{String(index + 1).padStart(2, "0")} · {stop.location[language]}</span>
-      <h3>{hotspot.label[language]}</h3>
-      <p>{hotspot.story[language]}</p>
-      <small>✓ {hotspot.sourceIds.map((id) => getSource(id)?.title[language] || id).join(" · ")}</small>
-      <em>{hotspot.sourceIds.map((id) => getSource(id)?.rights[language]).filter(Boolean).join(" · ")}</em>
-    </article>)}</div>}
-    <footer><div><button disabled={records.length === 0} onClick={() => downloadPassportJson(exportRecords, exportSeals)}>{ui.export} ↓</button><button disabled={records.length === 0 || exportingPdf} onClick={exportPdf}>{exportingPdf ? ui.exportingPdf : ui.exportPdf} ↓</button></div><span>CAMERA LOCAL ONLY · NO UPLOAD · NO PERSONAL DATA</span></footer>
+    <div className={passport ? "passport-book" : "archive-ledger"}>
+      {passport && <section className="passport-hero" aria-label={language === "vi" ? "Bìa hành trình" : "Journey cover"}>
+        <Image className="passport-hero-image" src="/og.webp" alt="" fill unoptimized sizes="(max-width: 720px) 100vw, 1100px" aria-hidden="true" />
+        <span className="passport-hero-shade" aria-hidden="true" />
+        <div className="passport-hero-copy"><span>VIET NAM · HERITAGE RAIL</span><b>TĐS</b><small>{language === "vi" ? "CHẠM VÀO KÝ ỨC ĐANG SỐNG" : "TOUCH THE LIVING MEMORY"}</small></div>
+      </section>}
+      <header><div><span>{passport ? "PASSPORT · TĐS 2026" : "ARCHIVE"} / {records.length.toString().padStart(2, "0")}</span><h2>{passport ? ui.passport : ui.archive}</h2><p>{passport ? ui.passportIntro : ui.archiveIntro}</p></div><button onClick={onClose} aria-label={ui.close}>×</button></header>
+      {passport && <section className="passport-identity" aria-label={language === "vi" ? "Thông tin hành trình" : "Journey information"}>
+        <div className="passport-monogram"><span>T</span><b>05</b><small>GA DI SẢN</small></div>
+        <dl>
+          <div><dt>{language === "vi" ? "Hành trình" : "Journey"}</dt><dd>Bắc → Nam</dd></div>
+          <div><dt>{language === "vi" ? "Con dấu" : "Seals"}</dt><dd>{sealed.size.toString().padStart(2, "0")} / 05</dd></div>
+          <div><dt>{language === "vi" ? "Vật phẩm" : "Objects"}</dt><dd>{records.length.toString().padStart(2, "0")} / 15</dd></div>
+          <div><dt>{language === "vi" ? "Nguyên tắc" : "Principle"}</dt><dd>{language === "vi" ? "Có nguồn · Tôn trọng quyền văn hóa" : "Sourced · Cultural rights respected"}</dd></div>
+        </dl>
+      </section>}
+      <div className="passport-seal-strip" aria-label={language === "vi" ? "Các con dấu đã nhận" : "Earned station seals"}>{experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><i>VIỆT NAM</i><b>{stop.number}</b><small>{stop.title[language]}</small></span>)}</div>
+      {records.length === 0 ? <div className="archive-empty"><i>◇</i><p>{ui.emptyArchive}</p></div> : <div className="archive-grid">{records.map(({ stop, hotspot }, index) => <article key={`${stop.id}:${hotspot.id}`} style={{ "--entry-accent": stop.palette } as CSSProperties}>
+        {passport ? <div className="passport-entry-head"><span>{stop.location[language]}</span><i>{String(index + 1).padStart(2, "0")}</i></div> : <span>{String(index + 1).padStart(2, "0")} · {stop.location[language]}</span>}
+        <h3>{hotspot.label[language]}</h3>
+        <p>{hotspot.story[language]}</p>
+        <div className="passport-source-note"><small>✓ {hotspot.sourceIds.map((id) => getSource(id)?.title[language] || id).join(" · ")}</small><em>{hotspot.sourceIds.map((id) => getSource(id)?.rights[language]).filter(Boolean).join(" · ")}</em></div>
+      </article>)}</div>}
+      <footer><div><button disabled={records.length === 0} onClick={() => downloadPassportJson(exportRecords, exportSeals)}>{ui.export} ↓</button><button disabled={records.length === 0 || exportingPdf} onClick={exportPdf}>{exportingPdf ? ui.exportingPdf : ui.exportPdf} ↓</button></div><span>CAMERA LOCAL ONLY · NO UPLOAD · NO PERSONAL DATA</span></footer>
+    </div>
   </div>;
 }
