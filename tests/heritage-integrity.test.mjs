@@ -44,6 +44,10 @@ test("every audio asset carries rights metadata and never extracts YouTube", () 
     assert.ok(asset.role);
     assert.ok(asset.reviewStatus);
     assert.ok(!/youtu(?:\.be|be\.com)/i.test(asset.sourceUrl), `${asset.id} must not use YouTube extraction`);
+    if (asset.kind === "youtube-embed") {
+      assert.match(asset.embedUrl || "", /^https:\/\/www\.youtube\.com\/embed\//, `${asset.id} must use an explicit embed URL`);
+      assert.equal(asset.src, null, `${asset.id} must never ship a downloaded YouTube file`);
+    }
 
     if (asset.reviewStatus === "pending-rights" || asset.kind === "synthesized") {
       assert.equal(asset.src, null, `${asset.id} must not serve an unlicensed or synthesized recording`);
@@ -62,6 +66,7 @@ test("Ca trù ensemble unlock and the five-station reveal contracts stay intact"
   assert.equal(nhaNhac?.hotspots.length, 3);
   assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.reviewStatus === "pending-rights"));
   assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.src === null));
+  assert.equal(nhaNhac?.hotspots[0]?.audioPreview?.kind, "youtube-embed");
 
   const pottery = stops.find((stop) => stop.id === "cham-pottery");
   assert.ok(pottery?.hotspots.some((hotspot) => hotspot.id === "hand-shaping"));

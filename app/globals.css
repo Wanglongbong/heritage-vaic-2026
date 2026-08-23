@@ -610,6 +610,7 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .pending-audio-card p { margin: 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
 .official-audio-link { display: inline-flex; width: fit-content; margin-top: 12px; padding: 10px 12px; border: 1px solid rgba(214,173,103,.48); color: var(--gold); font: 800 8px var(--mono); letter-spacing: .06em; text-transform: uppercase; transition: background .18s ease,color .18s ease; }
 .official-audio-link:hover { background: var(--gold); color: var(--ink); }
+.external-audio-player { margin-top:14px; overflow:hidden; border:1px solid rgba(214,173,103,.34); background:#050706; }.external-audio-player iframe { display:block; width:100%; aspect-ratio:16/9; border:0; }.external-audio-player small { margin:0; padding:9px 10px; color:rgba(239,229,207,.58); font-size:8px; }
 .question-suggestions { display: grid; gap: 7px; margin-top: 17px; }
 .question-suggestions > span { margin-bottom: 2px; color: var(--green); font: 700 7px var(--mono); letter-spacing: .09em; text-transform: uppercase; }
 .question-suggestions button { padding: 9px 11px; text-align: left; color: rgba(239,229,207,.76); background: rgba(143,181,139,.045); border: 1px solid rgba(143,181,139,.2); font-size: 9px; line-height: 1.4; }

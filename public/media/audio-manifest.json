@@ -1,7 +1,7 @@
 {
   "project": "Tàu Di Sản Việt Nam",
-  "version": 3,
-  "updatedAt": "2026-08-16",
+  "version": 4,
+  "updatedAt": "2026-08-23",
   "policy": {
     "vi": "Chỉ phục vụ bản ghi có giấy phép tái sử dụng rõ ràng. Âm thanh bối cảnh được ghi nhãn theo đúng nguồn; không gắn âm thanh thay thế dưới tên một nhạc cụ hay thực hành di sản khác.",
     "en": "Only recordings with an explicit reuse licence are served. Context audio is labelled according to its source; no substitute sound is presented as another instrument or heritage practice."
@@ -84,10 +84,19 @@
         "https://ich.unesco.org/en/RL/nha-nhac-vietnamese-court-music-00074",
         "https://ich.unesco.org/en/RL/art-of-n-ca-tai-t-music-and-song-in-southern-viet-nam-00733"
       ],
-      "license": "Reuse licence not confirmed — local playback disabled",
+      "license": "Reuse licence not confirmed — external reference player only",
       "role": "official-reference",
       "reviewStatus": "pending-rights",
-      "note": "The game links to the official source and does not copy, extract or relabel these recordings."
+      "embedSources": [
+        {
+          "id": "nha-nhac-youtube-reference",
+          "embedUrl": "https://www.youtube.com/embed/wnFZ5QAWGUo?rel=0",
+          "sourceUrl": "https://www.youtube.com/watch?v=wnFZ5QAWGUo",
+          "creator": "Sở Văn hóa và Thể thao Ninh Bình",
+          "note": "External reference player; not a Huế-provided master recording and not re-hosted."
+        }
+      ],
+      "note": "The game links to official and external reference sources, but does not copy, extract or relabel these recordings."
     }
   ]
 }

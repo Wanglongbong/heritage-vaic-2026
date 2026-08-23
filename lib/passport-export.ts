@@ -10,6 +10,11 @@ export type PassportRecord = {
   itemLabel: LocalizedText;
   story: LocalizedText;
   sources: SourceRecord[];
+  audioSource?: {
+    title: LocalizedText;
+    url: string;
+    note: LocalizedText;
+  };
 };
 
 export type PassportSeal = {
@@ -40,6 +45,7 @@ export function downloadPassportJson(records: PassportRecord[], seals: PassportS
       station: { number: record.stationNumber, title: record.stationTitle, location: record.location },
       object: { id: record.itemId, label: record.itemLabel, story: record.story },
       sources: record.sources,
+      ...(record.audioSource ? { audioSource: record.audioSource } : {}),
     })),
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -109,6 +115,17 @@ export function buildPassportDocument(records: PassportRecord[], seals: Passport
           margin: [8, 6, 8, 9],
         });
       });
+      if (record.audioSource) {
+        recordStack.push({
+          stack: [
+            { text: pdfText(vi ? "Nguồn âm thanh tham khảo" : "Reference audio source"), style: "sourceTitle" },
+            { text: pdfText(record.audioSource.title[language]), style: "sourceMeta" },
+            { text: pdfText(record.audioSource.note[language]), style: "sourceMeta" },
+            { text: record.audioSource.url, link: record.audioSource.url, style: "sourceUrl" },
+          ],
+          margin: [8, 6, 8, 9],
+        });
+      }
       content.push({ stack: recordStack, unbreakable: true, margin: [0, 0, 0, 14] });
     });
   }

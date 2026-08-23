@@ -118,12 +118,13 @@ function originalAudio(
   };
 }
 
-function officialReference(id: string, sourceUrl: string, credit: LocalizedText, note: LocalizedText): AudioAsset {
+function officialReference(id: string, sourceUrl: string, credit: LocalizedText, note: LocalizedText, embedUrl?: string): AudioAsset {
   return {
     id,
-    kind: "official-source",
+    kind: embedUrl ? "youtube-embed" : "official-source",
     src: null,
     sourceUrl,
+    ...(embedUrl ? { embedUrl } : {}),
     creator: "See performer and producer credits at the official source",
     license: "Reuse licence not confirmed — streaming/download disabled",
     credit,
@@ -277,8 +278,9 @@ const danTranhFieldRecording: AudioAsset = {
 const nhaNhacOfficialRecording = officialReference(
   "nha-nhac-official-recording-reference",
   "https://ich.unesco.org/en/RL/nha-nhac-vietnamese-court-music-00074",
-  { vi: "Tư liệu nghe nhìn nằm tại hồ sơ UNESCO; chưa được phép sao chép vào game.", en: "Audiovisual material is available in the UNESCO file; local copying is not authorized." },
-  { vi: "Không dùng âm thanh trống hoặc dàn nhạc thay thế vì có thể làm sai chức năng của Nhã nhạc.", en: "No substitute drum or ensemble audio is used because it could misrepresent Nhã nhạc's function." },
+  { vi: "Nguồn tham khảo nghe nhìn nằm tại hồ sơ UNESCO; trình phát YouTube bên dưới là liên kết bên ngoài, không được sao chép vào game.", en: "Audiovisual reference is documented by UNESCO; the YouTube player below is external and is not copied into the game." },
+  { vi: "Video tham khảo do Sở Văn hóa và Thể thao Ninh Bình đăng; cần giữ nguyên ghi công và không xem đây là bản ghi do Huế cung cấp.", en: "Reference video posted by the Ninh Binh Department of Culture and Sports; attribution must remain and it is not presented as a Huế-provided master recording." },
+  "https://www.youtube.com/embed/wnFZ5QAWGUo?rel=0",
 );
 
 const donCaOfficialRecording = officialReference(

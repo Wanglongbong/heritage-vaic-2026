@@ -130,7 +130,8 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(passportExport, /downloadPassportPdf/);
   assert.match(passportExport, /Usage rights/);
   assert.match(css, /\.hand-guide/);
-  assert.doesNotMatch(ui, /youtube|youtu\.be/i);
+  assert.match(ui, /external-audio-player/);
+  assert.match(heritage, /youtube\.com\/embed\/wnFZ5QAWGUo/);
 
   const closeRecordFlow = ui.slice(ui.indexOf("function closeRecord"), ui.indexOf("function requestSeal"));
   const collectSealFlow = ui.slice(ui.indexOf("function collectSeal"), ui.indexOf("function beginTravel"));

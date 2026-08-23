@@ -36,9 +36,11 @@ export type AudioRole =
  */
 export type AudioAsset = {
   id: string;
-  kind: "local-audio" | "official-source" | "synthesized";
+  kind: "local-audio" | "official-source" | "youtube-embed" | "synthesized";
   src: string | null;
   sourceUrl: string;
+  /** Optional external player URL. Never downloaded or re-hosted by the game. */
+  embedUrl?: string;
   creator: string;
   license: string;
   licenseUrl?: string;

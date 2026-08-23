@@ -19,8 +19,9 @@ import type { HeritageStop, Hotspot, Language, LocalizedText } from "@/lib/types
 type JourneyPhase = "landing" | "carriage" | "travelling" | "heritage" | "ending";
 type AudioPreview = {
   id?: string;
-  kind?: "local-audio" | "official-source" | "synthesized";
+  kind?: "local-audio" | "official-source" | "youtube-embed" | "synthesized";
   src?: string | null;
+  embedUrl?: string;
   sourceUrl?: string;
   creator?: string;
   license?: string;
@@ -285,6 +286,13 @@ function passportRecords(visited: Set<string>): PassportRecord[] {
       itemLabel: hotspot.label,
       story: hotspot.story,
       sources: hotspot.sourceIds.map(getSource).filter((source): source is NonNullable<ReturnType<typeof getSource>> => Boolean(source)),
+      ...(audioFor(hotspot)?.embedUrl ? {
+        audioSource: {
+          title: { vi: "Trình phát YouTube tham khảo", en: "Reference YouTube player" },
+          url: audioFor(hotspot)?.embedUrl?.replace("/embed/", "/watch?v=").split("?")[0] || "",
+          note: { vi: "Nguồn bên ngoài; game không tải hoặc tái lưu trữ âm thanh.", en: "External source; the game does not download or re-host the audio." },
+        },
+      } : {}),
     })));
 }
 
@@ -489,6 +497,7 @@ export function HeritageGame() {
   const [museumRecord, setMuseumRecord] = useState<MuseumRecord | null>(null);
   const [muted, setMuted] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
+  const [externalReferenceOpen, setExternalReferenceOpen] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -498,7 +507,7 @@ export function HeritageGame() {
   const stopVisited = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
   const stationComplete = stopVisited === stop.hotspots.length;
   const ambienceEnvironment = phase === "heritage" && stationComplete ? stop.soundscape?.generatorPreset || stop.id : "carriage";
-  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying));
+  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying) || externalReferenceOpen);
 
   useEffect(() => {
     const imageSources = [
@@ -591,11 +600,13 @@ export function HeritageGame() {
       if (event.key !== "Escape") return;
       if (museumRecord) {
         stopPreview();
+        setExternalReferenceOpen(false);
         setMuseumRecord(null);
       }
       else if (openHotspot) {
         setOpenHotspot(null);
         stopPreview();
+        setExternalReferenceOpen(false);
       } else if (phase === "carriage") setPhase("landing");
       else if (phase === "ending") setPhase("heritage");
     };
@@ -658,6 +669,7 @@ export function HeritageGame() {
   function closeRecord() {
     setOpenHotspot(null);
     stopPreview();
+    setExternalReferenceOpen(false);
   }
 
   function requestSeal() {
@@ -676,8 +688,10 @@ export function HeritageGame() {
     if (phase === "heritage" && index === stopIndex) return;
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     stopPreview();
+    setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
+    setExternalReferenceOpen(false);
     setActiveHotspotId(null);
     setPendingStopIndex(index);
     setPhase("travelling");
@@ -694,11 +708,13 @@ export function HeritageGame() {
     stopPreview();
     setMuseumRecord(null);
     setOpenHotspot(null);
+    setExternalReferenceOpen(false);
     setPhase("landing");
   }
 
   function finishJourney() {
     stopPreview();
+    setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
     setActiveHotspotId(null);
@@ -715,6 +731,7 @@ export function HeritageGame() {
     setSealStopId(null);
     setMuseumRecord(null);
     setOpenHotspot(null);
+    setExternalReferenceOpen(false);
     setActiveHotspotId(null);
     setStopIndex(0);
     setPendingStopIndex(0);
@@ -868,6 +885,7 @@ export function HeritageGame() {
         unlockPlaying={previewPlaying === `${stop.id}:unlock`}
         onToggleUnlock={() => stop.unlock && playPreview({ ...openHotspot, audioPreview: stop.unlock.audio }, `${stop.id}:unlock`)}
         onInteractionComplete={() => setPotteryShaped(true)}
+        onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeRecord}
       />}
       {museumRecord && <RecordDrawer
@@ -881,6 +899,7 @@ export function HeritageGame() {
         unlockPlaying={previewPlaying === `${museumRecord.stop.id}:unlock`}
         onToggleUnlock={() => museumRecord.stop.unlock && playPreview({ ...museumRecord.hotspot, audioPreview: museumRecord.stop.unlock.audio }, `${museumRecord.stop.id}:unlock`)}
         onInteractionComplete={() => setPotteryShaped(true)}
+        onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeMuseumRecord}
       />}
       {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} onContinue={collectSeal} />}
@@ -1174,6 +1193,7 @@ function RecordDrawer({
   unlockPlaying,
   onToggleUnlock,
   onInteractionComplete,
+  onExternalReference,
   onClose,
 }: {
   stop: ExperienceStop;
@@ -1185,9 +1205,11 @@ function RecordDrawer({
   unlockPlaying: boolean;
   onToggleUnlock: () => void;
   onInteractionComplete: () => void;
+  onExternalReference: (open: boolean) => void;
   onClose: () => void;
 }) {
   const ui = copy[language];
+  const [referenceOpen, setReferenceOpen] = useState(false);
   const sourceRecords = hotspot.sourceIds.map(getSource).filter(Boolean);
   const preview = audioFor(hotspot);
   const playablePreview = isPlayableAudio(preview);
@@ -1223,8 +1245,17 @@ function RecordDrawer({
       </div>}
       {!playablePreview && (Boolean(preview) || hotspot.interaction === "audio") && <div className="media-card pending-audio-card">
         <span>◇ {ui.audioPending}</span>
-        <p>{ui.audioPendingBody}</p>
+        <p>{preview?.embedUrl ? (language === "vi" ? "Bản ghi được mở từ trình phát YouTube bên ngoài; game không tải hoặc lưu lại âm thanh." : "This recording opens in an external YouTube player; the game does not download or store the audio.") : ui.audioPendingBody}</p>
         {(credit || note || preview?.license) && <small>{credit || note}{preview?.license ? ` · ${preview.license}` : ""}</small>}
+        {preview?.embedUrl && <>
+          <button className="official-audio-link" type="button" onClick={() => { const nextOpen = !referenceOpen; onExternalReference(nextOpen); setReferenceOpen(nextOpen); }} aria-expanded={referenceOpen}>
+            {referenceOpen ? (language === "vi" ? "Đóng trình phát tham khảo" : "Close reference player") : (language === "vi" ? "Mở trình phát YouTube tham khảo" : "Open reference YouTube player")} ↗
+          </button>
+          {referenceOpen && <div className="external-audio-player">
+            <iframe src={preview.embedUrl} title={`${hotspot.label[language]} · YouTube`} loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerPolicy="strict-origin-when-cross-origin" allowFullScreen />
+            <small>{language === "vi" ? "Nguồn bên ngoài: YouTube · Không tái lưu trữ trong game." : "External source: YouTube · Not re-hosted in the game."}</small>
+          </div>}
+        </>}
         {hotspot.media?.kind === "official-link" && hotspot.media.sourceUrl && <a className="official-audio-link" href={hotspot.media.sourceUrl} target="_blank" rel="noreferrer">
           {language === "vi" ? "Mở tư liệu tại nguồn chính thức" : "Open media at the official source"} ↗
         </a>}
