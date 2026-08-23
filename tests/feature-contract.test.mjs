@@ -19,7 +19,7 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
     readFile(new URL("public/train/heritage-carriage.webp", projectRoot)),
     readFile(new URL("public/characters/ticket-conductor-v2.png", projectRoot)),
     readFile(new URL("public/train/heritage-express.webp", projectRoot)),
-    readFile(new URL("public/museum/heritage-gallery-v1.webp", projectRoot)),
+    readFile(new URL("public/museum/heritage-gallery-v2.webp", projectRoot)),
   ]);
 
   assert.match(ui, /"landing" \| "carriage" \| "travelling" \| "heritage" \| "ending"/);
@@ -34,14 +34,18 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /Hộ chiếu di sản/);
   assert.match(ui, /heritage-seals-v1/);
   assert.match(ui, /className="ending-screen"/);
-  assert.match(ui, /memory-destination-grid/);
-  assert.match(ui, /museum-object-grid/);
+  assert.match(ui, /museum-carousel-stage/);
+  assert.match(ui, /museum-map-vitrine/);
+  assert.match(ui, /museum-object-cases/);
+  assert.match(ui, /museumTurnViews/);
   assert.match(ui, /openMuseumRecord/);
   assert.match(ui, /startNewJourney/);
   assert.match(ui, /localStorage\.removeItem\("heritage-visited-v2"\)/);
   assert.match(ui, /passport-station-gallery/);
   assert.match(ui, /passport-entry-visual/);
-  assert.match(ui, /\/museum\/heritage-gallery-v1\.webp/);
+  assert.match(ui, /\/museum\/heritage-gallery-v2\.webp/);
+  assert.match(ui, /Museum of Vietnamese History/);
+  assert.match(ui, /CC0 1\.0/);
   assert.doesNotMatch(ui, /new MediaRecorder|fetch\("\/api\/transcribe"|fetch\("\/api\/guide"|Hỏi Trưởng tàu AI/);
   assert.match(ui, /compact-dialogue/);
   assert.match(ui, /typewriter-line/);
@@ -86,9 +90,12 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(css, /\.passport-book/);
   assert.match(css, /\.passport-hero/);
   assert.match(css, /\.passport-station-gallery/);
-  assert.match(css, /\.memory-destination-card/);
   assert.match(css, /\.museum-vault/);
+  assert.match(css, /\.museum-carousel-arrow/);
+  assert.match(css, /\.museum-map-vitrine/);
+  assert.match(css, /\.museum-object-cases/);
   assert.match(css, /\.museum-object-card/);
+  assert.match(css, /museum-object-float/);
   assert.match(css, /\.reset-dialog/);
   assert.match(css, /\.camera-popout/);
   assert.match(css, /\.tracked-object img/);

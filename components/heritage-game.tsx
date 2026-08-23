@@ -905,6 +905,55 @@ function StationSeal({ language, stop, onContinue }: { language: Language; stop:
   </div>;
 }
 
+const museumTurnViews = ["front", "right", "back", "left"] as const;
+
+function MuseumArtifactCard({
+  hotspot,
+  stop,
+  language,
+  index,
+  onInspect,
+}: {
+  hotspot: ExperienceHotspot;
+  stop: ExperienceStop;
+  language: Language;
+  index: number;
+  onInspect: (record: MuseumRecord) => void;
+}) {
+  const [activeView, setActiveView] = useState(index % museumTurnViews.length);
+  const [paused, setPaused] = useState(false);
+  const spriteBase = hotspot.artifactSprite.split("/").pop()?.replace(/\.webp$/i, "") ?? "artifact";
+
+  useEffect(() => {
+    if (paused || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const timer = window.setInterval(() => setActiveView((current) => (current + 1) % museumTurnViews.length), 1450 + index * 170);
+    return () => window.clearInterval(timer);
+  }, [index, paused]);
+
+  const turnSprite = `/artifacts/turn/${spriteBase}-${museumTurnViews[activeView]}.webp`;
+  return <button
+    type="button"
+    className="museum-object-card"
+    onClick={() => onInspect({ stop, hotspot })}
+    onPointerEnter={() => setPaused(true)}
+    onPointerLeave={() => setPaused(false)}
+    onFocus={() => setPaused(true)}
+    onBlur={() => setPaused(false)}
+    aria-label={`${hotspot.label[language]} · ${copy[language].askTitle}`}
+  >
+    <span className="museum-glass-shine" aria-hidden="true" />
+    <span className="museum-object-image">
+      <Image src={turnSprite} alt="" width={300} height={300} unoptimized aria-hidden="true" />
+      <i aria-hidden="true" />
+    </span>
+    <span className="museum-object-copy">
+      <small>{hotspot.kicker[language]}</small>
+      <b>{hotspot.label[language]}</b>
+      <em>{language === "vi" ? "Chạm để mở hồ sơ" : "Touch to open record"} ↗</em>
+    </span>
+  </button>;
+}
+
 function Ending({
   language,
   visited,
@@ -925,7 +974,15 @@ function Ending({
   const ui = copy[language];
   const [passportOpen, setPassportOpen] = useState(false);
   const [resetOpen, setResetOpen] = useState(false);
+  const [activeMuseumStopIndex, setActiveMuseumStopIndex] = useState(0);
+  const museumSwipeStart = useRef<number | null>(null);
   const collectedCount = experienceStops.reduce((count, stop) => count + stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length, 0);
+  const activeMuseumStop = experienceStops[activeMuseumStopIndex];
+  const activeCollectedCount = activeMuseumStop.hotspots.filter((hotspot) => visited.has(`${activeMuseumStop.id}:${hotspot.id}`)).length;
+
+  function moveMuseum(direction: -1 | 1) {
+    setActiveMuseumStopIndex((current) => (current + direction + experienceStops.length) % experienceStops.length);
+  }
 
   return <section className="ending-screen" aria-labelledby="ending-title">
     <div className="ending-hero">
@@ -947,43 +1004,56 @@ function Ending({
           <button className="ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
           <button className="ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} ↻</button>
         </div>
-        <a className="ending-scroll-cue" href="#memory-map">{language === "vi" ? "MỞ BẢN ĐỒ & KHO BẢO TÀNG" : "OPEN MAP & MUSEUM"}<i>↓</i></a>
+        <a className="ending-scroll-cue" href="#memory-map">{language === "vi" ? "MỞ PHÒNG TRƯNG BÀY" : "OPEN THE GALLERY"}<i>↓</i></a>
       </div>
     </div>
 
     <div className="ending-hub" id="memory-map">
-      <section className="memory-map-section" aria-labelledby="memory-map-title">
-        <header className="ending-section-heading"><span>{ui.memoryMapKicker}</span><h2 id="memory-map-title">{ui.memoryMapTitle}</h2><p>{ui.memoryMapBody}</p></header>
-        <div className="memory-destination-grid">
-          {experienceStops.map((stop, index) => {
-            const stopCollected = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
-            return <button key={stop.id} className="memory-destination-card" style={{ "--card-accent": stop.palette } as CSSProperties} onClick={() => onVisitStop(index)} aria-label={`${ui.revisitStop}: ${stop.title[language]}`}>
-              <span className="memory-card-image"><Image src={stop.scene} alt="" fill unoptimized sizes="(max-width: 720px) 82vw, (max-width: 1100px) 42vw, 20vw" aria-hidden="true" /><i /></span>
-              <span className="memory-card-number">GA {stop.number}</span>
-              <span className="memory-card-copy"><small>{stop.location[language]}</small><b>{stop.title[language]}</b><em>{stopCollected}/3 {language === "vi" ? "vật phẩm" : "objects"}</em></span>
-              <span className="memory-card-action">{ui.revisitStop}<strong>→</strong></span>
-            </button>;
-          })}
-        </div>
-      </section>
-
-      <section className="museum-vault" aria-labelledby="museum-title" style={{ "--museum-bg": "url(/museum/heritage-gallery-v1.webp)" } as CSSProperties}>
+      <section className="museum-vault" aria-labelledby="museum-title" style={{ "--museum-bg": "url(/museum/heritage-gallery-v2.webp)", "--museum-accent": activeMuseumStop.palette } as CSSProperties}>
         <span className="museum-backdrop" aria-hidden="true" />
         <header className="ending-section-heading museum-heading"><span>{ui.museumKicker}</span><h2 id="museum-title">{ui.museumTitle}</h2><p>{ui.museumBody}</p><b>{collectedCount.toString().padStart(2, "0")} / 15</b></header>
-        {collectedCount === 0 ? <div className="museum-empty">◇ <span>{ui.museumEmpty}</span></div> : <div className="museum-stations">
-          {experienceStops.map((stop) => {
-            const objects = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`));
-            if (objects.length === 0) return null;
-            return <section key={stop.id} className="museum-station-shelf" style={{ "--shelf-accent": stop.palette } as CSSProperties} aria-labelledby={`museum-${stop.id}`}>
-              <div className="museum-shelf-label"><span>{stop.number}</span><div><small>{stop.location[language]}</small><h3 id={`museum-${stop.id}`}>{stop.title[language]}</h3></div></div>
-              <div className="museum-object-grid">{objects.map((hotspot) => <button key={hotspot.id} className="museum-object-card" onClick={() => onInspect({ stop, hotspot })} aria-label={`${hotspot.label[language]} · ${ui.askTitle}`}>
-                <span className="museum-object-image"><Image src={hotspot.artifactSprite} alt="" width={260} height={260} unoptimized aria-hidden="true" /></span>
-                <span className="museum-object-copy"><small>{hotspot.kicker[language]}</small><b>{hotspot.label[language]}</b><em>{language === "vi" ? "Mở hồ sơ" : "Open record"} ↗</em></span>
-              </button>)}</div>
-            </section>;
-          })}
-        </div>}
-        <p className="museum-illustration-note">{ui.illustration}</p>
+        <div className="museum-carousel-shell">
+          <div className="museum-route-heading" aria-live="polite">
+            <span>GA {activeMuseumStop.number} · {activeMuseumStop.location[language]}</span>
+            <h3>{activeMuseumStop.title[language]}</h3>
+            <p>{activeCollectedCount}/3 {language === "vi" ? "vật phẩm đã khám phá" : "objects discovered"}</p>
+          </div>
+          <div
+            className="museum-carousel-stage"
+            role="region"
+            tabIndex={0}
+            aria-label={language === "vi" ? "Chọn ga di sản để chơi lại" : "Choose a heritage stop to replay"}
+            onKeyDown={(event) => {
+              if (event.key === "ArrowLeft") { event.preventDefault(); moveMuseum(-1); }
+              if (event.key === "ArrowRight") { event.preventDefault(); moveMuseum(1); }
+            }}
+            onTouchStart={(event) => { museumSwipeStart.current = event.changedTouches[0]?.clientX ?? null; }}
+            onTouchEnd={(event) => {
+              if (museumSwipeStart.current === null) return;
+              const distance = (event.changedTouches[0]?.clientX ?? museumSwipeStart.current) - museumSwipeStart.current;
+              museumSwipeStart.current = null;
+              if (Math.abs(distance) > 48) moveMuseum(distance > 0 ? -1 : 1);
+            }}
+          >
+            <button type="button" className="museum-carousel-arrow museum-carousel-previous" onClick={() => moveMuseum(-1)} aria-label={language === "vi" ? "Ga trưng bày trước" : "Previous exhibition stop"}><span aria-hidden="true">←</span></button>
+            <button type="button" className="museum-map-vitrine" onClick={() => onVisitStop(activeMuseumStopIndex)} aria-label={`${ui.revisitStop}: ${activeMuseumStop.title[language]}`}>
+              <span className="museum-vitrine-lights" aria-hidden="true"><i /><i /><i /></span>
+              <span className="museum-map-image"><Image key={activeMuseumStop.scene} src={activeMuseumStop.scene} alt="" fill unoptimized sizes="(max-width: 720px) 92vw, 920px" aria-hidden="true" /><i /></span>
+              <span className="museum-map-caption"><small>{language === "vi" ? "MÀN CHƠI TRƯNG BÀY" : "EXHIBITED CHAPTER"}</small><b>{ui.revisitStop}</b><strong>→</strong></span>
+            </button>
+            <button type="button" className="museum-carousel-arrow museum-carousel-next" onClick={() => moveMuseum(1)} aria-label={language === "vi" ? "Ga trưng bày tiếp theo" : "Next exhibition stop"}><span aria-hidden="true">→</span></button>
+          </div>
+          <div className="museum-carousel-dots" aria-label={language === "vi" ? "Năm ga di sản" : "Five heritage stops"}>
+            {experienceStops.map((stop, index) => <button key={stop.id} type="button" className={index === activeMuseumStopIndex ? "active" : ""} aria-current={index === activeMuseumStopIndex ? "true" : undefined} aria-label={`${language === "vi" ? "Ga" : "Stop"} ${stop.number}: ${stop.title[language]}`} onClick={() => setActiveMuseumStopIndex(index)}><span>{stop.number}</span></button>)}
+            <b>{String(activeMuseumStopIndex + 1).padStart(2, "0")} / {String(experienceStops.length).padStart(2, "0")}</b>
+          </div>
+          <div className="museum-object-cases" aria-label={language === "vi" ? `Vật phẩm tại ${activeMuseumStop.title.vi}` : `Objects from ${activeMuseumStop.title.en}`}>
+            {activeMuseumStop.hotspots.map((hotspot, index) => visited.has(`${activeMuseumStop.id}:${hotspot.id}`)
+              ? <MuseumArtifactCard key={`${activeMuseumStop.id}:${hotspot.id}`} hotspot={hotspot} stop={activeMuseumStop} language={language} index={index} onInspect={onInspect} />
+              : <div key={hotspot.id} className="museum-object-card museum-object-locked"><span>?</span><b>{language === "vi" ? "Chưa khám phá" : "Not discovered"}</b></div>)}
+          </div>
+        </div>
+        <p className="museum-illustration-note">{ui.illustration}<br /><a href="https://commons.wikimedia.org/wiki/File:Interior_view_-_Museum_of_Vietnamese_History_-_Ho_Chi_Minh_City_-_DSC05932.JPG" target="_blank" rel="noreferrer">{language === "vi" ? "Nền phòng trưng bày chuyển thể pixel từ ảnh Bảo tàng Lịch sử Việt Nam, TP. Hồ Chí Minh · Daderot · CC0 1.0." : "Gallery background pixel adaptation from the Museum of Vietnamese History, Ho Chi Minh City · Daderot · CC0 1.0."}</a></p>
       </section>
 
       <section className="ending-reset-panel">
