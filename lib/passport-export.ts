@@ -51,10 +51,12 @@ export function downloadPassportJson(records: PassportRecord[], seals: PassportS
   URL.revokeObjectURL(url);
 }
 
-export function buildPassportDocument(records: PassportRecord[], seals: PassportSeal[], language: Language): TDocumentDefinitions {
+export function buildPassportDocument(records: PassportRecord[], seals: PassportSeal[], language: Language, craneStampDataUrl?: string): TDocumentDefinitions {
   const vi = language === "vi";
   const content: Content[] = [
-    { text: vi ? "TÀU DI SẢN VIỆT NAM" : "VIET NAM HERITAGE EXPRESS", style: "eyebrow" },
+    craneStampDataUrl
+      ? { columns: [{ image: craneStampDataUrl, width: 48, height: 48, margin: [0, -8, 12, 0] }, { text: vi ? "TÀU DI SẢN VIỆT NAM" : "VIET NAM HERITAGE EXPRESS", style: "eyebrow", margin: [0, 7, 0, 0] }] }
+      : { text: vi ? "TÀU DI SẢN VIỆT NAM" : "VIET NAM HERITAGE EXPRESS", style: "eyebrow" },
     { text: vi ? "Hộ chiếu di sản" : "Heritage passport", style: "title" },
     {
       text: vi
@@ -131,7 +133,9 @@ export function buildPassportDocument(records: PassportRecord[], seals: Passport
     footer: (currentPage, pageCount) => ({
       columns: [
         { text: `TÀU DI SẢN · ${fileDate()}`, alignment: "left" },
-        { text: `${currentPage} / ${pageCount}`, alignment: "right" },
+        craneStampDataUrl && currentPage === pageCount
+          ? { columns: [{ text: `${currentPage} / ${pageCount}`, alignment: "right" }, { image: craneStampDataUrl, width: 30, height: 30, margin: [10, -10, 0, 0] }], alignment: "right" }
+          : { text: `${currentPage} / ${pageCount}`, alignment: "right" },
       ],
       margin: [44, 16, 44, 0],
       color: "#746e61",
@@ -164,6 +168,21 @@ export async function downloadPassportPdf(records: PassportRecord[], seals: Pass
   ]);
   const pdfMake = pdfModule.default;
   pdfMake.addVirtualFileSystem(fontsModule.default);
-  const docDefinition = buildPassportDocument(records, seals, language);
+  let craneStampDataUrl: string | undefined;
+  try {
+    const response = await fetch("/motifs/crane-stamp-gold.png");
+    if (response.ok) {
+      const blob = await response.blob();
+      craneStampDataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => typeof reader.result === "string" ? resolve(reader.result) : reject(new Error("Invalid stamp data"));
+        reader.onerror = () => reject(reader.error || new Error("Unable to read stamp"));
+        reader.readAsDataURL(blob);
+      });
+    }
+  } catch {
+    // Export remains available if the optional decorative motif cannot load.
+  }
+  const docDefinition = buildPassportDocument(records, seals, language, craneStampDataUrl);
   pdfMake.createPdf(docDefinition).download(`tau-di-san-ho-chieu-${fileDate()}.pdf`);
 }
