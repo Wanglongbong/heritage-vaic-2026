@@ -5,7 +5,7 @@ import test from "node:test";
 const projectRoot = new URL("../", import.meta.url);
 
 test("ships the carriage, memory-lantern loop, heritage passport, grounded media and hand tracking", async () => {
-  const [ui, handTracking, passportExport, heritage, css, cover, artifacts, turnViews, landscape, track, carriage, conductor, train] = await Promise.all([
+  const [ui, handTracking, passportExport, heritage, css, cover, artifacts, turnViews, landscape, track, carriage, conductor, train, museum] = await Promise.all([
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
     readFile(new URL("components/hand-tracking-viewer.tsx", projectRoot), "utf8"),
     readFile(new URL("lib/passport-export.ts", projectRoot), "utf8"),
@@ -19,6 +19,7 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
     readFile(new URL("public/train/heritage-carriage.webp", projectRoot)),
     readFile(new URL("public/characters/ticket-conductor-v2.png", projectRoot)),
     readFile(new URL("public/train/heritage-express.webp", projectRoot)),
+    readFile(new URL("public/museum/heritage-gallery-v1.webp", projectRoot)),
   ]);
 
   assert.match(ui, /"landing" \| "carriage" \| "travelling" \| "heritage" \| "ending"/);
@@ -33,6 +34,14 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /Hộ chiếu di sản/);
   assert.match(ui, /heritage-seals-v1/);
   assert.match(ui, /className="ending-screen"/);
+  assert.match(ui, /memory-destination-grid/);
+  assert.match(ui, /museum-object-grid/);
+  assert.match(ui, /openMuseumRecord/);
+  assert.match(ui, /startNewJourney/);
+  assert.match(ui, /localStorage\.removeItem\("heritage-visited-v2"\)/);
+  assert.match(ui, /passport-station-gallery/);
+  assert.match(ui, /passport-entry-visual/);
+  assert.match(ui, /\/museum\/heritage-gallery-v1\.webp/);
   assert.doesNotMatch(ui, /new MediaRecorder|fetch\("\/api\/transcribe"|fetch\("\/api\/guide"|Hỏi Trưởng tàu AI/);
   assert.match(ui, /compact-dialogue/);
   assert.match(ui, /typewriter-line/);
@@ -76,6 +85,11 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(css, /\.passport-seal-strip/);
   assert.match(css, /\.passport-book/);
   assert.match(css, /\.passport-hero/);
+  assert.match(css, /\.passport-station-gallery/);
+  assert.match(css, /\.memory-destination-card/);
+  assert.match(css, /\.museum-vault/);
+  assert.match(css, /\.museum-object-card/);
+  assert.match(css, /\.reset-dialog/);
   assert.match(css, /\.camera-popout/);
   assert.match(css, /\.tracked-object img/);
   assert.match(css, /\.scene\.nha-nhac-locked/);
@@ -88,6 +102,7 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.ok(carriage.byteLength > 200_000);
   assert.ok(conductor.byteLength > 500_000);
   assert.ok(train.byteLength > 300_000);
+  assert.ok(museum.byteLength > 200_000);
 
   assert.match(handTracking, /HandLandmarker/);
   assert.match(handTracking, /getUserMedia/);

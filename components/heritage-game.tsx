@@ -53,6 +53,11 @@ type ExperienceStop = Omit<HeritageStop, "soundscape" | "hotspots"> & {
   hotspots: ExperienceHotspot[];
 };
 
+type MuseumRecord = {
+  stop: ExperienceStop;
+  hotspot: ExperienceHotspot;
+};
+
 type AmbientScene = {
   gain: GainNode;
   sources: AudioScheduledSourceNode[];
@@ -124,8 +129,20 @@ const copy = {
     endingTitle: "Tàu Di Sản Việt Nam",
     endingTagline: "Chạm vào ký ức đang sống.",
     endingBody: "Những gì bạn vừa mở không chỉ thuộc về quá khứ — đó là tri thức vẫn đang được cộng đồng trao truyền hôm nay.",
-    replayJourney: "Đi lại hành trình",
-    returnLastStop: "Trở lại ga cuối",
+    memoryMapKicker: "BẢN ĐỒ HỒI TƯỞNG · 05 GA ĐÃ MỞ",
+    memoryMapTitle: "Đi lại một miền ký ức",
+    memoryMapBody: "Chọn một khung cảnh. Đoàn tàu sẽ đưa bạn trở lại ga ấy với toàn bộ màu sắc và vật phẩm đã khám phá.",
+    revisitStop: "Trở lại ga này",
+    museumKicker: "KHO BẢO TÀNG · BỘ SƯU TẬP CỦA BẠN",
+    museumTitle: "Những vật phẩm đã chạm",
+    museumBody: "Mỗi hiện vật là một lối vào hồ sơ nguồn. Chạm để mở lại câu chuyện, âm thanh và quyền sử dụng.",
+    museumEmpty: "Chưa có vật phẩm nào trong kho.",
+    returnSummary: "Về trang tổng kết",
+    newJourney: "Chơi mới toàn bộ",
+    resetTitle: "Bắt đầu một hành trình mới?",
+    resetBody: "Vật phẩm, con dấu và tiến trình tạo hình gốm trên thiết bị này sẽ được xóa. Ngôn ngữ và lựa chọn âm thanh vẫn được giữ lại.",
+    resetCancel: "Tiếp tục giữ hành trình",
+    resetConfirm: "Xóa tiến trình · Chơi mới",
   },
   en: {
     brand: "HERITAGE EXPRESS",
@@ -191,8 +208,20 @@ const copy = {
     endingTitle: "Viet Nam Heritage Express",
     endingTagline: "Touch living memory.",
     endingBody: "What you have opened does not belong only to the past — it is knowledge communities continue to transmit today.",
-    replayJourney: "Travel again",
-    returnLastStop: "Return to the final stop",
+    memoryMapKicker: "MEMORY MAP · 05 OPENED STATIONS",
+    memoryMapTitle: "Return to a living memory",
+    memoryMapBody: "Choose a scene. The train will carry you back with every colour and object you discovered restored.",
+    revisitStop: "Return to this station",
+    museumKicker: "MUSEUM VAULT · YOUR COLLECTION",
+    museumTitle: "Objects you touched",
+    museumBody: "Each object opens a sourced record. Touch it to revisit the story, sound and usage rights.",
+    museumEmpty: "No objects have been collected yet.",
+    returnSummary: "Return to journey summary",
+    newJourney: "Start a completely new game",
+    resetTitle: "Begin a new journey?",
+    resetBody: "Objects, seals and pottery progress on this device will be removed. Language and sound preferences will be preserved.",
+    resetCancel: "Keep this journey",
+    resetConfirm: "Clear progress · Start new",
   },
 };
 
@@ -457,6 +486,7 @@ export function HeritageGame() {
   const [sealed, setSealed] = useState<Set<string>>(new Set());
   const [sealStopId, setSealStopId] = useState<string | null>(null);
   const [potteryShaped, setPotteryShaped] = useState(false);
+  const [museumRecord, setMuseumRecord] = useState<MuseumRecord | null>(null);
   const [archiveOpen, setArchiveOpen] = useState(false);
   const [muted, setMuted] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
@@ -559,6 +589,10 @@ export function HeritageGame() {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
       if (archiveOpen) setArchiveOpen(false);
+      else if (museumRecord) {
+        stopPreview();
+        setMuseumRecord(null);
+      }
       else if (openHotspot) {
         setOpenHotspot(null);
         stopPreview();
@@ -567,7 +601,7 @@ export function HeritageGame() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [archiveOpen, openHotspot, phase, sealed, stop, stopPreview, visited]);
+  }, [archiveOpen, museumRecord, openHotspot, phase, sealed, stop, stopPreview, visited]);
 
   function toggleMuted() {
     enableAmbient();
@@ -636,6 +670,7 @@ export function HeritageGame() {
     if (phase === "heritage" && index === stopIndex) return;
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     stopPreview();
+    setMuseumRecord(null);
     setOpenHotspot(null);
     setActiveHotspotId(null);
     setPendingStopIndex(index);
@@ -652,6 +687,7 @@ export function HeritageGame() {
     travelTimerRef.current = null;
     stopPreview();
     setArchiveOpen(false);
+    setMuseumRecord(null);
     setOpenHotspot(null);
     setPhase("landing");
   }
@@ -659,16 +695,40 @@ export function HeritageGame() {
   function finishJourney() {
     stopPreview();
     setArchiveOpen(false);
+    setMuseumRecord(null);
     setOpenHotspot(null);
     setActiveHotspotId(null);
     setPhase("ending");
   }
 
-  function replayJourney() {
+  function startNewJourney() {
+    if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
+    travelTimerRef.current = null;
     stopPreview();
+    setVisited(new Set());
+    setSealed(new Set());
+    setPotteryShaped(false);
+    setSealStopId(null);
+    setMuseumRecord(null);
+    setArchiveOpen(false);
+    setOpenHotspot(null);
+    setActiveHotspotId(null);
     setStopIndex(0);
     setPendingStopIndex(0);
-    setPhase("carriage");
+    window.localStorage.removeItem("heritage-visited-v2");
+    window.localStorage.removeItem("heritage-seals-v1");
+    window.localStorage.removeItem("heritage-pottery-shaped");
+    setPhase("landing");
+  }
+
+  function openMuseumRecord(record: MuseumRecord) {
+    stopPreview();
+    setMuseumRecord(record);
+  }
+
+  function closeMuseumRecord() {
+    stopPreview();
+    setMuseumRecord(null);
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
@@ -783,6 +843,7 @@ export function HeritageGame() {
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
           <p>{ui.illustration}</p>
           <div className="station-controls">
+            {sealed.size === experienceStops.length && stopIndex !== experienceStops.length - 1 && <button className="journey-summary-button" onClick={finishJourney}><span aria-hidden="true">⌂</span><em>{ui.returnSummary}</em></button>}
             <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
             {stopIndex === experienceStops.length - 1
               ? <button className="finish-journey-button" disabled={!stationSealed || sealed.size < experienceStops.length} onClick={finishJourney}><em>{stationSealed ? ui.finishJourney : ui.stationLocked}</em><span aria-hidden="true">→</span></button>
@@ -795,7 +856,7 @@ export function HeritageGame() {
       {phase === "landing" && <Intro language={language} onLanguage={setLanguage} onStart={() => { enableAmbient(); setPhase("carriage"); }} />}
       {phase === "carriage" && <Carriage language={language} muted={muted} onLanguage={setLanguage} onToggleMuted={toggleMuted} onBack={resetToLanding} onDestination={beginTravel} onAudioActivate={enableAmbient} />}
       {phase === "travelling" && <TravelScreen stop={pendingStop} language={language} />}
-      {phase === "ending" && <Ending language={language} visited={visited} sealed={sealed} onLanguage={setLanguage} onReplay={replayJourney} onReturn={() => setPhase("heritage")} />}
+      {phase === "ending" && <Ending language={language} visited={visited} sealed={sealed} onLanguage={setLanguage} onVisitStop={beginTravel} onInspect={openMuseumRecord} onNewJourney={startNewJourney} />}
       {phase === "heritage" && <div className="ambient-disclosure" role="note">♪ {ui.neutralSound}<span>{ui.ambientNote}</span></div>}
       {openHotspot && <RecordDrawer
         key={`${stop.id}:${openHotspot.id}`}
@@ -809,6 +870,19 @@ export function HeritageGame() {
         onToggleUnlock={() => stop.unlock && playPreview({ ...openHotspot, audioPreview: stop.unlock.audio }, `${stop.id}:unlock`)}
         onInteractionComplete={() => setPotteryShaped(true)}
         onClose={closeRecord}
+      />}
+      {museumRecord && <RecordDrawer
+        key={`museum:${museumRecord.stop.id}:${museumRecord.hotspot.id}`}
+        stop={museumRecord.stop}
+        hotspot={museumRecord.hotspot}
+        language={language}
+        previewPlaying={previewPlaying === `${museumRecord.stop.id}:${museumRecord.hotspot.id}`}
+        onTogglePreview={() => playPreview(museumRecord.hotspot, `${museumRecord.stop.id}:${museumRecord.hotspot.id}`)}
+        unlock={museumRecord.stop.unlock?.requiredHotspotIds.every((id) => visited.has(`${museumRecord.stop.id}:${id}`)) ? museumRecord.stop.unlock : undefined}
+        unlockPlaying={previewPlaying === `${museumRecord.stop.id}:unlock`}
+        onToggleUnlock={() => museumRecord.stop.unlock && playPreview({ ...museumRecord.hotspot, audioPreview: museumRecord.stop.unlock.audio }, `${museumRecord.stop.id}:unlock`)}
+        onInteractionComplete={() => setPotteryShaped(true)}
+        onClose={closeMuseumRecord}
       />}
       {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} onContinue={collectSeal} />}
       {archiveOpen && <Archive language={language} visited={visited} sealed={sealed} onClose={() => setArchiveOpen(false)} />}
@@ -836,39 +910,94 @@ function Ending({
   visited,
   sealed,
   onLanguage,
-  onReplay,
-  onReturn,
+  onVisitStop,
+  onInspect,
+  onNewJourney,
 }: {
   language: Language;
   visited: Set<string>;
   sealed: Set<string>;
   onLanguage: (language: Language) => void;
-  onReplay: () => void;
-  onReturn: () => void;
+  onVisitStop: (index: number) => void;
+  onInspect: (record: MuseumRecord) => void;
+  onNewJourney: () => void;
 }) {
   const ui = copy[language];
   const [passportOpen, setPassportOpen] = useState(false);
+  const [resetOpen, setResetOpen] = useState(false);
+  const collectedCount = experienceStops.reduce((count, stop) => count + stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length, 0);
+
   return <section className="ending-screen" aria-labelledby="ending-title">
-    <Image className="ending-cover-image" src="/og.webp" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
-    <div className="ending-vignette" aria-hidden="true" />
-    <div className="ending-language" aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}>
-      <button className={language === "vi" ? "active" : ""} aria-pressed={language === "vi"} onClick={() => onLanguage("vi")}>VI</button>
-      <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button>
-    </div>
-    <div className="ending-copy">
-      <span>{ui.endingKicker}</span>
-      <h1 id="ending-title" className="sr-only">{ui.endingTitle}</h1>
-      <p className="ending-tagline">{ui.endingTagline}</p>
-      <p className="ending-body">{ui.endingBody}</p>
-      <div className="ending-seals" aria-label={ui.passport}>
-        {experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><b>{stop.number}</b><small>{stop.location[language].split("·")[0]}</small></span>)}
+    <div className="ending-hero">
+      <Image className="ending-cover-image" src="/og.webp" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
+      <div className="ending-vignette" aria-hidden="true" />
+      <div className="ending-language" aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}>
+        <button className={language === "vi" ? "active" : ""} aria-pressed={language === "vi"} onClick={() => onLanguage("vi")}>VI</button>
+        <button className={language === "en" ? "active" : ""} aria-pressed={language === "en"} onClick={() => onLanguage("en")}>EN</button>
       </div>
-      <div className="ending-actions">
-        <button className="ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
-        <button className="ending-secondary" onClick={onReplay}>{ui.replayJourney} ↻</button>
-        <button className="ending-secondary" onClick={onReturn}>← {ui.returnLastStop}</button>
+      <div className="ending-copy">
+        <span>{ui.endingKicker}</span>
+        <h1 id="ending-title" className="sr-only">{ui.endingTitle}</h1>
+        <p className="ending-tagline">{ui.endingTagline}</p>
+        <p className="ending-body">{ui.endingBody}</p>
+        <div className="ending-seals" aria-label={ui.passport}>
+          {experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><b>{stop.number}</b><small>{stop.location[language].split("·")[0]}</small></span>)}
+        </div>
+        <div className="ending-actions">
+          <button className="ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
+          <button className="ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} ↻</button>
+        </div>
+        <a className="ending-scroll-cue" href="#memory-map">{language === "vi" ? "MỞ BẢN ĐỒ & KHO BẢO TÀNG" : "OPEN MAP & MUSEUM"}<i>↓</i></a>
       </div>
     </div>
+
+    <div className="ending-hub" id="memory-map">
+      <section className="memory-map-section" aria-labelledby="memory-map-title">
+        <header className="ending-section-heading"><span>{ui.memoryMapKicker}</span><h2 id="memory-map-title">{ui.memoryMapTitle}</h2><p>{ui.memoryMapBody}</p></header>
+        <div className="memory-destination-grid">
+          {experienceStops.map((stop, index) => {
+            const stopCollected = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
+            return <button key={stop.id} className="memory-destination-card" style={{ "--card-accent": stop.palette } as CSSProperties} onClick={() => onVisitStop(index)} aria-label={`${ui.revisitStop}: ${stop.title[language]}`}>
+              <span className="memory-card-image"><Image src={stop.scene} alt="" fill unoptimized sizes="(max-width: 720px) 82vw, (max-width: 1100px) 42vw, 20vw" aria-hidden="true" /><i /></span>
+              <span className="memory-card-number">GA {stop.number}</span>
+              <span className="memory-card-copy"><small>{stop.location[language]}</small><b>{stop.title[language]}</b><em>{stopCollected}/3 {language === "vi" ? "vật phẩm" : "objects"}</em></span>
+              <span className="memory-card-action">{ui.revisitStop}<strong>→</strong></span>
+            </button>;
+          })}
+        </div>
+      </section>
+
+      <section className="museum-vault" aria-labelledby="museum-title" style={{ "--museum-bg": "url(/museum/heritage-gallery-v1.webp)" } as CSSProperties}>
+        <span className="museum-backdrop" aria-hidden="true" />
+        <header className="ending-section-heading museum-heading"><span>{ui.museumKicker}</span><h2 id="museum-title">{ui.museumTitle}</h2><p>{ui.museumBody}</p><b>{collectedCount.toString().padStart(2, "0")} / 15</b></header>
+        {collectedCount === 0 ? <div className="museum-empty">◇ <span>{ui.museumEmpty}</span></div> : <div className="museum-stations">
+          {experienceStops.map((stop) => {
+            const objects = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`));
+            if (objects.length === 0) return null;
+            return <section key={stop.id} className="museum-station-shelf" style={{ "--shelf-accent": stop.palette } as CSSProperties} aria-labelledby={`museum-${stop.id}`}>
+              <div className="museum-shelf-label"><span>{stop.number}</span><div><small>{stop.location[language]}</small><h3 id={`museum-${stop.id}`}>{stop.title[language]}</h3></div></div>
+              <div className="museum-object-grid">{objects.map((hotspot) => <button key={hotspot.id} className="museum-object-card" onClick={() => onInspect({ stop, hotspot })} aria-label={`${hotspot.label[language]} · ${ui.askTitle}`}>
+                <span className="museum-object-image"><Image src={hotspot.artifactSprite} alt="" width={260} height={260} unoptimized aria-hidden="true" /></span>
+                <span className="museum-object-copy"><small>{hotspot.kicker[language]}</small><b>{hotspot.label[language]}</b><em>{language === "vi" ? "Mở hồ sơ" : "Open record"} ↗</em></span>
+              </button>)}</div>
+            </section>;
+          })}
+        </div>}
+        <p className="museum-illustration-note">{ui.illustration}</p>
+      </section>
+
+      <section className="ending-reset-panel">
+        <div><span>{language === "vi" ? "MỘT CHUYẾN TÀU KHÁC" : "ANOTHER JOURNEY"}</span><h2>{ui.resetTitle}</h2><p>{ui.resetBody}</p></div>
+        <button type="button" onClick={() => setResetOpen(true)}>{ui.newJourney}<b>↻</b></button>
+      </section>
+    </div>
+
+    {resetOpen && <div className="reset-dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setResetOpen(false)}>
+      <section className="reset-dialog" role="alertdialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-body">
+        <span aria-hidden="true">↻</span><small>{language === "vi" ? "XÁC NHẬN CHƠI MỚI" : "CONFIRM NEW GAME"}</small><h2 id="reset-title">{ui.resetTitle}</h2><p id="reset-body">{ui.resetBody}</p>
+        <div><button type="button" onClick={() => setResetOpen(false)}>{ui.resetCancel}</button><button type="button" onClick={onNewJourney}>{ui.resetConfirm}</button></div>
+      </section>
+    </div>}
     {passportOpen && <Archive language={language} visited={visited} sealed={sealed} passport onClose={() => setPassportOpen(false)} />}
   </section>;
 }
@@ -1096,8 +1225,21 @@ function Archive({ language, visited, sealed, passport = false, onClose }: { lan
           <div><dt>{language === "vi" ? "Nguyên tắc" : "Principle"}</dt><dd>{language === "vi" ? "Có nguồn · Tôn trọng quyền văn hóa" : "Sourced · Cultural rights respected"}</dd></div>
         </dl>
       </section>}
+      {passport && <section className="passport-station-gallery" aria-labelledby="passport-scenes-title">
+        <header><span>{language === "vi" ? "05 KHUNG CẢNH ĐÃ ĐÁNH THỨC" : "05 AWAKENED SCENES"}</span><h3 id="passport-scenes-title">{language === "vi" ? "Những miền ký ức đã đi qua" : "Living memories you crossed"}</h3></header>
+        <div>{experienceStops.map((stop) => {
+          const foundObjects = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`));
+          return <article key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--passport-accent": stop.palette } as CSSProperties}>
+            <span className="passport-scene-image"><Image src={stop.scene} alt="" fill unoptimized sizes="(max-width: 720px) 80vw, 30vw" aria-hidden="true" /><i /></span>
+            <span className="passport-scene-seal">{stop.number}</span>
+            <div className="passport-scene-copy"><small>{stop.location[language]}</small><b>{stop.title[language]}</b></div>
+            <div className="passport-scene-objects" aria-hidden="true">{foundObjects.map((hotspot) => <Image key={hotspot.id} src={hotspot.artifactSprite} alt="" width={72} height={72} unoptimized />)}</div>
+          </article>;
+        })}</div>
+      </section>}
       <div className="passport-seal-strip" aria-label={language === "vi" ? "Các con dấu đã nhận" : "Earned station seals"}>{experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><i>VIỆT NAM</i><b>{stop.number}</b><small>{stop.title[language]}</small></span>)}</div>
       {records.length === 0 ? <div className="archive-empty"><i>◇</i><p>{ui.emptyArchive}</p></div> : <div className="archive-grid">{records.map(({ stop, hotspot }, index) => <article key={`${stop.id}:${hotspot.id}`} style={{ "--entry-accent": stop.palette } as CSSProperties}>
+        {passport && <div className="passport-entry-visual"><Image className="passport-entry-scene" src={stop.scene} alt="" fill unoptimized sizes="(max-width: 720px) 85vw, 40vw" aria-hidden="true" /><span aria-hidden="true" /><Image className="passport-entry-object" src={hotspot.artifactSprite} alt="" width={190} height={190} unoptimized aria-hidden="true" /></div>}
         {passport ? <div className="passport-entry-head"><span>{stop.location[language]}</span><i>{String(index + 1).padStart(2, "0")}</i></div> : <span>{String(index + 1).padStart(2, "0")} · {stop.location[language]}</span>}
         <h3>{hotspot.label[language]}</h3>
         <p>{hotspot.story[language]}</p>
