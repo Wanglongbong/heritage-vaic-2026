@@ -274,10 +274,15 @@ function isPlayableAudio(preview: AudioPreview | null) {
   return Boolean(preview?.src);
 }
 
+function clockTime(seconds: number) {
+  const safe = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  return `${Math.floor(safe / 60)}:${Math.floor(safe % 60).toString().padStart(2, "0")}`;
+}
+
 function passportRecords(visited: Set<string>): PassportRecord[] {
   return experienceStops.flatMap((stop) => stop.hotspots
     .filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`))
-    .map((hotspot) => ({
+    .map((hotspot, index) => ({
       stationNumber: stop.number,
       stationTitle: stop.title,
       location: stop.location,
@@ -286,11 +291,15 @@ function passportRecords(visited: Set<string>): PassportRecord[] {
       itemLabel: hotspot.label,
       story: hotspot.story,
       sources: hotspot.sourceIds.map(getSource).filter((source): source is NonNullable<ReturnType<typeof getSource>> => Boolean(source)),
-      ...(audioFor(hotspot)?.embedUrl ? {
+      ...(index === 0 && stop.unlock?.audio && stop.hotspots.every((item) => visited.has(`${stop.id}:${item.id}`)) ? {
         audioSource: {
-          title: { vi: "Trình phát YouTube tham khảo", en: "Reference YouTube player" },
-          url: audioFor(hotspot)?.embedUrl?.replace("/embed/", "/watch?v=").split("?")[0] || "",
-          note: { vi: "Nguồn bên ngoài; game không tải hoặc tái lưu trữ âm thanh.", en: "External source; the game does not download or re-host the audio." },
+          id: stop.unlock.audio.id,
+          title: stop.unlock.title,
+          url: stop.unlock.audio.sourceUrl,
+          credit: stop.unlock.audio.credit,
+          rights: stop.unlock.audio.license,
+          note: stop.unlock.audio.note,
+          durationSeconds: stop.unlock.audio.durationSeconds,
         },
       } : {}),
     })));
@@ -497,17 +506,21 @@ export function HeritageGame() {
   const [museumRecord, setMuseumRecord] = useState<MuseumRecord | null>(null);
   const [muted, setMuted] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
+  const [stationTrackPlaying, setStationTrackPlaying] = useState<string | null>(null);
+  const [stationTrackPosition, setStationTrackPosition] = useState(0);
+  const [stationTrackDuration, setStationTrackDuration] = useState(0);
   const [externalReferenceOpen, setExternalReferenceOpen] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const stationAudioRef = useRef<HTMLAudioElement | null>(null);
   const ui = copy[language];
   const stop = experienceStops[stopIndex];
   const pendingStop = experienceStops[pendingStopIndex];
   const stopVisited = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
   const stationComplete = stopVisited === stop.hotspots.length;
   const ambienceEnvironment = phase === "heritage" && stationComplete ? stop.soundscape?.generatorPreset || stop.id : "carriage";
-  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying) || externalReferenceOpen);
+  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying) || Boolean(stationTrackPlaying) || externalReferenceOpen);
 
   useEffect(() => {
     const imageSources = [
@@ -573,6 +586,7 @@ export function HeritageGame() {
   useEffect(() => {
     window.localStorage.setItem("heritage-muted", String(muted));
     if (previewAudioRef.current) previewAudioRef.current.muted = muted;
+    if (stationAudioRef.current) stationAudioRef.current.muted = muted;
   }, [muted]);
 
   const stopPreview = useCallback(() => {
@@ -586,12 +600,30 @@ export function HeritageGame() {
     setPreviewPlaying(null);
   }, []);
 
+  const stopStationTrack = useCallback(() => {
+    const audio = stationAudioRef.current;
+    if (audio) {
+      audio.pause();
+      audio.currentTime = 0;
+      audio.src = "";
+    }
+    stationAudioRef.current = null;
+    setStationTrackPlaying(null);
+    setStationTrackPosition(0);
+    setStationTrackDuration(0);
+  }, []);
+
   useEffect(() => () => {
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     const audio = previewAudioRef.current;
     if (audio) {
       audio.pause();
       audio.src = "";
+    }
+    const stationAudio = stationAudioRef.current;
+    if (stationAudio) {
+      stationAudio.pause();
+      stationAudio.src = "";
     }
   }, []);
 
@@ -623,6 +655,7 @@ export function HeritageGame() {
     const preview = audioFor(hotspot);
     if (!preview || !isPlayableAudio(preview)) return;
     enableAmbient();
+    stopStationTrack();
     const key = keyOverride || `${stop.id}:${hotspot.id}`;
     const currentAudio = previewAudioRef.current;
 
@@ -654,15 +687,58 @@ export function HeritageGame() {
     void audio.play().then(() => setPreviewPlaying(key)).catch(() => setPreviewPlaying(null));
   }
 
+  function playStationTrack(track = stop.unlock?.audio, key = stop.id) {
+    if (!track?.src) return;
+    enableAmbient();
+    stopPreview();
+    const current = stationAudioRef.current;
+    if (current && current.dataset.trackKey === key) {
+      if (current.paused) void current.play().then(() => setStationTrackPlaying(key)).catch(() => setStationTrackPlaying(null));
+      else {
+        current.pause();
+        setStationTrackPlaying(null);
+      }
+      return;
+    }
+    stopStationTrack();
+    const audio = new Audio(track.src);
+    audio.dataset.trackKey = key;
+    audio.preload = "auto";
+    audio.muted = muted;
+    audio.volume = 0.9;
+    audio.onloadedmetadata = () => setStationTrackDuration(Number.isFinite(audio.duration) ? audio.duration : track.durationSeconds || 0);
+    audio.ontimeupdate = () => setStationTrackPosition(audio.currentTime);
+    audio.onended = () => {
+      audio.currentTime = 0;
+      setStationTrackPosition(0);
+      setStationTrackPlaying(null);
+    };
+    audio.onerror = () => {
+      setStationTrackPlaying(null);
+      setStationTrackPosition(0);
+    };
+    stationAudioRef.current = audio;
+    setStationTrackDuration(track.durationSeconds || 0);
+    void audio.play().then(() => setStationTrackPlaying(key)).catch(() => setStationTrackPlaying(null));
+  }
+
+  function seekStationTrack(value: number) {
+    const audio = stationAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = value;
+    setStationTrackPosition(value);
+  }
+
   function openRecord(hotspot: ExperienceHotspot) {
+    const stationWasComplete = stop.hotspots.every((item) => visited.has(`${stop.id}:${item.id}`));
     const nextVisited = new Set(visited).add(`${stop.id}:${hotspot.id}`);
     const completesStation = stop.hotspots.every((item) => nextVisited.has(`${stop.id}:${item.id}`));
     setVisited(nextVisited);
     setOpenHotspot(hotspot);
     // The train bed stays active until all three objects are discovered. A
     // rights-cleared unlock recording starts on the final object.
-    if (completesStation && stop.unlock?.audio.src && isPlayableAudio(stop.unlock.audio)) {
-      playPreview({ ...hotspot, audioPreview: stop.unlock.audio }, `${stop.id}:unlock`);
+    if (!stationWasComplete && completesStation && stop.unlock?.audio.src && isPlayableAudio(stop.unlock.audio)) {
+      playStationTrack(stop.unlock.audio, stop.id);
     } else if (isPlayableAudio(audioFor(hotspot))) playPreview(hotspot);
   }
 
@@ -688,6 +764,7 @@ export function HeritageGame() {
     if (phase === "heritage" && index === stopIndex) return;
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     stopPreview();
+    stopStationTrack();
     setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
@@ -706,6 +783,7 @@ export function HeritageGame() {
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     travelTimerRef.current = null;
     stopPreview();
+    stopStationTrack();
     setMuseumRecord(null);
     setOpenHotspot(null);
     setExternalReferenceOpen(false);
@@ -714,6 +792,7 @@ export function HeritageGame() {
 
   function finishJourney() {
     stopPreview();
+    stopStationTrack();
     setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
@@ -725,6 +804,7 @@ export function HeritageGame() {
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     travelTimerRef.current = null;
     stopPreview();
+    stopStationTrack();
     setVisited(new Set());
     setSealed(new Set());
     setPotteryShaped(false);
@@ -771,7 +851,6 @@ export function HeritageGame() {
     setActiveHotspotId(closest && closest.distance < 94 ? closest.id : null);
   }
 
-  const stopUnlockOpen = Boolean(stop.unlock?.requiredHotspotIds.every((id) => visited.has(`${stop.id}:${id}`)));
   const stationSealed = sealed.has(stop.id);
 
   return (
@@ -808,6 +887,7 @@ export function HeritageGame() {
         <div className="train-frame" aria-hidden="true"><span className="frame-top" /><span className="frame-left" /><span className="frame-right" /><span className="frame-bottom" /></div>
         <div
           ref={sceneRef}
+          data-stop-id={stop.id}
           className={`scene memory-scene ${stationComplete ? "memory-complete" : ""} ${stop.id === "cham-pottery" && potteryShaped ? "pottery-shaped" : ""}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={() => { setActiveHotspotId(null); if (sceneRef.current) sceneRef.current.dataset.lamp = "idle"; }}
@@ -822,6 +902,8 @@ export function HeritageGame() {
             aria-hidden="true"
           />)}
           <span className="memory-darkness" aria-hidden="true" />
+          <Image className="scene-crane-watermark scene-crane-watermark-a" src="/motifs/crane-stamp-gold.png" alt="" width={150} height={150} unoptimized aria-hidden="true" />
+          <Image className="scene-crane-watermark scene-crane-watermark-b" src="/motifs/crane-stamp-gold.png" alt="" width={118} height={118} unoptimized aria-hidden="true" />
           <span className="memory-lamp" aria-hidden="true" />
           <div className="scene-discovery-progress"><b>{ui.memoryLamp}</b><span>{stopVisited}/3 {ui.memoryProgress}</span><small>{ui.memoryHint}</small></div>
           <div className="scene-heading">
@@ -857,7 +939,16 @@ export function HeritageGame() {
         </div>
         <div className="scene-footer">
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
-          <p>{ui.illustration}</p>
+          {stationComplete && stop.unlock?.audio.src ? <div className="station-audio-player" data-playing={stationTrackPlaying === stop.id}>
+            <button type="button" onClick={() => playStationTrack(stop.unlock?.audio, stop.id)} aria-label={stationTrackPlaying === stop.id ? ui.pauseAudio : ui.playAudio} aria-pressed={stationTrackPlaying === stop.id}>
+              <span aria-hidden="true">{stationTrackPlaying === stop.id ? "Ⅱ" : "▶"}</span>
+            </button>
+            <label>
+              <span><b>{language === "vi" ? "ÂM THANH GA ĐÃ MỞ" : "STATION AUDIO UNLOCKED"}</b><em>{stop.unlock.title[language]}</em></span>
+              <input type="range" min={0} max={stationTrackDuration || stop.unlock.audio.durationSeconds || 1} step="0.1" value={Math.min(stationTrackPosition, stationTrackDuration || stop.unlock.audio.durationSeconds || 1)} onChange={(event) => seekStationTrack(Number(event.target.value))} aria-label={language === "vi" ? "Vị trí phát âm thanh" : "Audio position"} />
+              <small>{clockTime(stationTrackPosition)} / {clockTime(stationTrackDuration || stop.unlock.audio.durationSeconds || 0)}</small>
+            </label>
+          </div> : <p>{ui.illustration}</p>}
           <div className="station-controls">
             {sealed.size === experienceStops.length && stopIndex !== experienceStops.length - 1 && <button className="journey-summary-button" onClick={finishJourney}><span aria-hidden="true">⌂</span><em>{ui.returnSummary}</em></button>}
             <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
@@ -881,9 +972,6 @@ export function HeritageGame() {
         language={language}
         previewPlaying={previewPlaying === `${stop.id}:${openHotspot.id}`}
         onTogglePreview={() => playPreview(openHotspot)}
-        unlock={stopUnlockOpen ? stop.unlock : undefined}
-        unlockPlaying={previewPlaying === `${stop.id}:unlock`}
-        onToggleUnlock={() => stop.unlock && playPreview({ ...openHotspot, audioPreview: stop.unlock.audio }, `${stop.id}:unlock`)}
         onInteractionComplete={() => setPotteryShaped(true)}
         onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeRecord}
@@ -895,9 +983,6 @@ export function HeritageGame() {
         language={language}
         previewPlaying={previewPlaying === `${museumRecord.stop.id}:${museumRecord.hotspot.id}`}
         onTogglePreview={() => playPreview(museumRecord.hotspot, `${museumRecord.stop.id}:${museumRecord.hotspot.id}`)}
-        unlock={museumRecord.stop.unlock?.requiredHotspotIds.every((id) => visited.has(`${museumRecord.stop.id}:${id}`)) ? museumRecord.stop.unlock : undefined}
-        unlockPlaying={previewPlaying === `${museumRecord.stop.id}:unlock`}
-        onToggleUnlock={() => museumRecord.stop.unlock && playPreview({ ...museumRecord.hotspot, audioPreview: museumRecord.stop.unlock.audio }, `${museumRecord.stop.id}:unlock`)}
         onInteractionComplete={() => setPotteryShaped(true)}
         onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeMuseumRecord}
@@ -1189,9 +1274,6 @@ function RecordDrawer({
   language,
   previewPlaying,
   onTogglePreview,
-  unlock,
-  unlockPlaying,
-  onToggleUnlock,
   onInteractionComplete,
   onExternalReference,
   onClose,
@@ -1201,9 +1283,6 @@ function RecordDrawer({
   language: Language;
   previewPlaying: boolean;
   onTogglePreview: () => void;
-  unlock?: NonNullable<ExperienceStop["unlock"]>;
-  unlockPlaying: boolean;
-  onToggleUnlock: () => void;
   onInteractionComplete: () => void;
   onExternalReference: (open: boolean) => void;
   onClose: () => void;
@@ -1259,15 +1338,6 @@ function RecordDrawer({
         {hotspot.media?.kind === "official-link" && hotspot.media.sourceUrl && <a className="official-audio-link" href={hotspot.media.sourceUrl} target="_blank" rel="noreferrer">
           {language === "vi" ? "Mở tư liệu tại nguồn chính thức" : "Open media at the official source"} ↗
         </a>}
-      </div>}
-      {unlock && <div className="media-card direct-audio-card unlocked-ensemble">
-        <span>◆ {language === "vi" ? "HỒ SƠ ÂM THANH ĐÃ MỞ KHÓA" : "AUDIO RECORD UNLOCKED"}</span>
-        <p>{unlock.message[language]}</p>
-        <button onClick={onToggleUnlock} aria-pressed={unlockPlaying}>
-          <span className={`sound-wave ${unlockPlaying ? "playing" : ""}`} aria-hidden="true"><i /><i /><i /><i /><i /><i /></span>
-          <b>{unlockPlaying ? ui.pauseAudio : (language === "vi" ? "Nghe toàn bộ nhóm Ca trù · 22 giây" : "Hear the full Ca trù group · 22 seconds")}</b>
-          <em>{unlock.audio.credit[language]} · {unlock.audio.license}</em>
-        </button>
       </div>}
       {hotspot.media?.kind === "animation" && <div className={`craft-animation ${stop.id === "cham-pottery" ? "pottery-animation" : "rhythm-animation"}`} aria-label={ui.animationNote}><div className="animation-stage"><i /><i /><i /><i /><span /></div><small>{ui.animationNote}</small></div>}
 

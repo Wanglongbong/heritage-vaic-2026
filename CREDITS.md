@@ -21,19 +21,25 @@ Các liên kết này xác nhận dữ kiện văn hóa. Chúng không tự đ�
 
 Nguồn mô tả đây là phần trình diễn gồm giọng Ca trù, đàn đáy và trống. Vì vậy game luôn ghi nhãn **đoạn trích cả nhóm**, không tuyên bố đây là âm thanh tách riêng của đàn đáy, phách hay trống chầu.
 
-Đây là bản ghi trình diễn di sản duy nhất hiện được game phục vụ cục bộ. Ba tệp bối cảnh thực khác cũng được phục vụ với nhãn giới hạn rõ ràng:
+Ba trích đoạn do chủ dự án cung cấp và xác nhận quyền dùng công khai trong Tàu Di Sản Việt Nam ngày 25/08/2026 cũng được phục vụ sau khi người chơi mở đủ ba vật phẩm của ga:
+
+- `public/media/quan-ho-unlock.ogg`: [Quan họ Bắc Ninh folk songs](https://www.youtube.com/watch?v=MlKtqU5685w), trích 03:18–04:48 (90 giây), nguồn công bố UNESCO / Vietnam Institute of Culture and Arts Studies.
+- `public/media/nha-nhac-unlock.ogg`: [Nhã nhạc cung đình Huế](https://www.youtube.com/watch?v=wnFZ5QAWGUo), trích 38:00–39:40 (100 giây), ghi nguồn theo kênh Sở Văn hóa và Thể thao Ninh Bình; game không gọi đây là bản master do Huế cung cấp.
+- `public/media/don-ca-tai-tu-unlock.ogg`: [Đờn ca tài tử Nam Bộ (phần thứ hai)](https://www.youtube.com/watch?v=FILr_-RPXBs), trích 12:50–14:20 (90 giây), ghi nguồn theo kênh Đăng Hoành Loan.
+
+Các xác nhận trên là căn cứ quyền phát hành của dự án; việc ghi nguồn hoặc có quyền dùng không thay thế thẩm định nội dung của nghệ nhân/chuyên gia. Các tệp được chuẩn hóa Ogg/Opus, có fade đầu/cuối; thời lượng, kích thước và SHA-256 nằm trong manifest.
+
+Hai tệp bối cảnh thực được phục vụ với nhãn giới hạn rõ ràng:
 
 - `public/media/clay-sculpting.mp3`: [Spreading](https://freesound.org/people/manuelaurreaf/sounds/490100/) của manuelaurreaf, [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/). Đây là tiếng thao tác đất nói chung, không phải bản ghi nghệ nhân Chăm hay bằng chứng về kỹ thuật nghề.
 - `public/media/open-fire.mp3`: [Fire Crackling 01.wav](https://freesound.org/people/kingsrow/sounds/181563/) của kingsrow, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Đây là tiếng lửa thật tạo bối cảnh, không phải tư liệu một lần nung gốm Chăm cụ thể.
-- `public/media/dan-tranh-field.mp3`: [Hoi Ann tuning zither like Dan Tranh instrument](https://freesound.org/people/TRP/sounds/574668/) của TRP, [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/). Đây là bản ghi thực địa khi chỉnh dây nhạc cụ giống đàn tranh tại Hội An, không phải tiết mục Đờn ca tài tử mẫu.
+- `public/media/cham-workyard-unlock.ogg`: lớp âm thanh giáo dục phối từ hai nguồn trên. Đây không phải bản ghi tại xưởng Chăm, buổi thực hành, nghi lễ hay bài dạy kỹ thuật.
 
 Thông tin máy đọc được, thời lượng, kích thước và mã kiểm tra tệp nằm trong `public/media/audio-manifest.json`.
 
-## Bản ghi đang chờ quyền
+## Giới hạn âm thanh nhạc cụ
 
-Quan họ, Nhã nhạc, tiếng đàn kìm riêng và toàn bộ cuộc đàn Đờn ca tài tử hiện chỉ có liên kết tham chiếu đến hồ sơ UNESCO. Chưa xác nhận được giấy phép tái sử dụng cho bản ghi phù hợp, nên các mục này có `src: null`, trạng thái `pending-rights`, và **không tải xuống, trích xuất, phát thay hoặc lưu lại**.
-
-Không dùng một nhạc cụ gần giống để giả làm nhạc cụ được mô tả. Không trích âm thanh từ YouTube hoặc nền tảng khác nếu chủ thể quyền chưa cấp phép rõ ràng. Khi có bản ghi mới, cần lưu bằng chứng về người biểu diễn, người ghi/nhà sản xuất, chủ thể quyền, giấy phép, phạm vi lãnh thổ, thời hạn, quyền rút lại và yêu cầu ghi công.
+Game không phát một bản hòa tấu dưới nhãn “tiếng riêng” của đàn đáy, phách, trống chầu, đàn kìm hoặc đàn tranh. Bản đàn đáy tải về trước đó không được dùng vì trang nguồn cấm đăng lại. Khi bổ sung bản ghi mới, phải lưu bằng chứng về người biểu diễn, người ghi/nhà sản xuất, chủ thể quyền, giấy phép, phạm vi, thời hạn, quyền rút lại và yêu cầu ghi công.
 
 ## Nhạc nền mới do dự án tạo
 

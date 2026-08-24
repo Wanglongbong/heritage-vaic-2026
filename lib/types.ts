@@ -103,6 +103,7 @@ export type HeritageStop = {
   hotspots: Hotspot[];
   unlock?: {
     requiredHotspotIds: string[];
+    title: LocalizedText;
     audio: AudioAsset;
     message: LocalizedText;
   };

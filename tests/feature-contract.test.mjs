@@ -51,6 +51,9 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /typewriter-line/);
   assert.match(ui, /experienceStops\.map\(\(item, index\)/);
   assert.match(ui, /new Audio\(preview\.src\)/);
+  assert.match(ui, /new Audio\(track\.src\)/);
+  assert.match(ui, /station-audio-player/);
+  assert.match(ui, /scene-crane-watermark/);
   assert.doesNotMatch(ui, /dan-day-study|phach-study|open-fire-study|playFoley/);
   assert.match(heritage, /ca-tru-sound-futures/);
   assert.match(ui, /official-audio-link/);
@@ -101,6 +104,8 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(css, /\.tracked-object img/);
   assert.match(css, /\.scene\.nha-nhac-locked/);
   assert.match(css, /\.official-audio-link/);
+  assert.match(css, /\.station-audio-player/);
+  assert.match(css, /\.scene-crane-watermark/);
   assert.ok(cover.byteLength > 300_000);
   assert.equal(artifacts.filter((name) => name.endsWith(".webp")).length, 15);
   assert.equal(turnViews.filter((name) => name.endsWith(".webp")).length, 60);
@@ -130,8 +135,10 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(passportExport, /downloadPassportPdf/);
   assert.match(passportExport, /Usage rights/);
   assert.match(css, /\.hand-guide/);
-  assert.match(ui, /external-audio-player/);
-  assert.match(heritage, /youtube\.com\/embed\/wnFZ5QAWGUo/);
+  assert.doesNotMatch(heritage, /youtube\.com\/embed\//);
+  assert.match(heritage, /\/media\/quan-ho-unlock\.ogg/);
+  assert.match(heritage, /\/media\/nha-nhac-unlock\.ogg/);
+  assert.match(heritage, /\/media\/don-ca-tai-tu-unlock\.ogg/);
 
   const closeRecordFlow = ui.slice(ui.indexOf("function closeRecord"), ui.indexOf("function requestSeal"));
   const collectSealFlow = ui.slice(ui.indexOf("function collectSeal"), ui.indexOf("function beginTravel"));

@@ -7,11 +7,11 @@ Một trải nghiệm point-and-click góc nhìn thứ nhất đưa người ch�
 - Landing page hiện tại dẫn vào khoang tàu pixel chuyển động nhẹ.
 - Nhân viên soát vé xuất hiện trong khoang tàu toàn màn hình; lời thoại bật dần ở cửa sổ phía dưới và đưa ra năm tấm vé chọn ga.
 - Năm ga: Quan họ Kinh Bắc, Ca trù Hà Nội, Nhã nhạc Huế, gốm Chăm và Đờn ca tài tử Nam Bộ.
-- Hotspot phát sáng khi con trỏ đến gần; khi mở sẽ phát bản ghi được cấp phép nếu có, phát âm hiệu diễn giải được ghi nhãn rõ hoặc mở hồ sơ tư liệu chi tiết.
-- Ca trù mở khóa đoạn trình diễn Sound Futures 22 giây sau khi người chơi khảo sát đàn đáy, phách và trống chầu. Cảnh Nhã nhạc sáng dần sau khi mở đủ ba dấu mốc.
+- Hotspot phát sáng khi con trỏ đến gần; mỗi vật phẩm mở hồ sơ tư liệu chi tiết, còn bản trình diễn của ga chỉ phát sau khi khám phá đủ ba dấu vết.
+- Quan họ, Ca trù, Nhã nhạc và Đờn ca tài tử có trích đoạn mở khóa theo ga với nút phát/tạm dừng và thanh thời gian pixel. Ga gốm Chăm mở một lớp âm thanh giáo dục phối từ tiếng đất và lửa có giấy phép.
 - Mỗi hồ sơ có bàn quan sát hand tracking: camera chỉ bật khi người chơi cấp quyền, xử lý khung hình cục bộ và luôn có chế độ kéo chuột/chạm thay thế. Điểm tạo hình gốm hỗ trợ hai tay để thay đổi hình khối minh họa.
-- Nhạc nền là soundscape hiện đại, trung tính, được tạo riêng cho trải nghiệm; không được trình bày như âm nhạc di sản.
-- Sổ di sản lưu tiến độ trên thiết bị và có thể xuất metadata JSON.
+- Trước khi ga được mở khóa, nhạc nền là soundscape hiện đại, trung tính; khi bản ghi ga phát, nền tự hạ để không chồng âm.
+- Hộ chiếu di sản lưu tiến độ trên thiết bị và có thể xuất PDF/JSON kèm nguồn và quyền của âm thanh ga.
 
 ## Nguyên tắc văn hóa
 

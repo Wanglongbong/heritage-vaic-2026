@@ -6,7 +6,7 @@ import { buildPassportDocument } from "../lib/passport-export.ts";
 
 pdfMake.addVirtualFileSystem(vfs);
 
-const records = stops.flatMap((stop) => stop.hotspots.map((hotspot) => ({
+const records = stops.flatMap((stop) => stop.hotspots.map((hotspot, index) => ({
   stationNumber: stop.number,
   stationTitle: stop.title,
   location: stop.location,
@@ -15,6 +15,17 @@ const records = stops.flatMap((stop) => stop.hotspots.map((hotspot) => ({
   itemLabel: hotspot.label,
   story: hotspot.story,
   sources: hotspot.sourceIds.map(getSource).filter(Boolean),
+  ...(index === 0 && stop.unlock ? {
+    audioSource: {
+      id: stop.unlock.audio.id,
+      title: stop.unlock.title,
+      url: stop.unlock.audio.sourceUrl,
+      credit: stop.unlock.audio.credit,
+      rights: stop.unlock.audio.license,
+      note: stop.unlock.audio.note,
+      durationSeconds: stop.unlock.audio.durationSeconds,
+    },
+  } : {}),
 })));
 const seals = stops.map((stop) => ({
   id: stop.id,

@@ -28,7 +28,7 @@ test("all cultural records are sourced and offer three grounded prompts", async 
   }
 });
 
-test("every audio asset carries rights metadata and never extracts YouTube", () => {
+test("every audio asset carries rights metadata and local files are explicitly approved", async () => {
   const assets = stops.flatMap((stop) => [
     stop.soundscape,
     ...stop.hotspots.flatMap((hotspot) => hotspot.audioPreview ? [hotspot.audioPreview] : []),
@@ -43,7 +43,10 @@ test("every audio asset carries rights metadata and never extracts YouTube", () 
     assert.ok(asset.credit.vi && asset.credit.en);
     assert.ok(asset.role);
     assert.ok(asset.reviewStatus);
-    assert.ok(!/youtu(?:\.be|be\.com)/i.test(asset.sourceUrl), `${asset.id} must not use YouTube extraction`);
+    if (/youtu(?:\.be|be\.com)/i.test(asset.sourceUrl)) {
+      assert.match(asset.license, /User-confirmed permission/, `${asset.id} needs explicit public-use confirmation`);
+      assert.equal(asset.reviewStatus, "approved-local");
+    }
     if (asset.kind === "youtube-embed") {
       assert.match(asset.embedUrl || "", /^https:\/\/www\.youtube\.com\/embed\//, `${asset.id} must use an explicit embed URL`);
       assert.equal(asset.src, null, `${asset.id} must never ship a downloaded YouTube file`);
@@ -53,27 +56,36 @@ test("every audio asset carries rights metadata and never extracts YouTube", () 
       assert.equal(asset.src, null, `${asset.id} must not serve an unlicensed or synthesized recording`);
     }
     if (asset.kind === "synthesized") assert.ok(asset.generatorPreset, `${asset.id} needs a generator preset`);
+    if (asset.src) await access(new URL(`../public${asset.src}`, import.meta.url));
   }
 });
 
-test("Ca trù ensemble unlock and the five-station reveal contracts stay intact", () => {
+test("all five stations unlock the right station-level sound after three objects", () => {
+  const quanHo = stops.find((stop) => stop.id === "quan-ho");
+  assert.deepEqual(quanHo?.unlock?.requiredHotspotIds, ["round-hat", "paired-singing", "melody-book"]);
+  assert.equal(quanHo?.unlock?.audio.src, "/media/quan-ho-unlock.ogg");
+  assert.ok(quanHo?.hotspots.every((hotspot) => !hotspot.audioPreview));
+
   const caTru = stops.find((stop) => stop.id === "ca-tru");
   assert.deepEqual(caTru?.unlock?.requiredHotspotIds, ["dan-day", "phach", "praise-drum"]);
   assert.equal(caTru?.unlock?.audio.durationSeconds, 22);
   assert.equal(caTru?.unlock?.audio.reviewStatus, "approved-local");
+  assert.ok(caTru?.hotspots.every((hotspot) => !hotspot.audioPreview));
 
   const nhaNhac = stops.find((stop) => stop.id === "nha-nhac");
   assert.equal(nhaNhac?.hotspots.length, 3);
-  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.reviewStatus === "pending-rights"));
-  assert.ok(nhaNhac?.hotspots.every((hotspot) => hotspot.audioPreview?.src === null));
-  assert.equal(nhaNhac?.hotspots[0]?.audioPreview?.kind, "youtube-embed");
+  assert.ok(nhaNhac?.hotspots.every((hotspot) => !hotspot.audioPreview));
+  assert.equal(nhaNhac?.unlock?.audio.src, "/media/nha-nhac-unlock.ogg");
 
   const pottery = stops.find((stop) => stop.id === "cham-pottery");
   assert.ok(pottery?.hotspots.some((hotspot) => hotspot.id === "hand-shaping"));
   assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "open-firing")?.audioPreview?.src, "/media/open-fire.mp3");
+  assert.equal(pottery?.unlock?.audio.role, "interpretive-foley");
+  assert.equal(pottery?.unlock?.audio.src, "/media/cham-workyard-unlock.ogg");
 
   const taiTu = stops.find((stop) => stop.id === "don-ca-tai-tu");
-  assert.equal(taiTu?.hotspots.find((hotspot) => hotspot.id === "sixteen-string-zither")?.audioPreview?.src, "/media/dan-tranh-field.mp3");
+  assert.ok(taiTu?.hotspots.every((hotspot) => !hotspot.audioPreview));
+  assert.equal(taiTu?.unlock?.audio.src, "/media/don-ca-tai-tu-unlock.ogg");
 });
 
 test("source records distinguish facts from media reuse rights", () => {

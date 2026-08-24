@@ -11,9 +11,13 @@ export type PassportRecord = {
   story: LocalizedText;
   sources: SourceRecord[];
   audioSource?: {
+    id: string;
     title: LocalizedText;
     url: string;
+    credit: LocalizedText;
+    rights: string;
     note: LocalizedText;
+    durationSeconds?: number;
   };
 };
 
@@ -118,8 +122,10 @@ export function buildPassportDocument(records: PassportRecord[], seals: Passport
       if (record.audioSource) {
         recordStack.push({
           stack: [
-            { text: pdfText(vi ? "Nguồn âm thanh tham khảo" : "Reference audio source"), style: "sourceTitle" },
-            { text: pdfText(record.audioSource.title[language]), style: "sourceMeta" },
+            { text: pdfText(vi ? "Âm thanh của ga đã mở khóa" : "Unlocked station audio"), style: "sourceTitle" },
+            { text: pdfText(`${record.audioSource.title[language]}${record.audioSource.durationSeconds ? ` · ${Math.round(record.audioSource.durationSeconds)}s` : ""}`), style: "sourceMeta" },
+            { text: pdfText(record.audioSource.credit[language]), style: "sourceMeta" },
+            { text: pdfText(`${vi ? "Quyền sử dụng" : "Usage rights"}: ${record.audioSource.rights}`), style: "sourceMeta" },
             { text: pdfText(record.audioSource.note[language]), style: "sourceMeta" },
             { text: record.audioSource.url, link: record.audioSource.url, style: "sourceUrl" },
           ],
