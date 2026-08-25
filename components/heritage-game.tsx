@@ -800,7 +800,6 @@ export function HeritageGame() {
     stopStationTrack();
     setVisited(new Set());
     setSealed(new Set());
-    setPotteryShaped(false);
     setSealStopId(null);
     setMuseumRecord(null);
     setOpenHotspot(null);

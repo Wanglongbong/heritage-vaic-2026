@@ -41,7 +41,7 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /openMuseumRecord/);
   assert.match(ui, /startNewJourney/);
   assert.doesNotMatch(ui, /ending-seals/);
-  assert.doesNotMatch(ui, /potteryShaped|onInteractionComplete|heritage-pottery-shaped/);
+  assert.doesNotMatch(ui, /potteryShaped|setPotteryShaped|onInteractionComplete|heritage-pottery-shaped/);
   assert.match(ui, /localStorage\.removeItem\("heritage-visited-v2"\)/);
   assert.match(ui, /passport-station-gallery/);
   assert.match(ui, /passport-entry-visual/);
