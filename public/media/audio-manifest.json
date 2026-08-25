@@ -67,10 +67,10 @@
       "reviewStatus": "approved-local",
       "note": "Ensemble excerpt with female voice and accompaniment; not an isolated instrument recording.",
       "durationSeconds": 90.0065,
-      "bytes": 1145720,
-      "sha256": "ddc411e8f9dc81e513e975c43295fd5d38697fed409aacf6ff296f433731018c",
+      "bytes": 1128033,
+      "sha256": "0b59be2da17547f862cbc36c9ea7039642b18d6cbcc9de6933d42867fce2a9a6",
       "technical": "Ogg/Opus 96 kbps; -16 LUFS target; -1.5 dBTP; 300 ms/800 ms fades",
-      "transformation": "Excerpt 12:50–14:20 from user-supplied source file; normalized, faded and transcoded."
+      "transformation": "Excerpt 14:31–16:01 from the second half of the user-supplied source file; selected for female singing, normalized, faded and transcoded."
     },
     {
       "id": "clay-sculpting-field-recording",

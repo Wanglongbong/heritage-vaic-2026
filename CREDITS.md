@@ -27,7 +27,7 @@ Ba trích đoạn do chủ dự án cung cấp và xác nhận quyền dùng cô
 
 - `public/media/quan-ho-unlock.ogg`: [Quan họ Bắc Ninh folk songs](https://www.youtube.com/watch?v=MlKtqU5685w), trích 03:18–04:48 (90 giây), nguồn công bố UNESCO / Vietnam Institute of Culture and Arts Studies.
 - `public/media/nha-nhac-unlock.ogg`: [Nhã nhạc cung đình Huế](https://www.youtube.com/watch?v=wnFZ5QAWGUo), trích 38:00–39:40 (100 giây), ghi nguồn theo kênh Sở Văn hóa và Thể thao Ninh Bình; game không gọi đây là bản master do Huế cung cấp.
-- `public/media/don-ca-tai-tu-unlock.ogg`: [Đờn ca tài tử Nam Bộ (phần thứ hai)](https://www.youtube.com/watch?v=FILr_-RPXBs), trích 12:50–14:20 (90 giây), ghi nguồn theo kênh Đăng Hoành Loan.
+- `public/media/don-ca-tai-tu-unlock.ogg`: [Đờn ca tài tử Nam Bộ (phần thứ hai)](https://www.youtube.com/watch?v=FILr_-RPXBs), trích 14:31–16:01 (90 giây) ở nửa sau bản ghi, chọn phần nữ hát cùng hòa đàn; ghi nguồn theo kênh Đăng Hoành Loan.
 
 Các xác nhận trên là căn cứ quyền phát hành của dự án; việc ghi nguồn hoặc có quyền dùng không thay thế thẩm định nội dung của nghệ nhân/chuyên gia. Các tệp được chuẩn hóa Ogg/Opus, có fade đầu/cuối; thời lượng, kích thước và SHA-256 nằm trong manifest.
 

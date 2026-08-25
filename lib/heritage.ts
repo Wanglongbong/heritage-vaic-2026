@@ -198,8 +198,8 @@ const donCaUnlockRecording: AudioAsset = {
   creator: "Đăng Hoành Loan (source channel)",
   license: userConfirmedPublicUse,
   credit: {
-    vi: "Trích 90 giây (12:50–14:20), chọn đoạn có giọng nữ và phần hòa đàn; quyền dùng công khai cho dự án được chủ dự án xác nhận ngày 25/08/2026.",
-    en: "90-second excerpt (12:50–14:20), selected for female voice and instrumental accompaniment; public project use confirmed by the project owner on 25 Aug 2026.",
+    vi: "Trích 90 giây (14:31–16:01) ở nửa sau bản ghi, chọn phần nữ hát cùng hòa đàn; quyền dùng công khai cho dự án được chủ dự án xác nhận ngày 25/08/2026.",
+    en: "90-second excerpt (14:31–16:01) from the recording's second half, selected for female singing with instrumental accompaniment; public project use confirmed by the project owner on 25 Aug 2026.",
   },
   role: "heritage-ensemble-excerpt",
   reviewStatus: "approved-local",
@@ -208,8 +208,8 @@ const donCaUnlockRecording: AudioAsset = {
     en: "This is an ensemble excerpt and is not labelled as an isolated đàn kìm or đàn tranh recording.",
   },
   durationSeconds: 90.0065,
-  bytes: 1145720,
-  sha256: "ddc411e8f9dc81e513e975c43295fd5d38697fed409aacf6ff296f433731018c",
+  bytes: 1128033,
+  sha256: "0b59be2da17547f862cbc36c9ea7039642b18d6cbcc9de6933d42867fce2a9a6",
   technical: "Ogg/Opus 96 kbps; -16 LUFS target; -1.5 dBTP; 300 ms/800 ms fades",
 };
 

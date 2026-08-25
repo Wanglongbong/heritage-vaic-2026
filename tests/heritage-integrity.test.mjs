@@ -90,6 +90,8 @@ test("all five stations unlock the right station-level sound after three objects
   const taiTu = stops.find((stop) => stop.id === "don-ca-tai-tu");
   assert.ok(taiTu?.hotspots.every((hotspot) => !hotspot.audioPreview));
   assert.equal(taiTu?.unlock?.audio.src, "/media/don-ca-tai-tu-unlock.ogg");
+  assert.match(taiTu?.unlock?.audio.credit.vi || "", /14:31–16:01/);
+  assert.equal(taiTu?.unlock?.audio.sha256, "0b59be2da17547f862cbc36c9ea7039642b18d6cbcc9de6933d42867fce2a9a6");
 });
 
 test("source records distinguish facts from media reuse rights", () => {
