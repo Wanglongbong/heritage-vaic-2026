@@ -40,6 +40,8 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(ui, /museumTurnViews/);
   assert.match(ui, /openMuseumRecord/);
   assert.match(ui, /startNewJourney/);
+  assert.doesNotMatch(ui, /ending-seals/);
+  assert.doesNotMatch(ui, /potteryShaped|onInteractionComplete|heritage-pottery-shaped/);
   assert.match(ui, /localStorage\.removeItem\("heritage-visited-v2"\)/);
   assert.match(ui, /passport-station-gallery/);
   assert.match(ui, /passport-entry-visual/);
@@ -129,8 +131,10 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(handTracking, /Xòe để phóng to · nắm để thu nhỏ/);
   assert.match(handTracking, /createPortal/);
   assert.match(handTracking, /Cửa sổ nhận diện bàn tay/);
-  assert.match(handTracking, /mô phỏng giáo dục/);
-  assert.match(handTracking, /shapingProgress/);
+  assert.doesNotMatch(handTracking, /shapingProgress|shapeWithSlider|malleable|pottery-shaping-panel/);
+  assert.match(handTracking, /Kéo ngang để xem đủ bốn mặt/);
+  assert.match(css, /--pixel: "Pixelify Sans Variable"/);
+  assert.match(css, /\.ending-cta/);
   assert.match(passportExport, /pdfmake\/build\/pdfmake/);
   assert.match(passportExport, /downloadPassportPdf/);
   assert.match(passportExport, /Usage rights/);

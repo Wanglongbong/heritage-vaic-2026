@@ -141,7 +141,7 @@ const copy = {
     returnSummary: "Về trang tổng kết",
     newJourney: "Chơi mới toàn bộ",
     resetTitle: "Bắt đầu một hành trình mới?",
-    resetBody: "Vật phẩm, con dấu và tiến trình tạo hình gốm trên thiết bị này sẽ được xóa. Ngôn ngữ và lựa chọn âm thanh vẫn được giữ lại.",
+    resetBody: "Vật phẩm và con dấu trên thiết bị này sẽ được xóa. Ngôn ngữ và lựa chọn âm thanh vẫn được giữ lại.",
     resetCancel: "Tiếp tục giữ hành trình",
     resetConfirm: "Xóa tiến trình · Chơi mới",
   },
@@ -220,7 +220,7 @@ const copy = {
     returnSummary: "Return to journey summary",
     newJourney: "Start a completely new game",
     resetTitle: "Begin a new journey?",
-    resetBody: "Objects, seals and pottery progress on this device will be removed. Language and sound preferences will be preserved.",
+    resetBody: "Objects and seals on this device will be removed. Language and sound preferences will be preserved.",
     resetCancel: "Keep this journey",
     resetConfirm: "Clear progress · Start new",
   },
@@ -502,7 +502,6 @@ export function HeritageGame() {
   const [visited, setVisited] = useState<Set<string>>(new Set());
   const [sealed, setSealed] = useState<Set<string>>(new Set());
   const [sealStopId, setSealStopId] = useState<string | null>(null);
-  const [potteryShaped, setPotteryShaped] = useState(false);
   const [museumRecord, setMuseumRecord] = useState<MuseumRecord | null>(null);
   const [muted, setMuted] = useState(false);
   const [previewPlaying, setPreviewPlaying] = useState<string | null>(null);
@@ -551,7 +550,6 @@ export function HeritageGame() {
     const savedLanguage = window.localStorage.getItem("heritage-language");
     const savedVisited = window.localStorage.getItem("heritage-visited-v2");
     const savedSeals = window.localStorage.getItem("heritage-seals-v1");
-    const savedPotteryShaped = window.localStorage.getItem("heritage-pottery-shaped");
     const savedMuted = window.localStorage.getItem("heritage-muted");
     const restore = window.setTimeout(() => {
       if (savedLanguage === "vi" || savedLanguage === "en") setLanguage(savedLanguage);
@@ -561,7 +559,6 @@ export function HeritageGame() {
       if (savedSeals) {
         try { setSealed(new Set(JSON.parse(savedSeals) as string[])); } catch { /* ignore invalid local state */ }
       }
-      if (savedPotteryShaped === "true") setPotteryShaped(true);
       if (savedMuted === "true") setMuted(true);
     }, 0);
     return () => window.clearTimeout(restore);
@@ -578,10 +575,6 @@ export function HeritageGame() {
   useEffect(() => {
     window.localStorage.setItem("heritage-seals-v1", JSON.stringify([...sealed]));
   }, [sealed]);
-
-  useEffect(() => {
-    window.localStorage.setItem("heritage-pottery-shaped", String(potteryShaped));
-  }, [potteryShaped]);
 
   useEffect(() => {
     window.localStorage.setItem("heritage-muted", String(muted));
@@ -817,7 +810,6 @@ export function HeritageGame() {
     setPendingStopIndex(0);
     window.localStorage.removeItem("heritage-visited-v2");
     window.localStorage.removeItem("heritage-seals-v1");
-    window.localStorage.removeItem("heritage-pottery-shaped");
     setPhase("landing");
   }
 
@@ -888,7 +880,7 @@ export function HeritageGame() {
         <div
           ref={sceneRef}
           data-stop-id={stop.id}
-          className={`scene memory-scene ${stationComplete ? "memory-complete" : ""} ${stop.id === "cham-pottery" && potteryShaped ? "pottery-shaped" : ""}`}
+          className={`scene memory-scene ${stationComplete ? "memory-complete" : ""}`}
           onPointerMove={handlePointerMove}
           onPointerLeave={() => { setActiveHotspotId(null); if (sceneRef.current) sceneRef.current.dataset.lamp = "idle"; }}
           style={{ backgroundImage: `linear-gradient(180deg, transparent 68%, rgba(8, 8, 7, .2)), url(${stop.scene})` }}
@@ -972,7 +964,6 @@ export function HeritageGame() {
         language={language}
         previewPlaying={previewPlaying === `${stop.id}:${openHotspot.id}`}
         onTogglePreview={() => playPreview(openHotspot)}
-        onInteractionComplete={() => setPotteryShaped(true)}
         onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeRecord}
       />}
@@ -983,7 +974,6 @@ export function HeritageGame() {
         language={language}
         previewPlaying={previewPlaying === `${museumRecord.stop.id}:${museumRecord.hotspot.id}`}
         onTogglePreview={() => playPreview(museumRecord.hotspot, `${museumRecord.stop.id}:${museumRecord.hotspot.id}`)}
-        onInteractionComplete={() => setPotteryShaped(true)}
         onExternalReference={(open) => { stopPreview(); setExternalReferenceOpen(open); }}
         onClose={closeMuseumRecord}
       />}
@@ -1099,14 +1089,11 @@ function Ending({
         <h1 id="ending-title" className="sr-only">{ui.endingTitle}</h1>
         <p className="ending-tagline">{ui.endingTagline}</p>
         <p className="ending-body">{ui.endingBody}</p>
-        <div className="ending-seals" aria-label={ui.passport}>
-          {experienceStops.map((stop) => <span key={stop.id} className={sealed.has(stop.id) ? "earned" : ""} style={{ "--seal-accent": stop.palette } as CSSProperties}><b>{stop.number}</b><small>{stop.location[language].split("·")[0]}</small></span>)}
-        </div>
         <div className="ending-actions">
-          <button className="ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
-          <button className="ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} ↻</button>
+          <button className="ending-cta ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
+          <button className="ending-cta ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} <b>↻</b></button>
         </div>
-        <a className="ending-gallery-cta" href="#memory-map"><span>{language === "vi" ? "MỞ PHÒNG TRƯNG BÀY" : "OPEN THE GALLERY"}</span><i>↓</i></a>
+        <a className="ending-cta ending-gallery-cta" href="#memory-map"><span>{language === "vi" ? "MỞ PHÒNG TRƯNG BÀY" : "OPEN THE GALLERY"}</span><i>↓</i></a>
       </div>
     </div>
 
@@ -1274,7 +1261,6 @@ function RecordDrawer({
   language,
   previewPlaying,
   onTogglePreview,
-  onInteractionComplete,
   onExternalReference,
   onClose,
 }: {
@@ -1283,7 +1269,6 @@ function RecordDrawer({
   language: Language;
   previewPlaying: boolean;
   onTogglePreview: () => void;
-  onInteractionComplete: () => void;
   onExternalReference: (open: boolean) => void;
   onClose: () => void;
 }) {
@@ -1349,7 +1334,7 @@ function RecordDrawer({
         </dl>
       </section>
 
-      <HandTrackingViewer language={language} spriteSrc={hotspot.artifactSprite} malleable={stop.id === "cham-pottery" && hotspot.id === "hand-shaping"} label={hotspot.label[language]} onComplete={onInteractionComplete} />
+      <HandTrackingViewer language={language} spriteSrc={hotspot.artifactSprite} label={hotspot.label[language]} />
 
       <section className="source-stack">
         {sourceRecords.map((source) => source && <article key={source.id}>

@@ -79,6 +79,10 @@ test("all five stations unlock the right station-level sound after three objects
 
   const pottery = stops.find((stop) => stop.id === "cham-pottery");
   assert.ok(pottery?.hotspots.some((hotspot) => hotspot.id === "hand-shaping"));
+  assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "hand-shaping")?.interaction, "story");
+  assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "hand-shaping")?.media, undefined);
+  assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "open-firing")?.interaction, "story");
+  assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "open-firing")?.media, undefined);
   assert.equal(pottery?.hotspots.find((hotspot) => hotspot.id === "open-firing")?.audioPreview?.src, "/media/open-fire.mp3");
   assert.equal(pottery?.unlock?.audio.role, "interpretive-foley");
   assert.equal(pottery?.unlock?.audio.src, "/media/cham-workyard-unlock.ogg");

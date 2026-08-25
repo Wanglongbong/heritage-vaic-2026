@@ -2,6 +2,8 @@
 
 Tàu Di Sản Việt Nam là prototype diễn giải. Nội dung văn hóa chỉ được rút gọn từ các hồ sơ kiểm chứng nêu dưới đây. Việc dẫn nguồn không đồng nghĩa UNESCO, nghệ nhân hoặc cộng đồng liên quan bảo trợ cho prototype. Bản phát hành tại điểm di sản vẫn phải được nghệ nhân/chuyên gia và đại diện cộng đồng rà soát, đồng thuận.
 
+Giao diện nút ở trang tổng kết dùng [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans), bản quyền Pixelify Sans Project Authors, phát hành theo SIL Open Font License 1.1. Font được đóng gói cục bộ qua `@fontsource-variable/pixelify-sans` và hỗ trợ bộ ký tự Latin mở rộng dùng cho tiếng Việt.
+
 ## Hồ sơ di sản
 
 Các trang được truy cập ngày 2026-07-17:

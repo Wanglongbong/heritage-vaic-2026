@@ -19,7 +19,7 @@ type TrackingState = "idle" | "loading" | "running" | "denied" | "unsupported" |
 const text = {
   vi: {
     title: "Bàn quan sát hiện vật",
-    intro: "Tay phải xoay qua bốn mặt; tay trái mở hoặc nắm để phóng to, thu nhỏ. Với gốm, khoảng cách hai tay còn thay đổi hình khối minh họa.",
+    intro: "Tay phải xoay qua bốn mặt; tay trái mở hoặc nắm để phóng to, thu nhỏ.",
     start: "Bật hand tracking",
     stop: "Tắt camera",
     loading: "Đang chuẩn bị nhận diện bàn tay…",
@@ -38,17 +38,11 @@ const text = {
       { icon: "⇄", label: "Nhận sai tay?", action: "Bấm nút đổi vai tay bên dưới" },
       { icon: "☝", label: "Không dùng camera", action: "Kéo hiện vật hoặc chọn từng mặt" },
     ],
-    potteryGuide: "Riêng gốm: đưa hai tay gần hoặc xa nhau để thay đổi hình khối minh họa.",
     cameraTitle: "Cửa sổ nhận diện bàn tay",
-    shapingTitle: "Tạo hình bằng hai tay",
-    shapingProgress: "Tiến độ mô phỏng",
-    shapingDone: "Đã hoàn tất mô phỏng tạo hình",
-    shapingBoundary: "Đây là mô phỏng giáo dục, không tái tạo đầy đủ tay nghề hoặc bí quyết của nghệ nhân Chăm.",
-    shapingFallback: "Không dùng camera? Kéo thanh này để thử thay đổi hình khối.",
   },
   en: {
     title: "Object observation table",
-    intro: "Use your right hand to turn through four views; open or close your left hand to zoom. For pottery, two-hand distance also changes the illustrative form.",
+    intro: "Use your right hand to turn through four views; open or close your left hand to zoom.",
     start: "Enable hand tracking",
     stop: "Turn camera off",
     loading: "Preparing hand recognition…",
@@ -67,23 +61,16 @@ const text = {
       { icon: "⇄", label: "Hands reversed?", action: "Use the role-swap button below" },
       { icon: "☝", label: "Without camera", action: "Drag the object or choose a view" },
     ],
-    potteryGuide: "Pottery only: move both hands closer or farther apart to reshape the illustration.",
     cameraTitle: "Hand recognition window",
-    shapingTitle: "Two-hand shaping",
-    shapingProgress: "Simulation progress",
-    shapingDone: "Shaping simulation completed",
-    shapingBoundary: "This educational simulation does not reproduce the full skill or protected knowledge of Chăm practitioners.",
-    shapingFallback: "No camera? Use this slider to explore the illustrative form.",
   },
 } as const;
 
-export function HandTrackingViewer({ language, spriteSrc, malleable = false, label, onComplete }: { language: Language; spriteSrc: string; malleable?: boolean; label: string; onComplete?: () => void }) {
+export function HandTrackingViewer({ language, spriteSrc, label }: { language: Language; spriteSrc: string; label: string }) {
   const ui = text[language];
   const [trackingState, setTrackingState] = useState<TrackingState>("idle");
   const [handCount, setHandCount] = useState(0);
   const [activeView, setActiveView] = useState(0);
   const [swapHands, setSwapHands] = useState(false);
-  const [shapingProgress, setShapingProgress] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const objectRef = useRef<HTMLDivElement>(null);
@@ -94,26 +81,10 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
   const swapHandsRef = useRef(false);
   const pointerStartRef = useRef({ x: 0, yaw: 0 });
   const previousHandsRef = useRef(0);
-  const lastHandDistanceRef = useRef<number | null>(null);
-  const shapingProgressRef = useRef(0);
-  const completedRef = useRef(false);
-  const onCompleteRef = useRef(onComplete);
-  const poseRef = useRef({ yaw: 0, rotateX: -8, rotateY: 0, width: 1, height: 1, zoom: 1 });
+  const poseRef = useRef({ yaw: 0, rotateX: -8, rotateY: 0, zoom: 1 });
   const stableFaceRef = useRef({ candidate: 0, frames: 0, committed: 0 });
   const spriteBase = spriteSrc.split("/").pop()?.replace(/\.webp$/i, "") ?? "artifact";
   const viewSources = useMemo(() => FOUR_VIEWS.map((view) => `/artifacts/turn/${spriteBase}-${view}.webp`), [spriteBase]);
-
-  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
-
-  function completeShaping(progress: number) {
-    const next = Math.min(100, Math.max(shapingProgressRef.current, progress));
-    shapingProgressRef.current = next;
-    setShapingProgress((current) => Math.abs(current - next) >= 1 ? Math.round(next) : current);
-    if (next >= 100 && !completedRef.current) {
-      completedRef.current = true;
-      onCompleteRef.current?.();
-    }
-  }
 
   function applyPose(next: Partial<typeof poseRef.current>, smoothing = 0.22, stabilizeFace = true) {
     const pose = poseRef.current;
@@ -133,8 +104,6 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
     pose.rotateY = Math.max(-18, Math.min(18, (pose.yaw - snappedYaw) * 0.32));
     objectRef.current?.style.setProperty("--object-rx", `${pose.rotateX.toFixed(2)}deg`);
     objectRef.current?.style.setProperty("--object-ry", `${pose.rotateY.toFixed(2)}deg`);
-    objectRef.current?.style.setProperty("--pot-width", pose.width.toFixed(3));
-    objectRef.current?.style.setProperty("--pot-height", pose.height.toFixed(3));
     objectRef.current?.style.setProperty("--object-zoom", pose.zoom.toFixed(3));
   }
 
@@ -156,7 +125,6 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
     streamRef.current = null;
     if (videoRef.current) videoRef.current.srcObject = null;
     previousHandsRef.current = 0;
-    lastHandDistanceRef.current = null;
     setHandCount(0);
     setTrackingState("idle");
   }
@@ -245,17 +213,6 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
             rotateX: (palm.y - 0.5) * 34,
             zoom: leftGesture === "open" ? 1.16 : leftGesture === "fist" ? 0.86 : 1,
           };
-          if (malleable && roles.left) {
-            const otherPalm = roles.left[9];
-            const distance = Math.hypot(palm.x - otherPalm.x, palm.y - otherPalm.y);
-            Object.assign(next, { width: Math.min(1.3, Math.max(.76, .58 + distance * 1.45)), height: Math.min(1.18, Math.max(.82, 1.22 - distance * .42)) });
-            const previousDistance = lastHandDistanceRef.current;
-            if (previousDistance !== null) {
-              const movement = Math.abs(distance - previousDistance);
-              if (movement > .004 && movement < .12) completeShaping(shapingProgressRef.current + movement * 185);
-            }
-            lastHandDistanceRef.current = distance;
-          }
           applyPose(next, 0.2, true);
         } else if (roles.left) {
           const leftGesture = handOpenness(roles.left);
@@ -289,12 +246,6 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
     applyPose({ yaw: index * 90 }, 1, false);
   }
 
-  function shapeWithSlider(value: number) {
-    const width = value / 100;
-    applyPose({ width, height: Math.min(1.18, Math.max(.82, 1.18 - Math.abs(width - 1) * .8)) }, .8, false);
-    completeShaping(Math.abs(value - 100) * 4.2);
-  }
-
   const status = trackingState === "loading" ? ui.loading
     : trackingState === "running" ? `${ui.running} · ${handCount} ${ui.hands}`
       : trackingState === "denied" ? ui.denied
@@ -310,11 +261,9 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
       <div>
         {ui.guide.map((item) => <p key={item.label}><i aria-hidden="true">{item.icon}</i><span><strong>{item.label}</strong>{item.action}</span></p>)}
       </div>
-      {malleable && <small>◎ {ui.potteryGuide}</small>}
     </aside>
     <div className="hand-viewer-stage" onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={() => { draggingRef.current = false; }} onPointerCancel={() => { draggingRef.current = false; }}>
-      {malleable && <div className={`pottery-hand-overlay ${shapingProgress >= 100 ? "completed" : ""}`} aria-hidden="true"><span>✋</span><i>↔</i><span>🤚</span></div>}
-      <div ref={objectRef} className={`tracked-object ${malleable ? "is-malleable" : ""}`} style={{ "--object-rx": "-8deg", "--object-ry": "0deg", "--object-zoom": 1, "--pot-width": 1, "--pot-height": 1 } as CSSProperties}>
+      <div ref={objectRef} className="tracked-object" style={{ "--object-rx": "-8deg", "--object-ry": "0deg", "--object-zoom": 1 } as CSSProperties}>
         {viewSources.map((source, index) => <Image key={source} className={`tracked-object-face ${activeView === index ? "is-active" : ""}`} src={source} alt={activeView === index ? `${label} · ${ui.views[index]}` : ""} aria-hidden={activeView !== index} fill unoptimized sizes="(max-width: 640px) 72vw, 340px" draggable={false} />)}
         <b>{label}</b>
         <span>{ui.views[activeView]} · {activeView + 1}/4</span>
@@ -324,12 +273,6 @@ export function HandTrackingViewer({ language, spriteSrc, malleable = false, lab
       </nav>
       <small>{status}</small>
     </div>
-    {malleable && <section className="pottery-shaping-panel" aria-label={ui.shapingTitle}>
-      <div><b>{shapingProgress >= 100 ? `✓ ${ui.shapingDone}` : ui.shapingTitle}</b><span>{ui.shapingProgress} · {shapingProgress}%</span></div>
-      <div className="shaping-meter"><i style={{ width: `${shapingProgress}%` }} /></div>
-      <label><span>{ui.shapingFallback}</span><input type="range" min="76" max="130" defaultValue="100" onChange={(event) => shapeWithSlider(Number(event.target.value))} /></label>
-      <p>{ui.shapingBoundary}</p>
-    </section>}
     <div className="tracking-actions">
       <button type="button" className="tracking-toggle" onClick={trackingState === "running" ? stopTracking : startTracking} disabled={trackingState === "loading"}>{trackingState === "running" ? ui.stop : ui.start}</button>
       <button type="button" className="tracking-swap" onClick={() => setSwapHands((value) => { const next = !value; swapHandsRef.current = next; return next; })} aria-pressed={swapHands}>{ui.swap}</button>
