@@ -2,11 +2,12 @@
 
 import Image from "next/image";
 import { PointerEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { CSSProperties } from "react";
 import type { Language } from "@/lib/types";
 
-const TURN_FRAMES = Array.from(
+const SUBJECT_FRAMES = Array.from(
   { length: 12 },
-  (_, index) => `/thanks-diorama/turn-${String(index).padStart(2, "0")}.webp`,
+  (_, index) => `/thanks-diorama/subject-${String(index).padStart(2, "0")}.webp`,
 );
 
 const text = {
@@ -57,12 +58,27 @@ export function ThankYouDiorama({ language }: { language: Language }) {
   const [pose, setPose] = useState<Pose>({ yaw: 0, pitch: 0 });
   const [qrOpen, setQrOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const dragRef = useRef({ active: false, x: 0, y: 0, yaw: 0, pitch: 0 });
+  const dragRef = useRef({ active: false, moved: false, x: 0, y: 0, yaw: 0, pitch: 0 });
   const resumeAtRef = useRef(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
-  const frameIndex = Math.round(normalizeDegrees(pose.yaw) / 30) % TURN_FRAMES.length;
+  const frameIndex = Math.round(normalizeDegrees(pose.yaw) / 30) % SUBJECT_FRAMES.length;
   const mode = pose.pitch >= 55 ? "top" : pose.pitch <= -55 ? "bottom" : "diorama";
+  const topProgress = Math.max(0, Math.min(1, pose.pitch / 64));
+  const bottomProgress = Math.max(0, Math.min(1, -pose.pitch / 64));
+  const sceneStyle = {
+    "--floor-tilt": `${60 * (1 - topProgress)}deg`,
+    "--floor-y": `${18 * (1 - topProgress)}%`,
+    "--floor-scale": String(0.75 + topProgress * 0.12),
+    "--floor-yaw": `${frameIndex * 30}deg`,
+    "--scene-opacity": String(1 - bottomProgress),
+    "--subject-opacity": String(Math.max(0, 1 - topProgress * 1.08 - bottomProgress)),
+    "--subject-scale": String(0.96 - topProgress * 0.62),
+    "--subject-y": `${3 - topProgress * 10}%`,
+    "--gold-bloom-opacity": String(topProgress * 0.34),
+    "--gold-bloom-scale": String(0.3 + topProgress * 0.9),
+    "--shadow-opacity": String((1 - bottomProgress) * (1 - topProgress)),
+  } as CSSProperties;
 
   const reducedMotion = useMemo(() => {
     if (typeof window === "undefined") return false;
@@ -102,7 +118,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,a")) return;
-    dragRef.current = { active: true, x: event.clientX, y: event.clientY, yaw: pose.yaw, pitch: pose.pitch };
+    dragRef.current = { active: true, moved: false, x: event.clientX, y: event.clientY, yaw: pose.yaw, pitch: pose.pitch };
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -111,6 +127,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
     if (!dragRef.current.active) return;
     const dx = event.clientX - dragRef.current.x;
     const dy = event.clientY - dragRef.current.y;
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.moved = true;
     updatePose({
       yaw: dragRef.current.yaw + dx * 0.48,
       pitch: dragRef.current.pitch - dy * 0.34,
@@ -119,6 +136,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
 
   function finishPointer(event: PointerEvent<HTMLDivElement>) {
     if (!dragRef.current.active) return;
+    const wasTap = !dragRef.current.moved;
     dragRef.current.active = false;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -127,15 +145,14 @@ export function ThankYouDiorama({ language }: { language: Language }) {
       pitch: current.pitch > 44 ? 64 : current.pitch < -44 ? -64 : 0,
     }));
     resumeAtRef.current = performance.now() + 2600;
+    if (wasTap && mode === "top") {
+      returnFocusRef.current = event.currentTarget;
+      setQrOpen(true);
+    }
   }
 
   function setFace(pitch: number) {
     updatePose({ yaw: pose.yaw, pitch });
-  }
-
-  function openQr(event: React.MouseEvent<HTMLButtonElement>) {
-    returnFocusRef.current = event.currentTarget;
-    setQrOpen(true);
   }
 
   function onKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
@@ -162,6 +179,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
         <div
           className={`diorama-stage ${dragging ? "is-dragging" : ""}`}
           data-mode={mode}
+          style={sceneStyle}
           role="application"
           tabIndex={0}
           aria-label={ui.rotate}
@@ -173,8 +191,12 @@ export function ThankYouDiorama({ language }: { language: Language }) {
         >
           <span className="diorama-orbit diorama-orbit-a" aria-hidden="true" />
           <span className="diorama-orbit diorama-orbit-b" aria-hidden="true" />
-          <div className="diorama-images" aria-hidden={mode !== "diorama"}>
-            {TURN_FRAMES.map((source, index) => <Image
+          <div className="diorama-qr-floor" aria-hidden="true">
+            <Image src="/thanks-diorama/bank-qr-gold.png" alt="" fill unoptimized sizes="(max-width: 720px) 78vw, 520px" draggable={false} />
+            <span>{ui.qrHint}</span>
+          </div>
+          <div className="diorama-subject" aria-hidden={mode === "bottom"}>
+            {SUBJECT_FRAMES.map((source, index) => <Image
               key={source}
               className={index === frameIndex ? "is-active" : ""}
               src={source}
@@ -186,10 +208,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
               aria-hidden="true"
             />)}
           </div>
-          <button type="button" className="diorama-qr-card" onClick={openQr} aria-label={ui.qrDialog} tabIndex={mode === "top" ? 0 : -1}>
-            <span><Image src="/thanks-diorama/bank-qr.png" alt={ui.qrDialog} fill unoptimized sizes="(max-width: 720px) 72vw, 430px" /></span>
-            <b>{ui.qrHint}</b>
-          </button>
+          <span className="diorama-gold-bloom" aria-hidden="true" />
           <div className="diorama-thanks-card" aria-hidden={mode !== "bottom"}>
             <span>THANKS</span><strong>FOR PLAYING</strong><small>{language === "vi" ? "CẢM ƠN BẠN ĐÃ LÊN TÀU" : "THANK YOU FOR BOARDING"}</small>
           </div>
@@ -211,7 +230,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
         <button ref={closeButtonRef} type="button" className="qr-dialog-close" onClick={() => setQrOpen(false)} aria-label={ui.close}>×</button>
         <span>GA CUỐI · QR</span>
         <h2 id="qr-dialog-title">{ui.qrDialog}</h2>
-        <div className="qr-dialog-image"><Image src="/thanks-diorama/bank-qr.png" alt={ui.qrDialog} fill unoptimized priority sizes="(max-width: 720px) 86vw, 560px" /></div>
+        <div className="qr-dialog-image"><Image src="/thanks-diorama/bank-qr-gold.png" alt={ui.qrDialog} fill unoptimized priority sizes="(max-width: 720px) 86vw, 560px" /></div>
         <p id="qr-dialog-note">{ui.qrPrivacy}</p>
         <a href="/thanks-diorama/bank-qr.png" download="tau-di-san-viet-nam-qr.png">{ui.save}</a>
       </section>
