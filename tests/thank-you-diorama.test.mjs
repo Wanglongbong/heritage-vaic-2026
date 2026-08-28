@@ -43,6 +43,8 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /event\.key !== "Enter" && event\.key !== " "/);
   assert.match(component, /prefers-reduced-motion/);
   assert.match(component, /devicePixelRatio/);
+  assert.match(component, /Math\.min\(container\.clientWidth, 740\)/);
+  assert.match(component, /Math\.min\(container\.clientHeight, 740\)/);
   assert.match(component, /sceneState\.leaves\.rotation/);
   assert.match(component, /sceneState\.grass\.rotation/);
   assert.doesNotMatch(component, /onPointerMove|onPointerDown|ArrowLeft|ArrowRight/);
@@ -57,6 +59,9 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(css, /\.memory-tree-view-badge/);
   assert.match(css, /\.memory-tree-tap-prompt/);
   assert.match(css, /touch-action:manipulation/);
+  assert.match(css, /\.memory-tree-stage[^}]+contain:layout paint size/);
+  assert.match(css, /\.memory-tree-render[^}]+contain:strict/);
+  assert.match(css, /\.memory-tree-canvas[^}]+position:absolute/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
   assert.match(css, /@media \(max-width: 720px\)/);
   assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);

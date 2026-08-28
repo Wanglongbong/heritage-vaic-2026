@@ -294,8 +294,11 @@ function buildMemoryScene(container: HTMLDivElement) {
   root.add(train);
 
   const resize = () => {
-    const width = Math.max(1, container.clientWidth);
-    const height = Math.max(1, container.clientHeight);
+    // Keep the WebGL backing buffer out of an intrinsic-size feedback loop.
+    // Production CSS can otherwise grow the grid item until Chromium reaches
+    // its 2^24px layout ceiling, leaving the visible final stop empty.
+    const width = Math.max(1, Math.min(container.clientWidth, 740));
+    const height = Math.max(1, Math.min(container.clientHeight, 740));
     const aspect = width / height;
     const view = width < 560 ? 60 : 56;
     camera.left = (-view * aspect) / 2;
