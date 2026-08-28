@@ -4,6 +4,14 @@ export type QrMatrixData = {
 };
 
 export type QrVisualRole = "protected" | "leaf" | "train" | "grass";
+export type QrFinderId = "north-west" | "north-east" | "south-west";
+
+export function getQrFinderId(row: number, column: number, size: number): QrFinderId | null {
+  if (row <= 6 && column <= 6) return "north-west";
+  if (row <= 6 && column >= size - 7) return "north-east";
+  if (row >= size - 7 && column <= 6) return "south-west";
+  return null;
+}
 
 export function isProtectedQrModule(row: number, column: number, size: number) {
   const inTopLeftFinder = row <= 8 && column <= 8;

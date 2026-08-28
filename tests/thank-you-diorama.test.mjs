@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { BANK_QR_MATRIX, classifyQrDarkModule, isProtectedQrModule } from "../lib/bank-qr-matrix.ts";
+import { BANK_QR_MATRIX, classifyQrDarkModule, getQrFinderId, isProtectedQrModule } from "../lib/bank-qr-matrix.ts";
 
 const projectRoot = new URL("../", import.meta.url);
 
@@ -24,6 +24,18 @@ test("assigns every dark QR module to one scan-safe visual role", () => {
   assert.ok(counts.leaf > 20);
   assert.ok(counts.train > 5);
   assert.ok(counts.grass > 100);
+});
+
+test("maps exactly three 7 by 7 finder gardens without touching the rest of the QR", () => {
+  const counts = { "north-west": 0, "north-east": 0, "south-west": 0 };
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((_, columnIndex) => {
+      const finder = getQrFinderId(rowIndex, columnIndex, BANK_QR_MATRIX.size);
+      if (finder) counts[finder] += 1;
+    });
+  });
+  assert.deepEqual(counts, { "north-west": 49, "north-east": 49, "south-west": 49 });
+  assert.equal(getQrFinderId(20, 20, BANK_QR_MATRIX.size), null);
 });
 
 test("ships a QR-derived 3D memory tree with a static train and tap-to-top interaction", async () => {
@@ -66,6 +78,14 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /topQrGroup/);
   assert.match(component, /qrReveal/);
   assert.match(component, /memory-tree-fallback-code/);
+  assert.match(component, /finderGardenGroup/);
+  assert.match(component, /finderDarkPositions/);
+  assert.match(component, /addLantern/);
+  assert.match(component, /artifactAnchorSets/);
+  assert.match(component, /addArtifactSprite/);
+  assert.match(component, /stops\.slice\(0, 5\)/);
+  assert.match(component, /stationPixelPalette/);
+  assert.match(component, /sceneState\.train\.scale\.y/);
   assert.match(component, /const train = new THREE\.Group/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
   assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
