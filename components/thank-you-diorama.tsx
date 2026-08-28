@@ -43,6 +43,16 @@ const text = {
 
 type Pose = { yaw: number; pitch: number };
 
+type DragState = {
+  active: boolean;
+  moved: boolean;
+  startedTopLocked: boolean;
+  x: number;
+  y: number;
+  yaw: number;
+  pitch: number;
+};
+
 function normalizeDegrees(value: number) {
   return ((value % 360) + 360) % 360;
 }
@@ -56,12 +66,13 @@ export function ThankYouDiorama({ language }: { language: Language }) {
   const [pose, setPose] = useState<Pose>({ yaw: 0, pitch: 0 });
   const [qrOpen, setQrOpen] = useState(false);
   const [dragging, setDragging] = useState(false);
-  const dragRef = useRef({ active: false, moved: false, x: 0, y: 0, yaw: 0, pitch: 0 });
+  const dragRef = useRef<DragState>({ active: false, moved: false, startedTopLocked: false, x: 0, y: 0, yaw: 0, pitch: 0 });
   const resumeAtRef = useRef(0);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const returnFocusRef = useRef<HTMLElement | null>(null);
   const frameIndex = Math.round(normalizeDegrees(pose.yaw) / 30) % SUBJECT_FRAMES.length;
-  const mode = pose.pitch >= 55 ? "top" : "diorama";
+  const topViewLocked = pose.pitch === 64 && (!dragging || (dragRef.current.startedTopLocked && !dragRef.current.moved));
+  const mode = topViewLocked ? "top" : "diorama";
   const topProgress = clamp(pose.pitch / 64);
   const projectionProgress = clamp((topProgress - 0.18) / 0.5);
   const dissolveProgress = clamp((topProgress - 0.7) / 0.3);
@@ -88,7 +99,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
     if (reducedMotion || qrOpen) return;
     const timer = window.setInterval(() => {
       if (dragRef.current.active || performance.now() < resumeAtRef.current) return;
-      setPose((current) => current.pitch === 0 ? { ...current, yaw: current.yaw + 0.8 } : current);
+      setPose((current) => current.pitch === 0 ? { ...current, yaw: current.yaw + 1.6 } : current);
     }, 80);
     return () => window.clearInterval(timer);
   }, [qrOpen, reducedMotion]);
@@ -117,7 +128,15 @@ export function ThankYouDiorama({ language }: { language: Language }) {
 
   function onPointerDown(event: PointerEvent<HTMLDivElement>) {
     if ((event.target as HTMLElement).closest("button,a")) return;
-    dragRef.current = { active: true, moved: false, x: event.clientX, y: event.clientY, yaw: pose.yaw, pitch: pose.pitch };
+    dragRef.current = {
+      active: true,
+      moved: false,
+      startedTopLocked: topViewLocked,
+      x: event.clientX,
+      y: event.clientY,
+      yaw: pose.yaw,
+      pitch: pose.pitch,
+    };
     setDragging(true);
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -138,7 +157,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     setPose((current) => ({ yaw: current.yaw, pitch: current.pitch > 44 ? 64 : 0 }));
     resumeAtRef.current = performance.now() + 2600;
-    if (wasTap && mode === "top") {
+    if (wasTap && dragRef.current.startedTopLocked) {
       returnFocusRef.current = event.currentTarget;
       setQrOpen(true);
     }
@@ -183,7 +202,10 @@ export function ThankYouDiorama({ language }: { language: Language }) {
           <span className="diorama-orbit diorama-orbit-a" aria-hidden="true" />
           <span className="diorama-orbit diorama-orbit-b" aria-hidden="true" />
           <div className="diorama-qr-floor" aria-hidden="true">
-            <Image src="/thanks-diorama/bank-qr-tree-pixel.png?v=tree-pixel-v1" alt="" fill unoptimized sizes="(max-width: 720px) 78vw, 520px" draggable={false} />
+            <div className="diorama-floor-surface" />
+            {topViewLocked && <div className="diorama-qr-reveal">
+              <Image src="/thanks-diorama/bank-qr-tree-pixel.png?v=oy-lock-v2" alt="" fill unoptimized priority sizes="(max-width: 720px) 78vw, 520px" draggable={false} />
+            </div>}
             <div className="diorama-top-projection">
               <Image src="/thanks-diorama/subject-top.webp?v=top-v1" alt="" fill unoptimized sizes="(max-width: 720px) 62vw, 420px" draggable={false} />
             </div>

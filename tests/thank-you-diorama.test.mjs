@@ -4,7 +4,7 @@ import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
-test("ships the final-stop diorama, gold QR floor and continuous top projection", async () => {
+test("ships the final-stop diorama, OY-locked QR floor and continuous top projection", async () => {
   const [component, game, css, assets, qr, goldQr, topSprite] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
@@ -35,7 +35,12 @@ test("ships the final-stop diorama, gold QR floor and continuous top projection"
   assert.doesNotMatch(component, /diorama-thanks-card/);
   assert.match(component, /bank-qr-tree-pixel\.png/);
   assert.match(component, /subject-top\.webp/);
+  assert.match(component, /const topViewLocked = pose\.pitch === 64/);
+  assert.match(component, /\{topViewLocked && <div className="diorama-qr-reveal">/);
+  assert.match(component, /startedTopLocked/);
+  assert.match(component, /yaw: current\.yaw \+ 1\.6/);
   assert.match(component, /className="diorama-qr-floor"/);
+  assert.match(component, /className="diorama-floor-surface"/);
   assert.match(component, /className="diorama-top-projection"/);
   assert.match(component, /--floor-tilt/);
   assert.match(component, /--subject-opacity/);
@@ -53,6 +58,9 @@ test("ships the final-stop diorama, gold QR floor and continuous top projection"
   assert.match(css, /\.thank-you-stop/);
   assert.match(css, /\.diorama-stage/);
   assert.match(css, /\.diorama-qr-floor/);
+  assert.match(css, /\.diorama-qr-reveal/);
+  assert.match(css, /background:#fff8e4/);
+  assert.doesNotMatch(css, /\.diorama-qr-floor[^}]+border:8px solid #762a24/);
   assert.match(css, /\.diorama-subject/);
   assert.match(css, /\.diorama-top-projection/);
   assert.match(css, /\.qr-dialog-backdrop/);
