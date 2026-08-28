@@ -1,68 +1,64 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const projectRoot = new URL("../", import.meta.url);
 
-test("ships the final-stop diorama, OY-locked QR floor and continuous top projection", async () => {
-  const [component, game, css, assets, qr, goldQr, topSprite] = await Promise.all([
+test("ships a QR-derived 3D memory tree with a static train and tap-to-top interaction", async () => {
+  const [component, game, css, matrixFile, qr] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
     readFile(new URL("app/globals.css", projectRoot), "utf8"),
-    readdir(new URL("public/thanks-diorama/", projectRoot)),
+    readFile(new URL("lib/bank-qr-matrix.ts", projectRoot), "utf8"),
     readFile(new URL("public/thanks-diorama/bank-qr.png", projectRoot)),
-    readFile(new URL("public/thanks-diorama/bank-qr-tree-pixel.png", projectRoot)),
-    readFile(new URL("public/thanks-diorama/subject-top.webp", projectRoot)),
   ]);
 
-  assert.equal(assets.filter((name) => /^turn-\d{2}\.webp$/.test(name)).length, 12);
-  assert.equal(assets.filter((name) => /^subject-\d{2}\.webp$/.test(name)).length, 12);
   assert.ok(qr.byteLength > 100_000);
   assert.equal(qr.toString("ascii", 1, 4), "PNG");
   assert.equal(qr.readUInt32BE(16), 1024);
   assert.equal(qr.readUInt32BE(20), 1024);
-  assert.equal(goldQr.toString("ascii", 1, 4), "PNG");
-  assert.equal(goldQr.readUInt32BE(16), 1024);
-  assert.equal(goldQr.readUInt32BE(20), 1024);
-  assert.ok(topSprite.byteLength > 100_000);
+
+  const rows = [...matrixFile.matchAll(/^  "([01]+)",$/gm)].map((match) => match[1]);
+  assert.equal(rows.length, 41);
+  assert.ok(rows.every((row) => row.length === 41));
+  assert.deepEqual(rows.slice(0, 7).map((row) => row.slice(0, 7)), [
+    "1111111", "1000001", "1011101", "1011101", "1011101", "1000001", "1111111",
+  ]);
+  assert.match(matrixFile, /BANK_QR_MATRIX/);
+  assert.match(matrixFile, /module === "1"/);
 
   assert.match(game, /<ThankYouDiorama language=\{language\} \/>/);
   assert.match(game, /href="#thank-you-stop"/);
-  assert.match(component, /GA CUỐI · CÂY KÝ ỨC/);
-  assert.doesNotMatch(component, /THANKS/);
-  assert.doesNotMatch(component, /FOR PLAYING/);
-  assert.doesNotMatch(component, /LỜI CẢM ƠN/);
-  assert.doesNotMatch(component, /diorama-thanks-card/);
-  assert.match(component, /bank-qr-tree-pixel\.png/);
-  assert.match(component, /subject-top\.webp/);
-  assert.match(component, /const topViewLocked = pose\.pitch === 64/);
-  assert.match(component, /\{topViewLocked && <div className="diorama-qr-reveal">/);
-  assert.match(component, /startedTopLocked/);
-  assert.match(component, /yaw: current\.yaw \+ 1\.6/);
-  assert.match(component, /className="diorama-qr-floor"/);
-  assert.match(component, /className="diorama-floor-surface"/);
-  assert.match(component, /className="diorama-top-projection"/);
-  assert.match(component, /--floor-tilt/);
-  assert.match(component, /--subject-opacity/);
-  assert.match(component, /--projection-opacity/);
-  assert.match(component, /download="tau-di-san-viet-nam-qr-pixel-vang\.png"/);
+  assert.match(component, /import \* as THREE from "three"/);
+  assert.match(component, /BANK_QR_MATRIX/);
+  assert.match(component, /new THREE\.WebGLRenderer/);
+  assert.match(component, /new THREE\.OrthographicCamera/);
+  assert.match(component, /new THREE\.InstancedMesh/);
+  assert.match(component, /grassPositions/);
+  assert.match(component, /trainModulePositions/);
+  assert.match(component, /const train = new THREE\.Group/);
+  assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
+  assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
+  assert.match(component, /onClick=\{toggleView\}/);
+  assert.match(component, /event\.key !== "Enter" && event\.key !== " "/);
   assert.match(component, /prefers-reduced-motion/);
-  assert.match(component, /ArrowLeft/);
-  assert.match(component, /ArrowRight/);
-  assert.match(component, /ArrowUp/);
-  assert.match(component, /ArrowDown/);
-  assert.match(component, /onPointerDown/);
-  assert.doesNotMatch(component, />MB</);
-  assert.doesNotMatch(component, /VietQR/);
+  assert.match(component, /devicePixelRatio/);
+  assert.match(component, /sceneState\.leaves\.rotation/);
+  assert.match(component, /sceneState\.grass\.rotation/);
+  assert.doesNotMatch(component, /onPointerMove|onPointerDown|ArrowLeft|ArrowRight/);
+  assert.doesNotMatch(component, /subject-\$\{|subject-top\.webp/);
+  assert.doesNotMatch(component, /download=|qr-dialog|diorama-orbit/);
+  assert.doesNotMatch(component, /THANKS|FOR PLAYING|LỜI CẢM ƠN/);
+  assert.doesNotMatch(component, /rail|đường ray/i);
 
   assert.match(css, /\.thank-you-stop/);
-  assert.match(css, /\.diorama-stage/);
-  assert.match(css, /\.diorama-qr-floor/);
-  assert.match(css, /\.diorama-qr-reveal/);
-  assert.match(css, /background:#fff8e4/);
-  assert.doesNotMatch(css, /\.diorama-qr-floor[^}]+border:8px solid #762a24/);
-  assert.match(css, /\.diorama-subject/);
-  assert.match(css, /\.diorama-top-projection/);
-  assert.match(css, /\.qr-dialog-backdrop/);
+  assert.match(css, /\.memory-tree-stage/);
+  assert.match(css, /\.memory-tree-render/);
+  assert.match(css, /\.memory-tree-view-badge/);
+  assert.match(css, /\.memory-tree-tap-prompt/);
+  assert.match(css, /touch-action:manipulation/);
   assert.match(css, /env\(safe-area-inset-bottom\)/);
+  assert.match(css, /@media \(max-width: 720px\)/);
+  assert.match(css, /@media \(prefers-reduced-motion: reduce\)/);
+  assert.doesNotMatch(css, /\.diorama-orbit|\.qr-dialog-backdrop|content:"360°"/);
 });
