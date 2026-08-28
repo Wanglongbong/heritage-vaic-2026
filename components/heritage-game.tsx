@@ -11,6 +11,7 @@ import {
 } from "react";
 import type { CSSProperties } from "react";
 import { HandTrackingViewer } from "@/components/hand-tracking-viewer";
+import { ThankYouDiorama } from "@/components/thank-you-diorama";
 import { getSource, stops } from "@/lib/heritage";
 import { downloadPassportJson, downloadPassportPdf } from "@/lib/passport-export";
 import type { PassportRecord, PassportSeal } from "@/lib/passport-export";
@@ -1092,9 +1093,11 @@ function Ending({
           <button className="ending-cta ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
           <button className="ending-cta ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} <b>↻</b></button>
         </div>
-        <a className="ending-cta ending-gallery-cta" href="#memory-map"><span>{language === "vi" ? "MỞ PHÒNG TRƯNG BÀY" : "OPEN THE GALLERY"}</span><i>↓</i></a>
+        <a className="ending-cta ending-gallery-cta" href="#thank-you-stop"><span>{language === "vi" ? "MỞ GA CUỐI" : "OPEN THE FINAL STOP"}</span><i>↓</i></a>
       </div>
     </div>
+
+    <ThankYouDiorama language={language} />
 
     <div className="ending-hub" id="memory-map">
       <section className="museum-vault" aria-labelledby="museum-title" style={{ "--museum-bg": "url(/museum/heritage-gallery-v2.webp)", "--museum-accent": activeMuseumStop.palette } as CSSProperties}>
