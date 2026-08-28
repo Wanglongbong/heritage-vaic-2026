@@ -1,12 +1,18 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { BANK_QR_MATRIX, classifyQrDarkModule, getQrFinderId, isProtectedQrModule } from "../lib/bank-qr-matrix.ts";
+import {
+  BANK_QR_MATRIX,
+  classifyQrDarkModule,
+  getQrFinderId,
+  isProtectedQrModule,
+  isTrainArtworkZone,
+} from "../lib/bank-qr-matrix.ts";
 
 const projectRoot = new URL("../", import.meta.url);
 
 test("assigns every dark QR module to one scan-safe visual role", () => {
-  const counts = { protected: 0, leaf: 0, train: 0, grass: 0 };
+  const counts = { protected: 0, canopy: 0, train: 0, landscape: 0 };
   let darkCount = 0;
 
   BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
@@ -21,9 +27,19 @@ test("assigns every dark QR module to one scan-safe visual role", () => {
 
   assert.equal(Object.values(counts).reduce((total, count) => total + count, 0), darkCount);
   assert.ok(counts.protected > 100);
-  assert.ok(counts.leaf > 20);
+  assert.ok(counts.canopy > 20);
   assert.ok(counts.train > 5);
-  assert.ok(counts.grass > 100);
+  assert.ok(counts.landscape > 100);
+});
+
+test("keeps every train module inside the compact QR artwork band", () => {
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (!dark || classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size) !== "train") return;
+      assert.equal(isTrainArtworkZone(rowIndex, columnIndex, BANK_QR_MATRIX.size), true);
+      assert.equal(isProtectedQrModule(rowIndex, columnIndex, BANK_QR_MATRIX.size), false);
+    });
+  });
 });
 
 test("maps exactly three 7 by 7 finder gardens without touching the rest of the QR", () => {
@@ -38,7 +54,7 @@ test("maps exactly three 7 by 7 finder gardens without touching the rest of the 
   assert.equal(getQrFinderId(20, 20, BANK_QR_MATRIX.size), null);
 });
 
-test("ships a QR-derived 3D memory tree with a static train and tap-to-top interaction", async () => {
+test("ships a QR-derived orbitable memory landscape with a module-built train", async () => {
   const [component, game, css, matrixFile, qr] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
@@ -68,9 +84,10 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /new THREE\.WebGLRenderer/);
   assert.match(component, /new THREE\.OrthographicCamera/);
   assert.match(component, /new THREE\.InstancedMesh/);
-  assert.match(component, /grassPositions/);
+  assert.match(component, /landscapePositions/);
   assert.match(component, /leafModulePositions/);
   assert.match(component, /trainModulePositions/);
+  assert.match(component, /trainLightPositions/);
   assert.match(matrixFile, /isProtectedQrModule/);
   assert.match(matrixFile, /classifyQrDarkModule/);
   assert.match(component, /qrShadowTiles/);
@@ -80,16 +97,22 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /memory-tree-fallback-code/);
   assert.match(component, /finderGardenGroup/);
   assert.match(component, /finderDarkPositions/);
+  assert.match(component, /addLotus/);
+  assert.match(component, /addBamboo/);
+  assert.match(component, /addLandscapeDetail/);
   assert.match(component, /addLantern/);
-  assert.match(component, /artifactAnchorSets/);
-  assert.match(component, /addArtifactSprite/);
-  assert.match(component, /stops\.slice\(0, 5\)/);
-  assert.match(component, /stationPixelPalette/);
-  assert.match(component, /sceneState\.train\.scale\.y/);
+  assert.match(component, /canopyShadows/);
   assert.match(component, /const train = new THREE\.Group/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
   assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
+  assert.match(component, /memory-tree-view-toggle/);
   assert.match(component, /onClick=\{toggleView\}/);
+  assert.match(component, /onPointerMove/);
+  assert.match(component, /setPointerCapture/);
+  assert.match(component, /pointerDistance/);
+  assert.match(component, /orbit\.targetPolar <= 0\.24/);
+  assert.match(component, /ArrowLeft/);
+  assert.match(component, /targetZoom/);
   assert.match(component, /event\.key !== "Enter" && event\.key !== " "/);
   assert.match(component, /prefers-reduced-motion/);
   assert.match(component, /devicePixelRatio/);
@@ -97,7 +120,8 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /Math\.min\(container\.clientHeight, 740\)/);
   assert.match(component, /sceneState\.leaves\.rotation/);
   assert.match(component, /sceneState\.grass\.rotation/);
-  assert.doesNotMatch(component, /onPointerMove|onPointerDown|ArrowLeft|ArrowRight/);
+  assert.doesNotMatch(component, /artifactSprite|addArtifactSprite|artifactWorld|stationPixelPalette/);
+  assert.doesNotMatch(component, /stops\.slice\(0, 5\)/);
   assert.doesNotMatch(component, /subject-\$\{|subject-top\.webp/);
   assert.doesNotMatch(component, /download=|qr-dialog|diorama-orbit/);
   assert.doesNotMatch(component, /THANKS|FOR PLAYING|LỜI CẢM ƠN/);
@@ -107,12 +131,12 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(css, /\.thank-you-stop/);
   assert.match(css, /\.memory-tree-stage/);
   assert.match(css, /\.memory-tree-render/);
-  assert.match(css, /\.memory-tree-view-badge/);
-  assert.match(css, /\.memory-tree-tap-prompt/);
+  assert.match(css, /\.memory-tree-view-toggle/);
+  assert.match(css, /\.memory-tree-orbit-guide/);
   assert.match(css, /\.memory-tree-top-note/);
   assert.match(css, /\.memory-tree-fallback-code/);
   assert.match(css, /\.memory-tree-stage\[data-view="top"\][^}]+\.memory-tree-grid/);
-  assert.match(css, /touch-action:manipulation/);
+  assert.match(css, /touch-action:none/);
   assert.match(css, /\.memory-tree-stage[^}]+contain:layout paint size/);
   assert.match(css, /\.memory-tree-render[^}]+contain:strict/);
   assert.match(css, /\.memory-tree-canvas[^}]+position:absolute/);

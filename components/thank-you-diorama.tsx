@@ -3,26 +3,33 @@
 import Image from "next/image";
 import { CSSProperties, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { BANK_QR_MATRIX, classifyQrDarkModule, getQrFinderId } from "@/lib/bank-qr-matrix";
-import { stops } from "@/lib/heritage";
+import {
+  BANK_QR_MATRIX,
+  classifyQrDarkModule,
+  getQrFinderId,
+  isTrainArtworkZone,
+  type QrFinderId,
+} from "@/lib/bank-qr-matrix";
 import type { Language } from "@/lib/types";
 
 const text = {
   vi: {
     kicker: "GA CUỐI · CÂY KÝ ỨC",
     title: "Chạm vào ký ức đang sống",
-    guide: "Chạm cây để nhìn từ trên · Chạm lần nữa để trở lại",
+    guide: "Kéo để xoay 360° · Chạm nút OY để nhìn mã từ trên",
     treeView: "Chạm để nhìn mã ký ức từ trên",
     topView: "Chạm để trở lại bên cây ký ức",
+    orbit: "Kéo xoay · Cuộn hoặc chụm để thu phóng",
     loading: "Đang gieo cỏ theo từng ô ký ức…",
     museum: "Mở Phòng trưng bày",
   },
   en: {
     kicker: "FINAL STOP · MEMORY TREE",
     title: "Touch a living memory",
-    guide: "Tap the tree for the top view · Tap again to return",
+    guide: "Drag to orbit 360° · Tap OY for the top view",
     treeView: "Tap for the top view of the memory code",
     topView: "Tap to return to the memory tree",
+    orbit: "Drag to orbit · Scroll or pinch to zoom",
     loading: "Growing grass from each memory tile…",
     museum: "Open the gallery",
   },
@@ -31,6 +38,18 @@ const text = {
 type MemoryTreeCanvasProps = {
   isTop: boolean;
   language: Language;
+  viewCommand: number;
+  onViewStateChange: (isTop: boolean) => void;
+};
+
+type OrbitState = {
+  azimuth: number;
+  polar: number;
+  zoom: number;
+  targetAzimuth: number;
+  targetPolar: number;
+  targetZoom: number;
+  snapping: "top" | "iso" | null;
 };
 
 type SceneState = {
@@ -45,17 +64,10 @@ type SceneState = {
   leaves: THREE.InstancedMesh;
   grass: THREE.Group;
   train: THREE.Group;
+  orbit: OrbitState;
+  disposeInteraction: () => void;
   frame: number;
 };
-
-const stationPixelPalette = [0x71372c, 0x7b321d, 0x6b2c2a, 0x783819, 0x174a47] as const;
-const stationTargets: Array<[number, number]> = [
-  [-13, -8],
-  [0, -14],
-  [13, -8],
-  [-13, 4],
-  [13, 3],
-];
 
 function seededRandom(seed: number) {
   let state = seed >>> 0;
@@ -152,67 +164,56 @@ function addLantern(
   return lantern;
 }
 
-function selectArtifactAnchorSets(candidates: THREE.Vector3[]) {
-  const available = candidates.map((position) => position.clone());
-  return stationTargets.map(([targetX, targetZ]) => {
-    const selected: THREE.Vector3[] = [];
-    for (let index = 0; index < 3; index += 1) {
-      available.sort((a, b) => {
-        const aDistance = Math.hypot(a.x - targetX, a.z - targetZ);
-        const bDistance = Math.hypot(b.x - targetX, b.z - targetZ);
-        return aDistance - bDistance;
-      });
-      const next = available.shift();
-      if (next) selected.push(next);
-    }
-    return selected;
-  });
-}
-
-function addArtifactSprite(
+function addLotus(
   parent: THREE.Group,
-  textureLoader: THREE.TextureLoader,
-  src: string,
+  materials: Map<string, THREE.MeshStandardMaterial>,
   position: THREE.Vector3,
-  height: number,
+  scale: number,
 ) {
-  const material = new THREE.SpriteMaterial({ transparent: true, alphaTest: 0.06, toneMapped: false });
-  const sprite = new THREE.Sprite(material);
-  sprite.center.set(0.5, 0);
-  sprite.position.copy(position);
-  sprite.scale.set(height * 0.72, height, 1);
-  material.map = textureLoader.load(src, (texture) => {
-    texture.colorSpace = THREE.SRGBColorSpace;
-    texture.magFilter = THREE.NearestFilter;
-    texture.minFilter = THREE.LinearMipmapLinearFilter;
-    const image = texture.image as { width?: number; height?: number };
-    const aspect = image.width && image.height ? image.width / image.height : 0.72;
-    sprite.scale.set(height * aspect, height, 1);
-    material.needsUpdate = true;
-  });
-  parent.add(sprite);
-  return sprite;
+  addBox(parent, materials, [0.1, 0.46, 0.1], [position.x, 0.58, position.z], "#40512c");
+  addBox(parent, materials, [0.58, 0.1, 0.46], [position.x, 0.82, position.z], "#55652f").rotation.y = Math.PI / 4;
+  addBox(parent, materials, [0.2, 0.2, 0.2], [position.x, 1.02, position.z], "#d4a246").scale.setScalar(scale);
 }
 
-function buildArtifactModuleRoles() {
-  const centre = (BANK_QR_MATRIX.size - 1) / 2;
-  const candidates: THREE.Vector3[] = [];
-  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
-    row.forEach((dark, columnIndex) => {
-      if (!dark || classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size) !== "grass") return;
-      candidates.push(new THREE.Vector3(columnIndex - centre, 0, rowIndex - centre));
+function addBamboo(
+  parent: THREE.Group,
+  materials: Map<string, THREE.MeshStandardMaterial>,
+  position: THREE.Vector3,
+  scale: number,
+) {
+  [-0.16, 0.14].forEach((offset, index) => {
+    addBox(parent, materials, [0.11, 1.5 + index * 0.28, 0.11], [position.x + offset, 1.02, position.z], "#4f5c2d");
+  });
+  addBox(parent, materials, [0.54, 0.12, 0.18], [position.x - 0.08, 1.5, position.z], "#6e7132").rotation.z = 0.35 * scale;
+}
+
+function addLandscapeDetail(
+  parent: THREE.Group,
+  materials: Map<string, THREE.MeshStandardMaterial>,
+  position: THREE.Vector3,
+  variant: number,
+) {
+  if (variant === 0) {
+    [-0.18, 0, 0.18].forEach((offset, index) => {
+      const blade = addBox(parent, materials, [0.08, 0.55 + index * 0.12, 0.08], [position.x + offset, 0.55, position.z], "#75601f");
+      blade.rotation.z = (index - 1) * 0.16;
     });
-  });
-  const roles = new Map<string, number>();
-  selectArtifactAnchorSets(candidates).forEach((positions, stationIndex) => {
-    positions.forEach((position) => roles.set(`${position.z + centre}-${position.x + centre}`, stationIndex));
-  });
-  return roles;
+    return;
+  }
+  if (variant === 1) {
+    addBox(parent, materials, [0.58, 0.18, 0.42], [position.x, 0.38, position.z], "#7a6033").rotation.y = Math.PI / 4;
+    return;
+  }
+  if (variant === 2) {
+    addBox(parent, materials, [0.68, 0.06, 0.1], [position.x, 0.3, position.z], "#b88b3e");
+    addBox(parent, materials, [0.1, 0.06, 0.52], [position.x, 0.31, position.z], "#8f642e");
+    return;
+  }
+  addBox(parent, materials, [0.16, 0.62, 0.16], [position.x, 0.58, position.z], "#5d672f");
+  addBox(parent, materials, [0.44, 0.1, 0.22], [position.x + 0.12, 0.84, position.z], "#8b7d32").rotation.y = -0.5;
 }
 
-const ARTIFACT_MODULE_ROLES = buildArtifactModuleRoles();
-
-function buildMemoryScene(container: HTMLDivElement) {
+function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: boolean) => void) {
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true, powerPreference: "high-performance" });
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -223,8 +224,8 @@ function buildMemoryScene(container: HTMLDivElement) {
 
   const scene = new THREE.Scene();
   const camera = new THREE.OrthographicCamera(-30, 30, 30, -30, 0.1, 160);
+  camera.position.set(36, 31, 43);
   const root = new THREE.Group();
-  root.rotation.y = -0.1;
   scene.add(root);
 
   scene.add(new THREE.HemisphereLight(0xffe4a4, 0x2b1018, 2.15));
@@ -242,11 +243,18 @@ function buildMemoryScene(container: HTMLDivElement) {
 
   const tileGeometry = new THREE.BoxGeometry(0.91, 0.1, 0.91);
   const darkPositions: THREE.Vector3[] = [];
-  const grassPositions: THREE.Vector3[] = [];
+  const landscapePositions: THREE.Vector3[] = [];
+  const lightReliefPositions: THREE.Vector3[] = [];
   const leafModulePositions: THREE.Vector3[] = [];
   const trainModulePositions: THREE.Vector3[] = [];
+  const trainLightPositions: THREE.Vector3[] = [];
   const finderDarkPositions: THREE.Vector3[] = [];
   const finderLightPositions: THREE.Vector3[] = [];
+  const finderPositions: Record<QrFinderId, { dark: THREE.Vector3[]; light: THREE.Vector3[] }> = {
+    "north-west": { dark: [], light: [] },
+    "north-east": { dark: [], light: [] },
+    "south-west": { dark: [], light: [] },
+  };
   const centre = (BANK_QR_MATRIX.size - 1) / 2;
 
   BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
@@ -256,15 +264,35 @@ function buildMemoryScene(container: HTMLDivElement) {
       const position = new THREE.Vector3(x, 0, z);
       const finderId = getQrFinderId(rowIndex, columnIndex, BANK_QR_MATRIX.size);
       if (finderId) {
-        if (dark) finderDarkPositions.push(position);
-        else finderLightPositions.push(position);
+        if (dark) {
+          finderDarkPositions.push(position);
+          finderPositions[finderId].dark.push(position);
+        } else {
+          finderLightPositions.push(position);
+          finderPositions[finderId].light.push(position);
+        }
       }
-      if (!dark) return;
+      if (!dark) {
+        if (!finderId) lightReliefPositions.push(position);
+        if (isTrainArtworkZone(rowIndex, columnIndex, BANK_QR_MATRIX.size)) {
+          const neighbours = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+          const touchesTrainModule = neighbours.some(([rowOffset, columnOffset]) => {
+            const neighbourRow = rowIndex + rowOffset;
+            const neighbourColumn = columnIndex + columnOffset;
+            return Boolean(
+              BANK_QR_MATRIX.modules[neighbourRow]?.[neighbourColumn]
+              && classifyQrDarkModule(neighbourRow, neighbourColumn, BANK_QR_MATRIX.size) === "train"
+            );
+          });
+          if (touchesTrainModule) trainLightPositions.push(position);
+        }
+        return;
+      }
       darkPositions.push(position);
       const visualRole = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
       if (visualRole === "train") trainModulePositions.push(position);
-      else if (visualRole === "leaf") leafModulePositions.push(position);
-      else if (visualRole === "grass") grassPositions.push(position);
+      else if (visualRole === "canopy") leafModulePositions.push(position);
+      else if (visualRole === "landscape") landscapePositions.push(position);
     });
   });
 
@@ -287,11 +315,14 @@ function buildMemoryScene(container: HTMLDivElement) {
   qrShadowTiles.instanceMatrix.needsUpdate = true;
   root.add(qrShadowTiles);
 
+  const treeViewGroup = new THREE.Group();
+  root.add(treeViewGroup);
+
   const grassGroup = new THREE.Group();
   const patchGeometry = new THREE.BoxGeometry(0.78, 0.18, 0.78);
   const patchMaterial = new THREE.MeshBasicMaterial({ color: 0x5f4015, toneMapped: false });
-  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, grassPositions.length);
-  grassPositions.forEach((position, index) => {
+  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, landscapePositions.length);
+  landscapePositions.forEach((position, index) => {
     setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
   });
   grassPatches.instanceMatrix.needsUpdate = true;
@@ -300,10 +331,10 @@ function buildMemoryScene(container: HTMLDivElement) {
   const random = seededRandom(20260828);
   const bladeGeometry = new THREE.BoxGeometry(0.12, 0.78, 0.12);
   const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0x785019, toneMapped: false });
-  const bladesPerModule = 3;
-  const grassBlades = new THREE.InstancedMesh(bladeGeometry, bladeMaterial, grassPositions.length * bladesPerModule);
+  const bladesPerModule = 2;
+  const grassBlades = new THREE.InstancedMesh(bladeGeometry, bladeMaterial, landscapePositions.length * bladesPerModule);
   let bladeIndex = 0;
-  grassPositions.forEach((position) => {
+  landscapePositions.forEach((position) => {
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
       const height = 0.55 + random() * 0.75;
       const offsetX = (random() - 0.5) * 0.5;
@@ -321,7 +352,25 @@ function buildMemoryScene(container: HTMLDivElement) {
   });
   grassBlades.instanceMatrix.needsUpdate = true;
   grassGroup.add(grassBlades);
-  root.add(grassGroup);
+  treeViewGroup.add(grassGroup);
+
+  const reliefMaterial = new THREE.MeshStandardMaterial({ color: 0xd7ba72, roughness: 1, flatShading: true });
+  const reliefGeometry = new THREE.BoxGeometry(0.76, 0.08, 0.76);
+  const lightRelief = new THREE.InstancedMesh(reliefGeometry, reliefMaterial, lightReliefPositions.length);
+  lightReliefPositions.forEach((position, index) => {
+    const reliefScale = 0.76 + ((index * 17) % 5) * 0.045;
+    setInstance(lightRelief, dummy, index, new THREE.Vector3(position.x, 0.11, position.z), new THREE.Vector3(reliefScale, 1, reliefScale));
+  });
+  lightRelief.instanceMatrix.needsUpdate = true;
+  treeViewGroup.add(lightRelief);
+
+  const landscapeDetails = new THREE.Group();
+  const landscapeDetailMaterials = new Map<string, THREE.MeshStandardMaterial>();
+  landscapePositions.forEach((position, index) => {
+    if ((index * 13 + 5) % 7 > 2) return;
+    addLandscapeDetail(landscapeDetails, landscapeDetailMaterials, position, index % 4);
+  });
+  treeViewGroup.add(landscapeDetails);
 
   const topQrGroup = new THREE.Group();
   const leafModuleGeometry = new THREE.BoxGeometry(0.74, 0.34, 0.74);
@@ -350,28 +399,8 @@ function buildMemoryScene(container: HTMLDivElement) {
   finderModules.instanceMatrix.needsUpdate = true;
   topQrGroup.add(finderModules);
 
-  const artifactAnchorSets = selectArtifactAnchorSets(grassPositions);
-  const artifactPixelMaterials: THREE.MeshBasicMaterial[] = [];
-  artifactAnchorSets.forEach((positions, stationIndex) => {
-    const material = new THREE.MeshBasicMaterial({
-      color: stationPixelPalette[stationIndex],
-      transparent: true,
-      opacity: 0,
-      toneMapped: false,
-    });
-    artifactPixelMaterials.push(material);
-    const modules = new THREE.InstancedMesh(redModuleGeometry, material, positions.length);
-    positions.forEach((position, index) => {
-      setInstance(modules, dummy, index, new THREE.Vector3(position.x, 0.27, position.z), new THREE.Vector3(1, 1, 1));
-    });
-    modules.instanceMatrix.needsUpdate = true;
-    topQrGroup.add(modules);
-  });
   topQrGroup.visible = false;
   root.add(topQrGroup);
-
-  const treeViewGroup = new THREE.Group();
-  root.add(treeViewGroup);
   const lanternMaterials: LanternMaterials = {
     frame: new THREE.MeshStandardMaterial({ color: 0x4a2118, roughness: 0.78, metalness: 0.12, flatShading: true }),
     glow: new THREE.MeshStandardMaterial({ color: 0x9e2b22, emissive: 0xb84b1e, emissiveIntensity: 1.25, roughness: 0.58, flatShading: true }),
@@ -398,17 +427,31 @@ function buildMemoryScene(container: HTMLDivElement) {
   finderGardenGroup.add(paleGardenModules);
 
   const gardenMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  const finderCentres: Array<[number, number]> = [[-17, -17], [17, -17], [-17, 17]];
-  finderCentres.forEach(([x, z]) => {
-    addBox(finderGardenGroup, gardenMaterials, [2.65, 0.34, 2.65], [x, 0.48, z], "#604421");
-    addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(x, 0.72, z), 0.82);
-    [[-3, -3], [3, -3], [-3, 3], [3, 3]].forEach(([offsetX, offsetZ]) => {
-      addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(x + offsetX, 0.7, z + offsetZ), 0.46);
-    });
+  const lotusGarden = finderPositions["north-west"].dark.filter((_, index) => index % 6 === 2);
+  lotusGarden.forEach((position, index) => addLotus(finderGardenGroup, gardenMaterials, position, 0.76 + (index % 3) * 0.08));
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [-17, 0.5, -17], "#6c5a2d");
+
+  const bambooGarden = finderPositions["north-east"].dark.filter((_, index) => index % 7 === 1);
+  bambooGarden.forEach((position, index) => addBamboo(finderGardenGroup, gardenMaterials, position, 0.82 + (index % 2) * 0.12));
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [17, 0.5, -17], "#78662f");
+
+  const lanternGarden = finderPositions["south-west"].dark.filter((_, index) => index % 5 === 0);
+  lanternGarden.forEach((position, index) => {
+    addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.7, position.z), 0.42 + (index % 2) * 0.07);
   });
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [-17, 0.5, 17], "#704225");
   treeViewGroup.add(finderGardenGroup);
 
   const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x5c2d16, roughness: 1, flatShading: true });
+  const canopyShadowGeometry = new THREE.BoxGeometry(0.82, 0.05, 0.82);
+  const canopyShadowMaterial = new THREE.MeshBasicMaterial({ color: 0x6f4a17, transparent: true, opacity: 0.72, toneMapped: false });
+  const canopyShadows = new THREE.InstancedMesh(canopyShadowGeometry, canopyShadowMaterial, leafModulePositions.length);
+  leafModulePositions.forEach((position, index) => {
+    setInstance(canopyShadows, dummy, index, new THREE.Vector3(position.x, 0.17, position.z), new THREE.Vector3(1, 1, 1));
+  });
+  canopyShadows.instanceMatrix.needsUpdate = true;
+  treeViewGroup.add(canopyShadows);
+
   const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.65, 7.2, 1.65), woodMaterial);
   trunk.position.y = 3.8;
   treeViewGroup.add(trunk);
@@ -422,20 +465,18 @@ function buildMemoryScene(container: HTMLDivElement) {
   branchPoints.forEach(([from, to, width]) => addBranch(treeViewGroup, woodMaterial, from, to, width));
 
   const mobile = window.matchMedia("(max-width: 720px)").matches;
-  const leavesPerModule = mobile ? 4 : 7;
-  const leafCount = leafModulePositions.length * leavesPerModule;
-  const leafGeometry = new THREE.BoxGeometry(0.72, 0.5, 0.72);
+  const leafCount = leafModulePositions.length;
+  const leafGeometry = new THREE.BoxGeometry(0.84, 0.48, 0.84);
   const leafMaterial = new THREE.MeshBasicMaterial({ color: 0xe5a72b, toneMapped: false });
   const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafCount);
   for (let index = 0; index < leafCount; index += 1) {
-    const modulePosition = leafModulePositions[index % leafModulePositions.length];
-    const layer = Math.floor(index / leafModulePositions.length);
+    const modulePosition = leafModulePositions[index];
     const radius = Math.hypot(modulePosition.x, modulePosition.z);
-    const dome = 1 - Math.pow(radius / 9.6, 1.65);
-    const x = modulePosition.x + (random() - 0.5) * 0.38;
-    const z = modulePosition.z + (random() - 0.5) * 0.38;
-    const y = 5.8 + dome * 3.5 + layer * 0.34 + (random() - 0.5) * 0.42;
-    const scale = 0.58 + random() * 0.76;
+    const dome = 1 - Math.pow(radius / 8.8, 1.5);
+    const x = modulePosition.x + (random() - 0.5) * 0.16;
+    const z = modulePosition.z + (random() - 0.5) * 0.16;
+    const y = 6.1 + dome * 3.1 + (random() - 0.5) * 0.26;
+    const scale = 0.64 + random() * 0.42;
     setInstance(
       leaves,
       dummy,
@@ -448,68 +489,130 @@ function buildMemoryScene(container: HTMLDivElement) {
   leaves.instanceMatrix.needsUpdate = true;
   treeViewGroup.add(leaves);
 
-  const artifactWorld = new THREE.Group();
-  const textureLoader = new THREE.TextureLoader();
-  const dioramaMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  stops.slice(0, 5).forEach((stop, stationIndex) => {
-    const anchors = artifactAnchorSets[stationIndex];
-    if (!anchors?.length) return;
-    const centreX = anchors.reduce((sum, position) => sum + position.x, 0) / anchors.length;
-    const centreZ = anchors.reduce((sum, position) => sum + position.z, 0) / anchors.length;
-    const cluster = new THREE.Group();
-    cluster.position.set(centreX, 0, centreZ);
-    const darkAccent = new THREE.Color(stop.palette).multiplyScalar(0.44);
-    const darkAccentHex = `#${darkAccent.getHexString()}`;
-    addBox(cluster, dioramaMaterials, [5.35, 0.3, 3.35], [0, 0.34, 0], darkAccentHex);
-    addBox(cluster, dioramaMaterials, [5.1, 0.08, 0.12], [0, 0.53, 1.55], "#b68438");
-    addBox(cluster, dioramaMaterials, [5.1, 0.08, 0.12], [0, 0.53, -1.55], "#6c401f");
-    const spriteHeight = mobile ? 2.05 : 2.45;
-    stop.hotspots.slice(0, 3).forEach((hotspot, itemIndex) => {
-      addArtifactSprite(
-        cluster,
-        textureLoader,
-        hotspot.artifactSprite,
-        new THREE.Vector3(-1.55 + itemIndex * 1.55, 0.55, itemIndex === 1 ? -0.12 : 0.12),
-        spriteHeight,
-      );
-    });
-    addLantern(cluster, lanternMaterials, new THREE.Vector3(-2.25, 0.58, 1.18), 0.45);
-    addLantern(cluster, lanternMaterials, new THREE.Vector3(2.25, 0.58, 1.18), 0.45);
-    artifactWorld.add(cluster);
-  });
-  treeViewGroup.add(artifactWorld);
-
   const train = new THREE.Group();
   const trainMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  addBox(train, trainMaterials, [18, 0.16, 4.6], [0, 0.18, 8], "#4b2c1d");
-  addBox(train, trainMaterials, [14.6, 0.56, 3.1], [0, 0.76, 8], "#281716");
-  addBox(train, trainMaterials, [12.9, 2.12, 2.78], [-0.55, 1.92, 8], "#5f211e");
-  addBox(train, trainMaterials, [13.55, 0.48, 3.18], [-0.22, 3.23, 8], "#342119");
-  addBox(train, trainMaterials, [2.75, 2.92, 2.9], [6.18, 2.28, 8], "#702820");
-  addBox(train, trainMaterials, [1.55, 1.36, 2.5], [8.03, 1.52, 8], "#7b2b21");
-  addBox(train, trainMaterials, [0.58, 1.85, 0.6], [8.72, 2.35, 8], "#30201a");
-  addBox(train, trainMaterials, [12.5, 0.12, 0.12], [-0.45, 1.08, 9.46], "#bd8738");
-  addBox(train, trainMaterials, [12.5, 0.1, 0.12], [-0.45, 3.02, 9.46], "#8f5b2a");
-  addBox(train, trainMaterials, [0.72, 1.42, 0.72], [7.45, 3.78, 8], "#3c261c");
-  addBox(train, trainMaterials, [1.02, 0.22, 1.02], [7.45, 4.52, 8], "#8a5528");
-  const windowMaterial = new THREE.MeshStandardMaterial({ color: 0xf1bd5a, emissive: 0xa84017, emissiveIntensity: 1.05, roughness: 0.55, flatShading: true });
-  for (let index = 0; index < 7; index += 1) {
-    const window = new THREE.Mesh(new THREE.BoxGeometry(0.96, 0.72, 0.12), windowMaterial);
-    window.position.set(-5.45 + index * 1.58, 2.18, 9.43);
-    train.add(window);
-  }
+  addBox(train, trainMaterials, [18.4, 0.18, 4.8], [0, 0.28, 8], "#d6b969");
+  addBox(train, trainMaterials, [18.1, 0.2, 0.16], [0, 0.62, 10.26], "#8d5c27");
+  addBox(train, trainMaterials, [18.1, 0.2, 0.16], [0, 0.62, 5.74], "#b78739");
+  trainLightPositions.forEach((position, index) => {
+    addBox(train, trainMaterials, [0.74, 0.9, 0.74], [position.x, 0.82, position.z], index % 3 === 0 ? "#ddc77f" : "#caa654");
+    addBox(train, trainMaterials, [0.82, 0.12, 0.82], [position.x, 1.34, position.z], "#eed58a");
+  });
+  trainModulePositions.forEach((position, index) => {
+    addBox(train, trainMaterials, [0.72, 1.22, 0.72], [position.x, 0.94, position.z], index % 4 === 0 ? "#7b2922" : "#641e1c");
+    addBox(train, trainMaterials, [0.82, 0.18, 0.82], [position.x, 1.62, position.z], "#8f3124");
+    if (index % 5 === 0) addLantern(train, lanternMaterials, new THREE.Vector3(position.x, 1.82, position.z), 0.31);
+  });
+  addBox(train, trainMaterials, [1.12, 1.8, 1.12], [8.25, 1.26, 8], "#8b3428");
+  addBox(train, trainMaterials, [0.42, 1.18, 0.42], [8.25, 2.66, 8], "#5a3020");
+  addBox(train, trainMaterials, [0.86, 0.16, 0.86], [8.25, 3.25, 8], "#d2a24d");
   const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1616, roughness: 1, flatShading: true });
-  [-5.4, -2.6, 1.2, 4.7, 7.2].forEach((x) => {
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.58, 0.58, 0.34, 8), wheelMaterial);
+  [-7.1, -4.3, -1.5, 1.5, 4.3, 7.1].forEach((x) => {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.24, 8), wheelMaterial);
     wheel.rotation.x = Math.PI / 2;
-    wheel.position.set(x, 0.52, 9.4);
+    wheel.position.set(x, 0.56, 10.36);
     train.add(wheel);
   });
-  [-5.25, -3.55, -1.85, -0.15, 1.55, 3.25, 4.95].forEach((x) => {
-    addLantern(train, lanternMaterials, new THREE.Vector3(x, 3.46, 9.58), 0.38);
-  });
-  addLantern(train, lanternMaterials, new THREE.Vector3(8.22, 2.74, 9.32), 0.48);
   treeViewGroup.add(train);
+
+  const initialRadius = camera.position.length();
+  const orbit: OrbitState = {
+    azimuth: Math.atan2(camera.position.x, camera.position.z),
+    polar: Math.acos(camera.position.y / initialRadius),
+    zoom: 1,
+    targetAzimuth: Math.atan2(camera.position.x, camera.position.z),
+    targetPolar: Math.acos(camera.position.y / initialRadius),
+    targetZoom: 1,
+    snapping: null,
+  };
+  const pointers = new Map<number, { x: number; y: number }>();
+  let lastPinchDistance = 0;
+  let lastReportedTop = false;
+  const reportView = (next: boolean) => {
+    if (lastReportedTop === next) return;
+    lastReportedTop = next;
+    onViewStateChange(next);
+  };
+  const pointerDistance = () => {
+    const values = [...pointers.values()];
+    if (values.length < 2) return 0;
+    return Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+  };
+  const onPointerDown = (event: globalThis.PointerEvent) => {
+    renderer.domElement.setPointerCapture(event.pointerId);
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    lastPinchDistance = pointerDistance();
+    orbit.snapping = null;
+    reportView(false);
+  };
+  const onPointerMove = (event: globalThis.PointerEvent) => {
+    const previous = pointers.get(event.pointerId);
+    if (!previous) return;
+    pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+    if (pointers.size === 1) {
+      orbit.targetAzimuth -= (event.clientX - previous.x) * 0.008;
+      orbit.targetPolar = THREE.MathUtils.clamp(orbit.targetPolar + (event.clientY - previous.y) * 0.008, 0.015, 1.46);
+      return;
+    }
+    const nextDistance = pointerDistance();
+    if (lastPinchDistance > 0 && nextDistance > 0) {
+      orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * (nextDistance / lastPinchDistance), 0.78, 1.5);
+    }
+    lastPinchDistance = nextDistance;
+  };
+  const onPointerUp = (event: globalThis.PointerEvent) => {
+    pointers.delete(event.pointerId);
+    lastPinchDistance = pointerDistance();
+    if (pointers.size > 0) return;
+    if (orbit.targetPolar <= 0.24) {
+      orbit.targetAzimuth = 0;
+      orbit.targetPolar = 0.015;
+      orbit.targetZoom = 1;
+      orbit.snapping = "top";
+      reportView(true);
+    } else {
+      reportView(false);
+    }
+  };
+  const onWheel = (event: WheelEvent) => {
+    event.preventDefault();
+    orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * Math.exp(-event.deltaY * 0.001), 0.78, 1.5);
+  };
+  const stage = container.closest<HTMLElement>(".memory-tree-stage");
+  const onStageKeyDown = (event: globalThis.KeyboardEvent) => {
+    if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "=", "-", "_"].includes(event.key)) return;
+    event.preventDefault();
+    orbit.snapping = null;
+    if (event.key === "ArrowLeft") orbit.targetAzimuth -= 0.16;
+    if (event.key === "ArrowRight") orbit.targetAzimuth += 0.16;
+    if (event.key === "ArrowUp") orbit.targetPolar = Math.max(0.015, orbit.targetPolar - 0.12);
+    if (event.key === "ArrowDown") orbit.targetPolar = Math.min(1.46, orbit.targetPolar + 0.12);
+    if (event.key === "+" || event.key === "=") orbit.targetZoom = Math.min(1.5, orbit.targetZoom + 0.1);
+    if (event.key === "-" || event.key === "_") orbit.targetZoom = Math.max(0.78, orbit.targetZoom - 0.1);
+    if (orbit.targetPolar <= 0.2) {
+      orbit.targetAzimuth = 0;
+      orbit.targetPolar = 0.015;
+      orbit.targetZoom = 1;
+      orbit.snapping = "top";
+      reportView(true);
+    } else {
+      reportView(false);
+    }
+  };
+  renderer.domElement.addEventListener("pointerdown", onPointerDown);
+  renderer.domElement.addEventListener("pointermove", onPointerMove);
+  renderer.domElement.addEventListener("pointerup", onPointerUp);
+  renderer.domElement.addEventListener("pointercancel", onPointerUp);
+  renderer.domElement.addEventListener("wheel", onWheel, { passive: false });
+  stage?.addEventListener("keydown", onStageKeyDown);
+  const disposeInteraction = () => {
+    renderer.domElement.removeEventListener("pointerdown", onPointerDown);
+    renderer.domElement.removeEventListener("pointermove", onPointerMove);
+    renderer.domElement.removeEventListener("pointerup", onPointerUp);
+    renderer.domElement.removeEventListener("pointercancel", onPointerUp);
+    renderer.domElement.removeEventListener("wheel", onWheel);
+    stage?.removeEventListener("keydown", onStageKeyDown);
+  };
 
   const resize = () => {
     // Keep the WebGL backing buffer out of an intrinsic-size feedback loop.
@@ -539,27 +642,40 @@ function buildMemoryScene(container: HTMLDivElement) {
       root,
       treeViewGroup,
       topQrGroup,
-      topQrMaterials: [leafModuleMaterial, redModuleMaterial, finderModuleMaterial, ...artifactPixelMaterials],
+      topQrMaterials: [leafModuleMaterial, redModuleMaterial, finderModuleMaterial],
       qrShadowMaterial,
       leaves,
       grass: grassGroup,
       train,
+      orbit,
+      disposeInteraction,
       frame: 0,
     } satisfies SceneState,
     resizeObserver,
   };
 }
 
-function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
+function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: MemoryTreeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const targetRef = useRef(isTop ? 1 : 0);
-  const progressRef = useRef(isTop ? 1 : 0);
+  const sceneRef = useRef<SceneState | null>(null);
   const [ready, setReady] = useState(false);
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
-    targetRef.current = isTop ? 1 : 0;
-  }, [isTop]);
+    const sceneState = sceneRef.current;
+    if (!sceneState) return;
+    if (isTop) {
+      sceneState.orbit.targetAzimuth = 0;
+      sceneState.orbit.targetPolar = 0.015;
+      sceneState.orbit.targetZoom = 1;
+      sceneState.orbit.snapping = "top";
+    } else {
+      sceneState.orbit.targetAzimuth = 0.697;
+      sceneState.orbit.targetPolar = 1.07;
+      sceneState.orbit.targetZoom = 1;
+      sceneState.orbit.snapping = "iso";
+    }
+  }, [isTop, viewCommand]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -571,8 +687,9 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
     let readyFrame = 0;
 
     try {
-      const built = buildMemoryScene(container);
+      const built = buildMemoryScene(container, onViewStateChange);
       sceneState = built.state;
+      sceneRef.current = sceneState;
       resizeObserver = built.resizeObserver;
       readyFrame = requestAnimationFrame(() => {
         if (!disposed) setReady(true);
@@ -590,42 +707,53 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
       };
     }
 
-    const isoPosition = new THREE.Vector3(36, 31, 43);
-    const topPosition = new THREE.Vector3(0, 61, 0.001);
     const clock = new THREE.Clock();
     const animate = () => {
       if (!sceneState || disposed) return;
       const delta = Math.min(clock.getDelta(), 0.05);
-      const target = targetRef.current;
-      if (reducedMotion) progressRef.current = target;
-      else {
-        progressRef.current += (target - progressRef.current) * Math.min(1, delta * 4.4);
-        if (Math.abs(progressRef.current - target) < 0.001) progressRef.current = target;
+      const orbit = sceneState.orbit;
+      const response = reducedMotion ? 1 : Math.min(1, delta * (orbit.snapping ? 5.6 : 11));
+      orbit.azimuth += (orbit.targetAzimuth - orbit.azimuth) * response;
+      orbit.polar += (orbit.targetPolar - orbit.polar) * response;
+      orbit.zoom += (orbit.targetZoom - orbit.zoom) * response;
+      if (orbit.snapping && Math.abs(orbit.polar - orbit.targetPolar) < 0.0015 && Math.abs(orbit.azimuth - orbit.targetAzimuth) < 0.002) {
+        orbit.snapping = null;
       }
-      const eased = cubicEase(progressRef.current);
-      sceneState.camera.position.lerpVectors(isoPosition, topPosition, eased);
-      sceneState.camera.up.set(0, 1 - eased, -eased).normalize();
-      sceneState.camera.lookAt(0, 4.2 * (1 - eased), 0);
-      sceneState.root.rotation.y = -0.1 * (1 - eased);
 
-      const qrReveal = THREE.MathUtils.smoothstep(eased, 0.28, 0.94);
+      const qrReveal = cubicEase(1 - THREE.MathUtils.smoothstep(orbit.polar, 0.04, 0.34));
+      const radius = 62;
+      const sinPolar = Math.sin(orbit.polar);
+      const cosPolar = Math.cos(orbit.polar);
+      const sinAzimuth = Math.sin(orbit.azimuth);
+      const cosAzimuth = Math.cos(orbit.azimuth);
+      const targetY = 4.2 * (1 - qrReveal);
+      sceneState.camera.position.set(
+        radius * sinPolar * sinAzimuth,
+        targetY + radius * cosPolar,
+        radius * sinPolar * cosAzimuth,
+      );
+      sceneState.camera.up.set(-cosPolar * sinAzimuth, sinPolar, -cosPolar * cosAzimuth).normalize();
+      sceneState.camera.zoom = orbit.zoom;
+      sceneState.camera.updateProjectionMatrix();
+      sceneState.camera.lookAt(0, targetY, 0);
+
       sceneState.topQrGroup.visible = qrReveal > 0.01;
-      sceneState.treeViewGroup.visible = eased < 0.94;
+      sceneState.treeViewGroup.visible = qrReveal < 0.985;
+      sceneState.treeViewGroup.scale.y = THREE.MathUtils.lerp(1, 0.06, qrReveal);
+      sceneState.treeViewGroup.position.y = THREE.MathUtils.lerp(0, -0.34, qrReveal);
       sceneState.topQrMaterials.forEach((material) => {
         material.opacity = qrReveal;
       });
       sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.16, 0.98, qrReveal);
-      sceneState.train.scale.y = THREE.MathUtils.lerp(1, 0.18, qrReveal);
-      sceneState.train.position.y = THREE.MathUtils.lerp(0, -0.42, qrReveal);
 
       const time = performance.now() * 0.001;
-      const motion = reducedMotion ? 0 : 1 - eased;
+      const motion = reducedMotion ? 0 : 1 - qrReveal;
       sceneState.leaves.rotation.y = Math.sin(time * 0.34) * 0.008 * motion;
       sceneState.leaves.rotation.z = Math.sin(time * 0.53) * 0.004 * motion;
       sceneState.grass.rotation.z = Math.sin(time * 0.72) * 0.0028 * motion;
-      const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * eased) * (window.innerWidth < 720 ? 1.1 : 2.2);
+      const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * qrReveal) * (window.innerWidth < 720 ? 0.7 : 1.4);
       sceneState.renderer.domElement.style.filter = transitionBlur > 0.05 ? `blur(${transitionBlur}px)` : "none";
-      sceneState.renderer.domElement.style.transform = `scale(${1 + Math.sin(Math.PI * eased) * 0.012})`;
+      sceneState.renderer.domElement.style.transform = `scale(${1 + Math.sin(Math.PI * qrReveal) * 0.008})`;
       sceneState.renderer.render(sceneState.scene, sceneState.camera);
       sceneState.frame = requestAnimationFrame(animate);
     };
@@ -636,6 +764,7 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
       cancelAnimationFrame(readyFrame);
       if (sceneState) {
         cancelAnimationFrame(sceneState.frame);
+        sceneState.disposeInteraction();
         sceneState.scene.traverse((object) => {
           if (object instanceof THREE.Mesh) object.geometry.dispose();
           if (!(object instanceof THREE.Mesh) && !(object instanceof THREE.Sprite)) return;
@@ -648,9 +777,10 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
         sceneState.renderer.dispose();
         sceneState.renderer.domElement.remove();
       }
+      sceneRef.current = null;
       resizeObserver?.disconnect();
     };
-  }, []);
+  }, [onViewStateChange]);
 
   return <div ref={containerRef} className="memory-tree-render" aria-hidden="true">
     {!ready && <div className="memory-tree-loading"><i /><span>{text[language].loading}</span></div>}
@@ -659,8 +789,7 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
         {BANK_QR_MATRIX.modules.flatMap((row, rowIndex) => row.map((dark, columnIndex) => {
           if (!dark) return null;
           const role = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
-          const stationRole = ARTIFACT_MODULE_ROLES.get(`${rowIndex}-${columnIndex}`);
-          return <i key={`${rowIndex}-${columnIndex}`} data-role={stationRole === undefined ? role : `station-${stationRole + 1}`} style={{ gridArea: `${rowIndex + 1} / ${columnIndex + 1}` }} />;
+          return <i key={`${rowIndex}-${columnIndex}`} data-role={role} style={{ gridArea: `${rowIndex + 1} / ${columnIndex + 1}` }} />;
         }))}
       </div>
     </div>}
@@ -670,9 +799,16 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
 export function ThankYouDiorama({ language }: { language: Language }) {
   const ui = text[language];
   const [isTop, setIsTop] = useState(false);
-  const toggleView = useCallback(() => setIsTop((current) => !current), []);
+  const [viewCommand, setViewCommand] = useState(0);
+  const requestView = useCallback((next: boolean) => {
+    setIsTop(next);
+    setViewCommand((current) => current + 1);
+  }, []);
+  const toggleView = useCallback(() => requestView(!isTop), [isTop, requestView]);
+  const onViewStateChange = useCallback((next: boolean) => setIsTop(next), []);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
+    if (event.target !== event.currentTarget) return;
     if (event.key !== "Enter" && event.key !== " ") return;
     event.preventDefault();
     toggleView();
@@ -687,23 +823,29 @@ export function ThankYouDiorama({ language }: { language: Language }) {
       <small>{ui.guide}</small>
     </header>
 
-    <div className="memory-tree-wrap">
+    <div className="memory-tree-wrap" data-view={isTop ? "top" : "tree"}>
       <div
         className="memory-tree-stage"
         data-view={isTop ? "top" : "tree"}
-        role="button"
+        role="region"
         tabIndex={0}
-        aria-pressed={isTop}
         aria-label={isTop ? ui.topView : ui.treeView}
-        onClick={toggleView}
         onKeyDown={onKeyDown}
       >
-        <MemoryTreeCanvas isTop={isTop} language={language} />
+        <MemoryTreeCanvas
+          isTop={isTop}
+          language={language}
+          viewCommand={viewCommand}
+          onViewStateChange={onViewStateChange}
+        />
         <div className="memory-tree-grid" aria-hidden="true" />
-        <div className="memory-tree-view-badge" aria-hidden="true"><b>{isTop ? "OY" : "3D"}</b><span>{isTop ? "TOP" : "TREE"}</span></div>
-        <div className="memory-tree-tap-prompt"><i>{isTop ? "↓" : "↑"}</i><span>{isTop ? ui.topView : ui.treeView}</span></div>
+        <button className="memory-tree-view-toggle" type="button" aria-pressed={isTop} onClick={toggleView}>
+          <b>{isTop ? "3D" : "OY"}</b>
+          <span>{isTop ? ui.topView : ui.treeView}</span>
+        </button>
+        <div className="memory-tree-orbit-guide" aria-hidden="true"><i>↔</i><span>{ui.orbit}</span></div>
       </div>
-      <div className="memory-tree-top-note" data-visible={isTop ? "true" : "false"} aria-hidden="true"><i>↓</i><span>{ui.topView}</span></div>
+      <button className="memory-tree-top-note" type="button" data-visible={isTop ? "true" : "false"} onClick={() => requestView(false)} tabIndex={isTop ? 0 : -1}><i>↓</i><span>{ui.topView}</span></button>
     </div>
 
     <a className="thank-you-museum-link" href="#memory-map"><span>{ui.museum}</span><b>↓</b></a>

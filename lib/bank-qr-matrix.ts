@@ -3,7 +3,7 @@ export type QrMatrixData = {
   modules: boolean[][];
 };
 
-export type QrVisualRole = "protected" | "leaf" | "train" | "grass";
+export type QrVisualRole = "protected" | "canopy" | "train" | "landscape";
 export type QrFinderId = "north-west" | "north-east" | "south-west";
 
 export function getQrFinderId(row: number, column: number, size: number): QrFinderId | null {
@@ -24,14 +24,25 @@ export function isProtectedQrModule(row: number, column: number, size: number) {
   return inTopLeftFinder || inTopRightFinder || inBottomLeftFinder || onTimingPattern || inBottomRightAlignment || fixedDarkModule;
 }
 
-export function classifyQrDarkModule(row: number, column: number, size: number): QrVisualRole {
-  if (isProtectedQrModule(row, column, size)) return "protected";
+export function isTrainArtworkZone(row: number, column: number, size: number) {
   const centre = (size - 1) / 2;
   const x = column - centre;
   const z = row - centre;
-  if (Math.abs(x) < 9 && z > 5 && z < 10.5) return "train";
-  if (Math.hypot(x, z) <= 9.6) return "leaf";
-  return "grass";
+  return Math.abs(x) < 9 && z > 5 && z < 10.5;
+}
+
+export function isCanopyArtworkZone(row: number, column: number, size: number) {
+  const centre = (size - 1) / 2;
+  const x = column - centre;
+  const z = row - centre;
+  return Math.hypot(x, z) <= 8.8;
+}
+
+export function classifyQrDarkModule(row: number, column: number, size: number): QrVisualRole {
+  if (isProtectedQrModule(row, column, size)) return "protected";
+  if (isTrainArtworkZone(row, column, size)) return "train";
+  if (isCanopyArtworkZone(row, column, size)) return "canopy";
+  return "landscape";
 }
 
 /**
