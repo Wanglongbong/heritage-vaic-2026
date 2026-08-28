@@ -7,7 +7,7 @@ import type { Language } from "@/lib/types";
 
 const SUBJECT_FRAMES = Array.from(
   { length: 12 },
-  (_, index) => `/thanks-diorama/subject-${String(index).padStart(2, "0")}.webp`,
+  (_, index) => `/thanks-diorama/subject-${String(index).padStart(2, "0")}.webp?v=clean-v2`,
 );
 
 const text = {
