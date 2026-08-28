@@ -1,8 +1,30 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { BANK_QR_MATRIX, classifyQrDarkModule, isProtectedQrModule } from "../lib/bank-qr-matrix.ts";
 
 const projectRoot = new URL("../", import.meta.url);
+
+test("assigns every dark QR module to one scan-safe visual role", () => {
+  const counts = { protected: 0, leaf: 0, train: 0, grass: 0 };
+  let darkCount = 0;
+
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (!dark) return;
+      darkCount += 1;
+      const role = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
+      counts[role] += 1;
+      if (role !== "protected") assert.equal(isProtectedQrModule(rowIndex, columnIndex, BANK_QR_MATRIX.size), false);
+    });
+  });
+
+  assert.equal(Object.values(counts).reduce((total, count) => total + count, 0), darkCount);
+  assert.ok(counts.protected > 100);
+  assert.ok(counts.leaf > 20);
+  assert.ok(counts.train > 5);
+  assert.ok(counts.grass > 100);
+});
 
 test("ships a QR-derived 3D memory tree with a static train and tap-to-top interaction", async () => {
   const [component, game, css, matrixFile, qr] = await Promise.all([
@@ -35,7 +57,15 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.match(component, /new THREE\.OrthographicCamera/);
   assert.match(component, /new THREE\.InstancedMesh/);
   assert.match(component, /grassPositions/);
+  assert.match(component, /leafModulePositions/);
   assert.match(component, /trainModulePositions/);
+  assert.match(matrixFile, /isProtectedQrModule/);
+  assert.match(matrixFile, /classifyQrDarkModule/);
+  assert.match(component, /qrShadowTiles/);
+  assert.match(component, /treeViewGroup/);
+  assert.match(component, /topQrGroup/);
+  assert.match(component, /qrReveal/);
+  assert.match(component, /memory-tree-fallback-code/);
   assert.match(component, /const train = new THREE\.Group/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
   assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
@@ -52,12 +82,16 @@ test("ships a QR-derived 3D memory tree with a static train and tap-to-top inter
   assert.doesNotMatch(component, /download=|qr-dialog|diorama-orbit/);
   assert.doesNotMatch(component, /THANKS|FOR PLAYING|LỜI CẢM ƠN/);
   assert.doesNotMatch(component, /rail|đường ray/i);
+  assert.doesNotMatch(component, /lightTiles|darkTiles|CircleGeometry/);
 
   assert.match(css, /\.thank-you-stop/);
   assert.match(css, /\.memory-tree-stage/);
   assert.match(css, /\.memory-tree-render/);
   assert.match(css, /\.memory-tree-view-badge/);
   assert.match(css, /\.memory-tree-tap-prompt/);
+  assert.match(css, /\.memory-tree-top-note/);
+  assert.match(css, /\.memory-tree-fallback-code/);
+  assert.match(css, /\.memory-tree-stage\[data-view="top"\][^}]+\.memory-tree-grid/);
   assert.match(css, /touch-action:manipulation/);
   assert.match(css, /\.memory-tree-stage[^}]+contain:layout paint size/);
   assert.match(css, /\.memory-tree-render[^}]+contain:strict/);

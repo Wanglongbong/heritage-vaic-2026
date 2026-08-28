@@ -3,6 +3,29 @@ export type QrMatrixData = {
   modules: boolean[][];
 };
 
+export type QrVisualRole = "protected" | "leaf" | "train" | "grass";
+
+export function isProtectedQrModule(row: number, column: number, size: number) {
+  const inTopLeftFinder = row <= 8 && column <= 8;
+  const inTopRightFinder = row <= 8 && column >= size - 8;
+  const inBottomLeftFinder = row >= size - 8 && column <= 8;
+  const onTimingPattern = row === 6 || column === 6;
+  const alignmentCentre = size - 7;
+  const inBottomRightAlignment = Math.abs(row - alignmentCentre) <= 2 && Math.abs(column - alignmentCentre) <= 2;
+  const fixedDarkModule = row === size - 8 && column === 8;
+  return inTopLeftFinder || inTopRightFinder || inBottomLeftFinder || onTimingPattern || inBottomRightAlignment || fixedDarkModule;
+}
+
+export function classifyQrDarkModule(row: number, column: number, size: number): QrVisualRole {
+  if (isProtectedQrModule(row, column, size)) return "protected";
+  const centre = (size - 1) / 2;
+  const x = column - centre;
+  const z = row - centre;
+  if (Math.abs(x) < 9 && z > 5 && z < 10.5) return "train";
+  if (Math.hypot(x, z) <= 9.6) return "leaf";
+  return "grass";
+}
+
 /**
  * The 41 × 41 module grid sampled from public/thanks-diorama/bank-qr.png.
  * Keeping the grid as data lets the 3D scene use the real bank QR structure

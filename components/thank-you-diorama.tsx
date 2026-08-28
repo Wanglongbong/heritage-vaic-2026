@@ -1,9 +1,9 @@
 "use client";
 
 import Image from "next/image";
-import { KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
+import { CSSProperties, KeyboardEvent, useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { BANK_QR_MATRIX } from "@/lib/bank-qr-matrix";
+import { BANK_QR_MATRIX, classifyQrDarkModule } from "@/lib/bank-qr-matrix";
 import type { Language } from "@/lib/types";
 
 const text = {
@@ -14,7 +14,6 @@ const text = {
     treeView: "Chạm để nhìn mã ký ức từ trên",
     topView: "Chạm để trở lại bên cây ký ức",
     loading: "Đang gieo cỏ theo từng ô ký ức…",
-    fallback: "Thiết bị đang hiển thị bản QR pixel nhẹ.",
     museum: "Mở Phòng trưng bày",
   },
   en: {
@@ -24,7 +23,6 @@ const text = {
     treeView: "Tap for the top view of the memory code",
     topView: "Tap to return to the memory tree",
     loading: "Growing grass from each memory tile…",
-    fallback: "This device is showing the lightweight pixel QR.",
     museum: "Open the gallery",
   },
 } as const;
@@ -39,6 +37,10 @@ type SceneState = {
   camera: THREE.OrthographicCamera;
   scene: THREE.Scene;
   root: THREE.Group;
+  treeViewGroup: THREE.Group;
+  topQrGroup: THREE.Group;
+  topQrMaterials: THREE.MeshBasicMaterial[];
+  qrShadowMaterial: THREE.MeshBasicMaterial;
   leaves: THREE.InstancedMesh;
   grass: THREE.Group;
   frame: number;
@@ -136,10 +138,10 @@ function buildMemoryScene(container: HTMLDivElement) {
   plate.position.y = -0.48;
   root.add(plate);
 
-  const tileGeometry = new THREE.BoxGeometry(0.91, 0.18, 0.91);
-  const lightPositions: THREE.Vector3[] = [];
+  const tileGeometry = new THREE.BoxGeometry(0.91, 0.1, 0.91);
   const darkPositions: THREE.Vector3[] = [];
   const grassPositions: THREE.Vector3[] = [];
+  const leafModulePositions: THREE.Vector3[] = [];
   const trainModulePositions: THREE.Vector3[] = [];
   const centre = (BANK_QR_MATRIX.size - 1) / 2;
 
@@ -148,40 +150,37 @@ function buildMemoryScene(container: HTMLDivElement) {
       const x = columnIndex - centre;
       const z = rowIndex - centre;
       const position = new THREE.Vector3(x, 0, z);
-      if (!dark) {
-        lightPositions.push(position);
-        return;
-      }
+      if (!dark) return;
       darkPositions.push(position);
-      const radius = Math.hypot(x, z);
-      const insideTrainProjection = Math.abs(x) < 8 && z > 5 && z < 10;
-      if (insideTrainProjection) trainModulePositions.push(position);
-      else if (radius > 8.7) grassPositions.push(position);
+      const visualRole = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
+      if (visualRole === "train") trainModulePositions.push(position);
+      else if (visualRole === "leaf") leafModulePositions.push(position);
+      else if (visualRole === "grass") grassPositions.push(position);
     });
   });
 
   const dummy = new THREE.Object3D();
-  const lightTiles = new THREE.InstancedMesh(
+  const qrShadowMaterial = new THREE.MeshBasicMaterial({
+    color: 0x24140c,
+    transparent: true,
+    opacity: 0.16,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const qrShadowTiles = new THREE.InstancedMesh(
     tileGeometry,
-    new THREE.MeshStandardMaterial({ color: 0xeee4c8, roughness: 1, flatShading: true }),
-    lightPositions.length,
-  );
-  lightPositions.forEach((position, index) => setInstance(lightTiles, dummy, index, position, new THREE.Vector3(1, 1, 1)));
-  lightTiles.instanceMatrix.needsUpdate = true;
-  root.add(lightTiles);
-
-  const darkTiles = new THREE.InstancedMesh(
-    tileGeometry,
-    new THREE.MeshStandardMaterial({ color: 0x191411, transparent: true, opacity: 0.34, roughness: 1, flatShading: true }),
+    qrShadowMaterial,
     darkPositions.length,
   );
-  darkPositions.forEach((position, index) => setInstance(darkTiles, dummy, index, new THREE.Vector3(position.x, 0.08, position.z), new THREE.Vector3(1, 1, 1)));
-  darkTiles.instanceMatrix.needsUpdate = true;
-  root.add(darkTiles);
+  darkPositions.forEach((position, index) => {
+    setInstance(qrShadowTiles, dummy, index, new THREE.Vector3(position.x, 0.02, position.z), new THREE.Vector3(1, 1, 1));
+  });
+  qrShadowTiles.instanceMatrix.needsUpdate = true;
+  root.add(qrShadowTiles);
 
   const grassGroup = new THREE.Group();
   const patchGeometry = new THREE.BoxGeometry(0.78, 0.18, 0.78);
-  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0x9b7724, toneMapped: false });
+  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0x5f4015, toneMapped: false });
   const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, grassPositions.length);
   grassPositions.forEach((position, index) => {
     setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
@@ -191,7 +190,7 @@ function buildMemoryScene(container: HTMLDivElement) {
 
   const random = seededRandom(20260828);
   const bladeGeometry = new THREE.BoxGeometry(0.12, 0.78, 0.12);
-  const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0xc18c2a, toneMapped: false });
+  const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0x785019, toneMapped: false });
   const bladesPerModule = 3;
   const grassBlades = new THREE.InstancedMesh(bladeGeometry, bladeMaterial, grassPositions.length * bladesPerModule);
   let bladeIndex = 0;
@@ -215,27 +214,33 @@ function buildMemoryScene(container: HTMLDivElement) {
   grassGroup.add(grassBlades);
   root.add(grassGroup);
 
-  const redModuleGeometry = new THREE.BoxGeometry(0.82, 0.3, 0.82);
-  const redModuleMaterial = new THREE.MeshBasicMaterial({ color: 0xa52d24, toneMapped: false });
+  const topQrGroup = new THREE.Group();
+  const leafModuleGeometry = new THREE.BoxGeometry(0.74, 0.34, 0.74);
+  const leafModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x96600d, transparent: true, opacity: 0, toneMapped: false });
+  const leafModules = new THREE.InstancedMesh(leafModuleGeometry, leafModuleMaterial, leafModulePositions.length);
+  leafModulePositions.forEach((position, index) => {
+    setInstance(leafModules, dummy, index, new THREE.Vector3(position.x, 0.24, position.z), new THREE.Vector3(1, 1, 1));
+  });
+  leafModules.instanceMatrix.needsUpdate = true;
+  topQrGroup.add(leafModules);
+
+  const redModuleGeometry = new THREE.BoxGeometry(0.76, 0.36, 0.76);
+  const redModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x74191a, transparent: true, opacity: 0, toneMapped: false });
   const redModules = new THREE.InstancedMesh(redModuleGeometry, redModuleMaterial, trainModulePositions.length);
   trainModulePositions.forEach((position, index) => {
-    setInstance(redModules, dummy, index, new THREE.Vector3(position.x, 0.27, position.z), new THREE.Vector3(1, 1, 1));
+    setInstance(redModules, dummy, index, new THREE.Vector3(position.x, 0.25, position.z), new THREE.Vector3(1, 1, 1));
   });
   redModules.instanceMatrix.needsUpdate = true;
-  root.add(redModules);
+  topQrGroup.add(redModules);
+  topQrGroup.visible = false;
+  root.add(topQrGroup);
 
-  const shadow = new THREE.Mesh(
-    new THREE.CircleGeometry(10.8, 48),
-    new THREE.MeshBasicMaterial({ color: 0x1b0e09, transparent: true, opacity: 0.31, depthWrite: false }),
-  );
-  shadow.rotation.x = -Math.PI / 2;
-  shadow.position.y = 0.36;
-  root.add(shadow);
-
+  const treeViewGroup = new THREE.Group();
+  root.add(treeViewGroup);
   const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x5c2d16, roughness: 1, flatShading: true });
   const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.65, 7.2, 1.65), woodMaterial);
   trunk.position.y = 3.8;
-  root.add(trunk);
+  treeViewGroup.add(trunk);
   const branchPoints: Array<[THREE.Vector3, THREE.Vector3, number]> = [
     [new THREE.Vector3(0, 5.1, 0), new THREE.Vector3(5.8, 8.1, 1.9), 0.75],
     [new THREE.Vector3(0, 5.5, 0), new THREE.Vector3(-5.3, 8.7, 2.2), 0.72],
@@ -243,20 +248,22 @@ function buildMemoryScene(container: HTMLDivElement) {
     [new THREE.Vector3(0, 6.4, 0), new THREE.Vector3(-4.2, 9.6, -4.1), 0.6],
     [new THREE.Vector3(0, 6.8, 0), new THREE.Vector3(0.8, 11.3, 0.2), 0.58],
   ];
-  branchPoints.forEach(([from, to, width]) => addBranch(root, woodMaterial, from, to, width));
+  branchPoints.forEach(([from, to, width]) => addBranch(treeViewGroup, woodMaterial, from, to, width));
 
   const mobile = window.matchMedia("(max-width: 720px)").matches;
-  const leafCount = mobile ? 880 : 1320;
+  const leavesPerModule = mobile ? 4 : 7;
+  const leafCount = leafModulePositions.length * leavesPerModule;
   const leafGeometry = new THREE.BoxGeometry(0.72, 0.5, 0.72);
   const leafMaterial = new THREE.MeshBasicMaterial({ color: 0xe5a72b, toneMapped: false });
   const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafCount);
   for (let index = 0; index < leafCount; index += 1) {
-    const angle = random() * Math.PI * 2;
-    const radius = Math.sqrt(random()) * 9.4;
-    const x = Math.cos(angle) * radius;
-    const z = Math.sin(angle) * radius;
-    const dome = 1 - Math.pow(radius / 9.4, 1.7);
-    const y = 6.1 + dome * 4.2 + (random() - 0.4) * 2.2;
+    const modulePosition = leafModulePositions[index % leafModulePositions.length];
+    const layer = Math.floor(index / leafModulePositions.length);
+    const radius = Math.hypot(modulePosition.x, modulePosition.z);
+    const dome = 1 - Math.pow(radius / 9.6, 1.65);
+    const x = modulePosition.x + (random() - 0.5) * 0.38;
+    const z = modulePosition.z + (random() - 0.5) * 0.38;
+    const y = 5.8 + dome * 3.5 + layer * 0.34 + (random() - 0.5) * 0.42;
     const scale = 0.58 + random() * 0.76;
     setInstance(
       leaves,
@@ -268,7 +275,7 @@ function buildMemoryScene(container: HTMLDivElement) {
     );
   }
   leaves.instanceMatrix.needsUpdate = true;
-  root.add(leaves);
+  treeViewGroup.add(leaves);
 
   const train = new THREE.Group();
   const trainMaterials = new Map<string, THREE.MeshStandardMaterial>();
@@ -291,7 +298,7 @@ function buildMemoryScene(container: HTMLDivElement) {
     wheel.position.set(x, 0.56, 9.4);
     train.add(wheel);
   });
-  root.add(train);
+  treeViewGroup.add(train);
 
   const resize = () => {
     // Keep the WebGL backing buffer out of an intrinsic-size feedback loop.
@@ -314,7 +321,19 @@ function buildMemoryScene(container: HTMLDivElement) {
   resizeObserver.observe(container);
 
   return {
-    state: { renderer, camera, scene, root, leaves, grass: grassGroup, frame: 0 } satisfies SceneState,
+    state: {
+      renderer,
+      camera,
+      scene,
+      root,
+      treeViewGroup,
+      topQrGroup,
+      topQrMaterials: [leafModuleMaterial, redModuleMaterial],
+      qrShadowMaterial,
+      leaves,
+      grass: grassGroup,
+      frame: 0,
+    } satisfies SceneState,
     resizeObserver,
   };
 }
@@ -377,6 +396,14 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
       sceneState.camera.lookAt(0, 4.2 * (1 - eased), 0);
       sceneState.root.rotation.y = -0.1 * (1 - eased);
 
+      const qrReveal = THREE.MathUtils.smoothstep(eased, 0.28, 0.94);
+      sceneState.topQrGroup.visible = qrReveal > 0.01;
+      sceneState.treeViewGroup.visible = eased < 0.94;
+      sceneState.topQrMaterials.forEach((material) => {
+        material.opacity = qrReveal;
+      });
+      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.16, 0.98, qrReveal);
+
       const time = performance.now() * 0.001;
       const motion = reducedMotion ? 0 : 1 - eased;
       sceneState.leaves.rotation.y = Math.sin(time * 0.34) * 0.008 * motion;
@@ -411,8 +438,13 @@ function MemoryTreeCanvas({ isTop, language }: MemoryTreeCanvasProps) {
   return <div ref={containerRef} className="memory-tree-render" aria-hidden="true">
     {!ready && <div className="memory-tree-loading"><i /><span>{text[language].loading}</span></div>}
     {fallback && <div className="memory-tree-fallback">
-      <Image src="/thanks-diorama/bank-qr-tree-pixel.png" alt="" fill unoptimized sizes="(max-width: 720px) 94vw, 720px" />
-      <span>{text[language].fallback}</span>
+      <div className="memory-tree-fallback-code" style={{ "--qr-size": BANK_QR_MATRIX.size } as CSSProperties}>
+        {BANK_QR_MATRIX.modules.flatMap((row, rowIndex) => row.map((dark, columnIndex) => {
+          if (!dark) return null;
+          const role = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
+          return <i key={`${rowIndex}-${columnIndex}`} data-role={role} style={{ gridArea: `${rowIndex + 1} / ${columnIndex + 1}` }} />;
+        }))}
+      </div>
     </div>}
   </div>;
 }
@@ -453,6 +485,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
         <div className="memory-tree-view-badge" aria-hidden="true"><b>{isTop ? "OY" : "3D"}</b><span>{isTop ? "TOP" : "TREE"}</span></div>
         <div className="memory-tree-tap-prompt"><i>{isTop ? "↓" : "↑"}</i><span>{isTop ? ui.topView : ui.treeView}</span></div>
       </div>
+      <div className="memory-tree-top-note" data-visible={isTop ? "true" : "false"} aria-hidden="true"><i>↓</i><span>{ui.topView}</span></div>
     </div>
 
     <a className="thank-you-museum-link" href="#memory-map"><span>{ui.museum}</span><b>↓</b></a>
