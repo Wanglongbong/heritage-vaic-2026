@@ -183,7 +183,7 @@ export function ThankYouDiorama({ language }: { language: Language }) {
           <span className="diorama-orbit diorama-orbit-a" aria-hidden="true" />
           <span className="diorama-orbit diorama-orbit-b" aria-hidden="true" />
           <div className="diorama-qr-floor" aria-hidden="true">
-            <Image src="/thanks-diorama/bank-qr-gold-v2.png?v=gold-v2" alt="" fill unoptimized sizes="(max-width: 720px) 78vw, 520px" draggable={false} />
+            <Image src="/thanks-diorama/bank-qr-tree-pixel.png?v=tree-pixel-v1" alt="" fill unoptimized sizes="(max-width: 720px) 78vw, 520px" draggable={false} />
             <div className="diorama-top-projection">
               <Image src="/thanks-diorama/subject-top.webp?v=top-v1" alt="" fill unoptimized sizes="(max-width: 720px) 62vw, 420px" draggable={false} />
             </div>
@@ -220,9 +220,9 @@ export function ThankYouDiorama({ language }: { language: Language }) {
         <button ref={closeButtonRef} type="button" className="qr-dialog-close" onClick={() => setQrOpen(false)} aria-label={ui.close}>×</button>
         <span>GA CUỐI · QR</span>
         <h2 id="qr-dialog-title">{ui.qrDialog}</h2>
-        <div className="qr-dialog-image"><Image src="/thanks-diorama/bank-qr-gold-v2.png?v=gold-v2" alt={ui.qrDialog} fill unoptimized priority sizes="(max-width: 720px) 86vw, 560px" /></div>
+        <div className="qr-dialog-image"><Image src="/thanks-diorama/bank-qr-tree-pixel.png?v=tree-pixel-v1" alt={ui.qrDialog} fill unoptimized priority sizes="(max-width: 720px) 86vw, 560px" /></div>
         <p id="qr-dialog-note">{ui.qrPrivacy}</p>
-        <a href="/thanks-diorama/bank-qr-gold-v2.png" download="tau-di-san-viet-nam-qr-vang.png">{ui.save}</a>
+        <a href="/thanks-diorama/bank-qr-tree-pixel.png" download="tau-di-san-viet-nam-qr-pixel-vang.png">{ui.save}</a>
       </section>
     </div>}
   </>;

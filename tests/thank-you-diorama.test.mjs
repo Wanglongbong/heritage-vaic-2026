@@ -11,7 +11,7 @@ test("ships the final-stop diorama, gold QR floor and continuous top projection"
     readFile(new URL("app/globals.css", projectRoot), "utf8"),
     readdir(new URL("public/thanks-diorama/", projectRoot)),
     readFile(new URL("public/thanks-diorama/bank-qr.png", projectRoot)),
-    readFile(new URL("public/thanks-diorama/bank-qr-gold-v2.png", projectRoot)),
+    readFile(new URL("public/thanks-diorama/bank-qr-tree-pixel.png", projectRoot)),
     readFile(new URL("public/thanks-diorama/subject-top.webp", projectRoot)),
   ]);
 
@@ -33,14 +33,14 @@ test("ships the final-stop diorama, gold QR floor and continuous top projection"
   assert.doesNotMatch(component, /FOR PLAYING/);
   assert.doesNotMatch(component, /LỜI CẢM ƠN/);
   assert.doesNotMatch(component, /diorama-thanks-card/);
-  assert.match(component, /bank-qr-gold-v2\.png/);
+  assert.match(component, /bank-qr-tree-pixel\.png/);
   assert.match(component, /subject-top\.webp/);
   assert.match(component, /className="diorama-qr-floor"/);
   assert.match(component, /className="diorama-top-projection"/);
   assert.match(component, /--floor-tilt/);
   assert.match(component, /--subject-opacity/);
   assert.match(component, /--projection-opacity/);
-  assert.match(component, /download="tau-di-san-viet-nam-qr-vang\.png"/);
+  assert.match(component, /download="tau-di-san-viet-nam-qr-pixel-vang\.png"/);
   assert.match(component, /prefers-reduced-motion/);
   assert.match(component, /ArrowLeft/);
   assert.match(component, /ArrowRight/);
