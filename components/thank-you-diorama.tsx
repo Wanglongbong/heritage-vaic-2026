@@ -71,6 +71,7 @@ type GrassBlade = {
   lean: number;
   windX: number;
   windZ: number;
+  rotationY: number;
 };
 
 type TrainModuleSupport = "ground" | "carriage" | "cabin" | "nose";
@@ -436,19 +437,20 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   root.add(treeViewGroup);
 
   const grassGroup = new THREE.Group();
-  const patchGeometry = new THREE.BoxGeometry(0.88, 0.14, 0.88);
+  const patchGeometry = new THREE.BoxGeometry(0.88, 0.11, 0.88);
   const patchMaterial = new THREE.MeshStandardMaterial({ color: 0xa9a06a, roughness: 0.94, flatShading: true });
   const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, groundGrassPositions.length);
   groundGrassPositions.forEach((position, index) => {
-    setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.18, position.z), new THREE.Vector3(1, 1, 1));
+    setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.165, position.z), new THREE.Vector3(1, 1, 1));
   });
   grassPatches.instanceMatrix.needsUpdate = true;
   grassGroup.add(grassPatches);
 
   const random = seededRandom(20260828);
-  const bladeGeometry = new THREE.BoxGeometry(0.12, 0.78, 0.12);
+  const bladeGeometry = new THREE.BoxGeometry(0.085, 0.72, 0.085);
   const bladeMaterial = new THREE.MeshStandardMaterial({ color: 0xc5b66e, roughness: 0.9, flatShading: true });
-  const bladesPerModule = 2;
+  const bladeColors = [new THREE.Color(0xb8ad62), new THREE.Color(0xd0bf6e), new THREE.Color(0x9f9858)];
+  const bladesPerModule = 3;
   const grassBlades = new THREE.InstancedMesh(
     bladeGeometry,
     bladeMaterial,
@@ -458,26 +460,29 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   let bladeIndex = 0;
   groundGrassPositions.forEach((position) => {
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
-      const height = 0.32 + random() * 0.46;
-      const offsetX = (random() - 0.5) * 0.5;
-      const offsetZ = (random() - 0.5) * 0.5;
-      const bladePosition = new THREE.Vector3(position.x + offsetX, 0.25 + (0.78 * height) / 2, position.z + offsetZ);
-      const bladeScale = new THREE.Vector3(0.75 + random() * 0.5, height, 0.75 + random() * 0.5);
+      const height = 0.2 + random() * 0.34;
+      const offsetX = (random() - 0.5) * 0.58;
+      const offsetZ = (random() - 0.5) * 0.58;
+      const bladePosition = new THREE.Vector3(position.x + offsetX, 0.22 + (0.72 * height) / 2, position.z + offsetZ);
+      const bladeScale = new THREE.Vector3(0.72 + random() * 0.58, height, 0.72 + random() * 0.58);
+      const rotationY = random() * Math.PI;
       setInstance(
         grassBlades,
         dummy,
         bladeIndex,
         bladePosition,
         bladeScale,
-        random() * Math.PI,
+        rotationY,
       );
+      grassBlades.setColorAt(bladeIndex, bladeColors[(bladeIndex + blade) % bladeColors.length]);
       grassBladeData.push({
         position: bladePosition,
         scale: bladeScale,
         phase: random() * Math.PI * 2,
-        lean: 0.045 + random() * 0.045,
-        windX: 0.025 + random() * 0.018,
-        windZ: 0.015 + random() * 0.014,
+        lean: 0.065 + random() * 0.055,
+        windX: 0.04 + random() * 0.03,
+        windZ: 0.026 + random() * 0.022,
+        rotationY,
       });
       bladeIndex += 1;
     }
@@ -485,28 +490,32 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   trainModulePositions.forEach((position) => {
     const roofY = getTrainModuleHeight(position);
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
-      const height = 0.24 + random() * 0.18;
+      const height = 0.15 + random() * 0.17;
       const offsetX = (random() - 0.5) * 0.42;
       const offsetZ = (random() - 0.5) * 0.42;
       const bladePosition = new THREE.Vector3(
         position.x + offsetX,
-        roofY + 0.08 + (0.78 * height) / 2,
+        roofY + 0.08 + (0.72 * height) / 2,
         position.z + offsetZ,
       );
       const bladeScale = new THREE.Vector3(0.82 + random() * 0.28, height, 0.82 + random() * 0.28);
-      setInstance(grassBlades, dummy, bladeIndex, bladePosition, bladeScale, random() * Math.PI);
+      const rotationY = random() * Math.PI;
+      setInstance(grassBlades, dummy, bladeIndex, bladePosition, bladeScale, rotationY);
+      grassBlades.setColorAt(bladeIndex, bladeColors[(bladeIndex + blade) % bladeColors.length]);
       grassBladeData.push({
         position: bladePosition,
         scale: bladeScale,
         phase: random() * Math.PI * 2,
-        lean: 0.04 + random() * 0.04,
-        windX: 0.02 + random() * 0.016,
-        windZ: 0.014 + random() * 0.012,
+        lean: 0.055 + random() * 0.045,
+        windX: 0.034 + random() * 0.024,
+        windZ: 0.022 + random() * 0.018,
+        rotationY,
       });
       bladeIndex += 1;
     }
   });
   grassBlades.instanceMatrix.needsUpdate = true;
+  if (grassBlades.instanceColor) grassBlades.instanceColor.needsUpdate = true;
   grassGroup.add(grassBlades);
   treeViewGroup.add(grassGroup);
 
@@ -1154,14 +1163,16 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.leaves.rotation.z = Math.sin(time * 0.53) * 0.004 * motion;
       if (!reducedMotion) {
         sceneState.grassBladeData.forEach((blade, index) => {
-          const sway = Math.sin(time * 1.35 + blade.phase) * blade.lean;
+          const longWave = Math.sin(time * 1.35 + blade.phase);
+          const flutter = Math.sin(time * 3.15 + blade.phase * 1.73);
+          const gust = longWave * 0.72 + flutter * 0.28;
           sceneState.grassBladeObject.position.set(
-            blade.position.x + Math.sin(time * 1.35 + blade.phase) * blade.windX,
+            blade.position.x + gust * blade.windX,
             blade.position.y,
-            blade.position.z + Math.cos(time * 1.08 + blade.phase) * blade.windZ,
+            blade.position.z + (Math.cos(time * 1.08 + blade.phase) * 0.75 + flutter * 0.25) * blade.windZ,
           );
-          sceneState.grassBladeObject.scale.copy(blade.scale);
-          sceneState.grassBladeObject.rotation.set(sway * 0.35, 0, sway);
+          sceneState.grassBladeObject.scale.set(blade.scale.x, blade.scale.y * (1 + flutter * 0.035), blade.scale.z);
+          sceneState.grassBladeObject.rotation.set(gust * blade.lean * 0.4, blade.rotationY, gust * blade.lean);
           sceneState.grassBladeObject.updateMatrix();
           sceneState.grassBlades.setMatrixAt(index, sceneState.grassBladeObject.matrix);
         });
@@ -1170,12 +1181,13 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.fallingLeavesGroup.visible = !reducedMotion;
       if (!reducedMotion && sceneState.fallingLeavesGroup.visible) {
         const frameFactor = delta * 60;
+        const windGust = 1 + Math.sin(time * 0.48) * 0.55;
         const topLeafCount = window.innerWidth < 720 ? 16 : 24;
         sceneState.fallingLeaves.forEach((leaf, index) => {
           leaf.mesh.visible = qrReveal < 0.92 || index < topLeafCount;
           leaf.mesh.position.y -= leaf.speedY * frameFactor;
-          leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.012 * frameFactor;
-          leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.01 * frameFactor;
+          leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.015 * windGust * frameFactor;
+          leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.013 * windGust * frameFactor;
           if (index < topLeafCount && qrReveal > 0.55) {
             leaf.mesh.position.x = THREE.MathUtils.lerp(leaf.mesh.position.x, THREE.MathUtils.clamp(leaf.mesh.position.x, -7.5, 7.5), qrReveal * 0.05);
             leaf.mesh.position.z = THREE.MathUtils.lerp(leaf.mesh.position.z, THREE.MathUtils.clamp(leaf.mesh.position.z, -7.5, 7.5), qrReveal * 0.05);

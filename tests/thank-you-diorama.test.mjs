@@ -195,7 +195,11 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /Math\.min\(container\.clientHeight, 740\)/);
   assert.match(component, /sceneState\.leaves\.rotation/);
   assert.match(component, /sceneState\.grassBlades\.setMatrixAt/);
-  assert.match(component, /windX: 0\.025 \+ random\(\) \* 0\.018/);
+  assert.match(component, /const bladesPerModule = 3/);
+  assert.match(component, /const height = 0\.2 \+ random\(\) \* 0\.34/);
+  assert.match(component, /windX: 0\.04 \+ random\(\) \* 0\.03/);
+  assert.match(component, /const flutter = Math\.sin\(time \* 3\.15 \+ blade\.phase \* 1\.73\)/);
+  assert.match(component, /const gust = longWave \* 0\.72 \+ flutter \* 0\.28/);
   assert.match(component, /topLeafCount = window\.innerWidth < 720 \? 16 : 24/);
   assert.match(component, /THREE\.MathUtils\.lerp\(1, 0\.58, qrReveal\)/);
   assert.match(component, /leaf\.mesh\.visible = qrReveal < 0\.92 \|\| index < topLeafCount/);
