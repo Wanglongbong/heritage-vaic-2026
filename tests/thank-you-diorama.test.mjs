@@ -54,7 +54,7 @@ test("maps exactly three 7 by 7 finder gardens without touching the rest of the 
   assert.equal(getQrFinderId(20, 20, BANK_QR_MATRIX.size), null);
 });
 
-test("ships a QR-derived orbitable memory landscape with a module-built train", async () => {
+test("ships a QR-derived orbitable memory landscape with a classic autumn train", async () => {
   const [component, game, css, matrixFile, qr] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
     readFile(new URL("components/heritage-game.tsx", projectRoot), "utf8"),
@@ -87,7 +87,7 @@ test("ships a QR-derived orbitable memory landscape with a module-built train", 
   assert.match(component, /landscapePositions/);
   assert.match(component, /leafModulePositions/);
   assert.match(component, /trainModulePositions/);
-  assert.match(component, /trainLightPositions/);
+  assert.doesNotMatch(component, /trainLightPositions/);
   assert.match(matrixFile, /isProtectedQrModule/);
   assert.match(matrixFile, /classifyQrDarkModule/);
   assert.match(component, /qrShadowTiles/);
@@ -101,8 +101,16 @@ test("ships a QR-derived orbitable memory landscape with a module-built train", 
   assert.match(component, /addBamboo/);
   assert.match(component, /addLandscapeDetail/);
   assert.match(component, /addLantern/);
-  assert.match(component, /canopyShadows/);
+  assert.match(component, /const canopyShadow = new THREE\.Mesh/);
+  assert.match(component, /new THREE\.CircleGeometry\(11\.8, 32\)/);
   assert.match(component, /const train = new THREE\.Group/);
+  assert.match(component, /\[14\.8, 0\.68, 3\.1\]/);
+  assert.match(component, /\[13\.9, 2\.3, 2\.9\]/);
+  assert.match(component, /-5\.3 \+ index \* 1\.65/);
+  assert.match(component, /\[-5\.4, -2\.6, 1\.2, 4\.7, 7\.2\]/);
+  assert.match(component, /fallingLeafCount = mobile \? 32 : 65/);
+  assert.match(component, /fallingLeavesGroup/);
+  assert.match(component, /autumnColors/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
   assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
   assert.match(component, /memory-tree-view-toggle/);
@@ -110,7 +118,10 @@ test("ships a QR-derived orbitable memory landscape with a module-built train", 
   assert.match(component, /onPointerMove/);
   assert.match(component, /setPointerCapture/);
   assert.match(component, /pointerDistance/);
-  assert.match(component, /orbit\.targetPolar <= 0\.24/);
+  assert.doesNotMatch(component, /orbit\.targetPolar <= 0\.24/);
+  assert.doesNotMatch(component, /orbit\.targetPolar <= 0\.2/);
+  assert.match(component, /targetScanProgress/);
+  assert.match(component, /const qrReveal = cubicEase\(orbit\.scanProgress\)/);
   assert.match(component, /ArrowLeft/);
   assert.match(component, /targetZoom/);
   assert.match(component, /event\.key !== "Enter" && event\.key !== " "/);
@@ -126,7 +137,7 @@ test("ships a QR-derived orbitable memory landscape with a module-built train", 
   assert.doesNotMatch(component, /download=|qr-dialog|diorama-orbit/);
   assert.doesNotMatch(component, /THANKS|FOR PLAYING|LỜI CẢM ƠN/);
   assert.doesNotMatch(component, /rail|đường ray/i);
-  assert.doesNotMatch(component, /lightTiles|darkTiles|CircleGeometry/);
+  assert.doesNotMatch(component, /lightTiles|darkTiles/);
 
   assert.match(css, /\.thank-you-stop/);
   assert.match(css, /\.memory-tree-stage/);

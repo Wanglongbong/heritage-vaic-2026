@@ -7,7 +7,6 @@ import {
   BANK_QR_MATRIX,
   classifyQrDarkModule,
   getQrFinderId,
-  isTrainArtworkZone,
   type QrFinderId,
 } from "@/lib/bank-qr-matrix";
 import type { Language } from "@/lib/types";
@@ -20,7 +19,7 @@ const text = {
     treeView: "Chạm để nhìn mã ký ức từ trên",
     topView: "Chạm để trở lại bên cây ký ức",
     orbit: "Kéo xoay · Cuộn hoặc chụm để thu phóng",
-    loading: "Đang gieo cỏ theo từng ô ký ức…",
+    loading: "Đang dựng cây mùa thu và chuyến tàu ký ức…",
     museum: "Mở Phòng trưng bày",
   },
   en: {
@@ -30,7 +29,7 @@ const text = {
     treeView: "Tap for the top view of the memory code",
     topView: "Tap to return to the memory tree",
     orbit: "Drag to orbit · Scroll or pinch to zoom",
-    loading: "Growing grass from each memory tile…",
+    loading: "Building the autumn tree and memory train…",
     museum: "Open the gallery",
   },
 } as const;
@@ -49,7 +48,19 @@ type OrbitState = {
   targetAzimuth: number;
   targetPolar: number;
   targetZoom: number;
+  scanProgress: number;
+  targetScanProgress: number;
   snapping: "top" | "iso" | null;
+};
+
+type FallingLeaf = {
+  mesh: THREE.Mesh;
+  speedY: number;
+  flutter: number;
+  spinX: number;
+  spinY: number;
+  spinZ: number;
+  seed: number;
 };
 
 type SceneState = {
@@ -61,7 +72,9 @@ type SceneState = {
   topQrGroup: THREE.Group;
   topQrMaterials: THREE.MeshBasicMaterial[];
   qrShadowMaterial: THREE.MeshBasicMaterial;
-  leaves: THREE.InstancedMesh;
+  leaves: THREE.Group;
+  fallingLeaves: FallingLeaf[];
+  fallingLeavesGroup: THREE.Group;
   grass: THREE.Group;
   train: THREE.Group;
   orbit: OrbitState;
@@ -195,22 +208,22 @@ function addLandscapeDetail(
 ) {
   if (variant === 0) {
     [-0.18, 0, 0.18].forEach((offset, index) => {
-      const blade = addBox(parent, materials, [0.08, 0.55 + index * 0.12, 0.08], [position.x + offset, 0.55, position.z], "#75601f");
+      const blade = addBox(parent, materials, [0.08, 0.55 + index * 0.12, 0.08], [position.x + offset, 0.55, position.z], "#a99568");
       blade.rotation.z = (index - 1) * 0.16;
     });
     return;
   }
   if (variant === 1) {
-    addBox(parent, materials, [0.58, 0.18, 0.42], [position.x, 0.38, position.z], "#7a6033").rotation.y = Math.PI / 4;
+    addBox(parent, materials, [0.58, 0.18, 0.42], [position.x, 0.38, position.z], "#b09b75").rotation.y = Math.PI / 4;
     return;
   }
   if (variant === 2) {
-    addBox(parent, materials, [0.68, 0.06, 0.1], [position.x, 0.3, position.z], "#b88b3e");
-    addBox(parent, materials, [0.1, 0.06, 0.52], [position.x, 0.31, position.z], "#8f642e");
+    addBox(parent, materials, [0.68, 0.06, 0.1], [position.x, 0.3, position.z], "#c1ab83");
+    addBox(parent, materials, [0.1, 0.06, 0.52], [position.x, 0.31, position.z], "#af9974");
     return;
   }
-  addBox(parent, materials, [0.16, 0.62, 0.16], [position.x, 0.58, position.z], "#5d672f");
-  addBox(parent, materials, [0.44, 0.1, 0.22], [position.x + 0.12, 0.84, position.z], "#8b7d32").rotation.y = -0.5;
+  addBox(parent, materials, [0.16, 0.62, 0.16], [position.x, 0.58, position.z], "#9c8d69");
+  addBox(parent, materials, [0.44, 0.1, 0.22], [position.x + 0.12, 0.84, position.z], "#b3a078").rotation.y = -0.5;
 }
 
 function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: boolean) => void) {
@@ -236,7 +249,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   redFill.position.set(0, 4, 10);
   scene.add(redFill);
 
-  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xd3b570, roughness: 1, flatShading: true });
+  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xe7dcc8, roughness: 1, flatShading: true });
   const plate = new THREE.Mesh(new THREE.BoxGeometry(49, 0.7, 49), plateMaterial);
   plate.position.y = -0.48;
   root.add(plate);
@@ -247,7 +260,6 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const lightReliefPositions: THREE.Vector3[] = [];
   const leafModulePositions: THREE.Vector3[] = [];
   const trainModulePositions: THREE.Vector3[] = [];
-  const trainLightPositions: THREE.Vector3[] = [];
   const finderDarkPositions: THREE.Vector3[] = [];
   const finderLightPositions: THREE.Vector3[] = [];
   const finderPositions: Record<QrFinderId, { dark: THREE.Vector3[]; light: THREE.Vector3[] }> = {
@@ -274,18 +286,6 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       }
       if (!dark) {
         if (!finderId) lightReliefPositions.push(position);
-        if (isTrainArtworkZone(rowIndex, columnIndex, BANK_QR_MATRIX.size)) {
-          const neighbours = [[-1, 0], [1, 0], [0, -1], [0, 1]];
-          const touchesTrainModule = neighbours.some(([rowOffset, columnOffset]) => {
-            const neighbourRow = rowIndex + rowOffset;
-            const neighbourColumn = columnIndex + columnOffset;
-            return Boolean(
-              BANK_QR_MATRIX.modules[neighbourRow]?.[neighbourColumn]
-              && classifyQrDarkModule(neighbourRow, neighbourColumn, BANK_QR_MATRIX.size) === "train"
-            );
-          });
-          if (touchesTrainModule) trainLightPositions.push(position);
-        }
         return;
       }
       darkPositions.push(position);
@@ -300,7 +300,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const qrShadowMaterial = new THREE.MeshBasicMaterial({
     color: 0x24140c,
     transparent: true,
-    opacity: 0.16,
+    opacity: 0,
     depthWrite: false,
     toneMapped: false,
   });
@@ -320,7 +320,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
 
   const grassGroup = new THREE.Group();
   const patchGeometry = new THREE.BoxGeometry(0.78, 0.18, 0.78);
-  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0x5f4015, toneMapped: false });
+  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0xd4c7ad, toneMapped: false });
   const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, landscapePositions.length);
   landscapePositions.forEach((position, index) => {
     setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
@@ -330,7 +330,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
 
   const random = seededRandom(20260828);
   const bladeGeometry = new THREE.BoxGeometry(0.12, 0.78, 0.12);
-  const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0x785019, toneMapped: false });
+  const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0xbbaa86, toneMapped: false });
   const bladesPerModule = 2;
   const grassBlades = new THREE.InstancedMesh(bladeGeometry, bladeMaterial, landscapePositions.length * bladesPerModule);
   let bladeIndex = 0;
@@ -354,7 +354,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   grassGroup.add(grassBlades);
   treeViewGroup.add(grassGroup);
 
-  const reliefMaterial = new THREE.MeshStandardMaterial({ color: 0xd7ba72, roughness: 1, flatShading: true });
+  const reliefMaterial = new THREE.MeshStandardMaterial({ color: 0xeee5d4, roughness: 1, flatShading: true });
   const reliefGeometry = new THREE.BoxGeometry(0.76, 0.08, 0.76);
   const lightRelief = new THREE.InstancedMesh(reliefGeometry, reliefMaterial, lightReliefPositions.length);
   lightReliefPositions.forEach((position, index) => {
@@ -408,16 +408,16 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   };
 
   const finderGardenGroup = new THREE.Group();
-  const hedgeMaterial = new THREE.MeshStandardMaterial({ color: 0x334522, roughness: 1, flatShading: true });
-  const hedgeGeometry = new THREE.BoxGeometry(0.78, 0.52, 0.78);
+  const hedgeMaterial = new THREE.MeshStandardMaterial({ color: 0xc7b99b, roughness: 1, flatShading: true });
+  const hedgeGeometry = new THREE.BoxGeometry(0.78, 0.22, 0.78);
   const hedgeModules = new THREE.InstancedMesh(hedgeGeometry, hedgeMaterial, finderDarkPositions.length);
   finderDarkPositions.forEach((position, index) => {
-    setInstance(hedgeModules, dummy, index, new THREE.Vector3(position.x, 0.38, position.z), new THREE.Vector3(1, 1, 1));
+    setInstance(hedgeModules, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
   });
   hedgeModules.instanceMatrix.needsUpdate = true;
   finderGardenGroup.add(hedgeModules);
 
-  const paleGardenMaterial = new THREE.MeshStandardMaterial({ color: 0xd9bc72, roughness: 1, flatShading: true });
+  const paleGardenMaterial = new THREE.MeshStandardMaterial({ color: 0xe1d5bf, roughness: 1, flatShading: true });
   const paleGardenGeometry = new THREE.BoxGeometry(0.72, 0.16, 0.72);
   const paleGardenModules = new THREE.InstancedMesh(paleGardenGeometry, paleGardenMaterial, finderLightPositions.length);
   finderLightPositions.forEach((position, index) => {
@@ -429,88 +429,134 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const gardenMaterials = new Map<string, THREE.MeshStandardMaterial>();
   const lotusGarden = finderPositions["north-west"].dark.filter((_, index) => index % 6 === 2);
   lotusGarden.forEach((position, index) => addLotus(finderGardenGroup, gardenMaterials, position, 0.76 + (index % 3) * 0.08));
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [-17, 0.5, -17], "#6c5a2d");
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [-17, 0.36, -17], "#d1c3aa");
 
   const bambooGarden = finderPositions["north-east"].dark.filter((_, index) => index % 7 === 1);
   bambooGarden.forEach((position, index) => addBamboo(finderGardenGroup, gardenMaterials, position, 0.82 + (index % 2) * 0.12));
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [17, 0.5, -17], "#78662f");
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [17, 0.36, -17], "#d0c2a8");
 
   const lanternGarden = finderPositions["south-west"].dark.filter((_, index) => index % 5 === 0);
   lanternGarden.forEach((position, index) => {
     addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.7, position.z), 0.42 + (index % 2) * 0.07);
   });
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.12, 3.7], [-17, 0.5, 17], "#704225");
+  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [-17, 0.36, 17], "#cfbea4");
   treeViewGroup.add(finderGardenGroup);
 
-  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x5c2d16, roughness: 1, flatShading: true });
-  const canopyShadowGeometry = new THREE.BoxGeometry(0.82, 0.05, 0.82);
-  const canopyShadowMaterial = new THREE.MeshBasicMaterial({ color: 0x6f4a17, transparent: true, opacity: 0.72, toneMapped: false });
-  const canopyShadows = new THREE.InstancedMesh(canopyShadowGeometry, canopyShadowMaterial, leafModulePositions.length);
-  leafModulePositions.forEach((position, index) => {
-    setInstance(canopyShadows, dummy, index, new THREE.Vector3(position.x, 0.17, position.z), new THREE.Vector3(1, 1, 1));
-  });
-  canopyShadows.instanceMatrix.needsUpdate = true;
-  treeViewGroup.add(canopyShadows);
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x4a220e, roughness: 1, flatShading: true });
+  const canopyShadow = new THREE.Mesh(
+    new THREE.CircleGeometry(11.8, 32),
+    new THREE.MeshBasicMaterial({ color: 0x4a2c12, transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false }),
+  );
+  canopyShadow.rotation.x = -Math.PI / 2;
+  canopyShadow.position.y = 0.06;
+  canopyShadow.scale.z = 0.84;
+  treeViewGroup.add(canopyShadow);
 
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(1.65, 7.2, 1.65), woodMaterial);
-  trunk.position.y = 3.8;
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(2, 9.2, 2), woodMaterial);
+  trunk.position.y = 4.7;
   treeViewGroup.add(trunk);
+  [
+    [-1.45, 0.3, 0.72, 0], [1.45, 0.28, 0.72, 0], [0, 0.28, 1.45, Math.PI / 2], [0, 0.28, -1.45, Math.PI / 2],
+  ].forEach(([x, y, z, rotation]) => {
+    const rootPiece = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.48, 0.62), woodMaterial);
+    rootPiece.position.set(x, y, z);
+    rootPiece.rotation.y = rotation;
+    treeViewGroup.add(rootPiece);
+  });
   const branchPoints: Array<[THREE.Vector3, THREE.Vector3, number]> = [
-    [new THREE.Vector3(0, 5.1, 0), new THREE.Vector3(5.8, 8.1, 1.9), 0.75],
-    [new THREE.Vector3(0, 5.5, 0), new THREE.Vector3(-5.3, 8.7, 2.2), 0.72],
-    [new THREE.Vector3(0, 6.2, 0), new THREE.Vector3(3.7, 9.8, -4.4), 0.62],
-    [new THREE.Vector3(0, 6.4, 0), new THREE.Vector3(-4.2, 9.6, -4.1), 0.6],
-    [new THREE.Vector3(0, 6.8, 0), new THREE.Vector3(0.8, 11.3, 0.2), 0.58],
+    [new THREE.Vector3(0, 6, 0), new THREE.Vector3(7.2, 10.4, 2.8), 0.86],
+    [new THREE.Vector3(0, 6.2, 0), new THREE.Vector3(-7.1, 10.8, 3), 0.84],
+    [new THREE.Vector3(0, 7, 0), new THREE.Vector3(5.1, 12.4, -5.2), 0.76],
+    [new THREE.Vector3(0, 7.2, 0), new THREE.Vector3(-5.5, 12.1, -5), 0.74],
+    [new THREE.Vector3(0, 7.8, 0), new THREE.Vector3(1, 14.1, 0.3), 0.7],
+    [new THREE.Vector3(0, 8.5, 0), new THREE.Vector3(6.5, 12.2, -0.8), 0.58],
+    [new THREE.Vector3(0, 8.7, 0), new THREE.Vector3(-6.2, 12.7, -0.5), 0.56],
   ];
   branchPoints.forEach(([from, to, width]) => addBranch(treeViewGroup, woodMaterial, from, to, width));
 
   const mobile = window.matchMedia("(max-width: 720px)").matches;
-  const leafCount = leafModulePositions.length;
-  const leafGeometry = new THREE.BoxGeometry(0.84, 0.48, 0.84);
-  const leafMaterial = new THREE.MeshBasicMaterial({ color: 0xe5a72b, toneMapped: false });
-  const leaves = new THREE.InstancedMesh(leafGeometry, leafMaterial, leafCount);
-  for (let index = 0; index < leafCount; index += 1) {
-    const modulePosition = leafModulePositions[index];
+  const leaves = new THREE.Group();
+  const leafGeometry = new THREE.BoxGeometry(0.98, 0.5, 0.98);
+  const autumnColors = [0xf59e0b, 0xea580c, 0xd97706, 0xfbbf24, 0xb45309];
+  const leafMaterials = autumnColors.map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true }));
+  leafModulePositions.forEach((modulePosition, moduleIndex) => {
     const radius = Math.hypot(modulePosition.x, modulePosition.z);
-    const dome = 1 - Math.pow(radius / 8.8, 1.5);
-    const x = modulePosition.x + (random() - 0.5) * 0.16;
-    const z = modulePosition.z + (random() - 0.5) * 0.16;
-    const y = 6.1 + dome * 3.1 + (random() - 0.5) * 0.26;
-    const scale = 0.64 + random() * 0.42;
-    setInstance(
-      leaves,
-      dummy,
-      index,
-      new THREE.Vector3(x, y, z),
-      new THREE.Vector3(scale * (0.8 + random() * 0.45), scale, scale * (0.8 + random() * 0.45)),
-      random() * Math.PI,
-    );
-  }
-  leaves.instanceMatrix.needsUpdate = true;
+    const layers = radius < 5.2 ? 3 : 2;
+    for (let layer = 0; layer < layers; layer += 1) {
+      const dome = Math.max(0, 1 - Math.pow(radius / 10.6, 1.55));
+      const leaf = new THREE.Mesh(leafGeometry, leafMaterials[(moduleIndex + layer * 2) % leafMaterials.length]);
+      const spread = 1.25;
+      leaf.position.set(
+        modulePosition.x * spread + (random() - 0.5) * 0.72,
+        8.4 + dome * 5.3 + layer * 0.34 + (random() - 0.5) * 0.45,
+        modulePosition.z * spread + (random() - 0.5) * 0.72,
+      );
+      const scale = 0.78 + random() * 0.5;
+      leaf.scale.set(scale * (0.85 + random() * 0.35), scale, scale * (0.85 + random() * 0.35));
+      leaf.rotation.set((random() - 0.5) * 0.35, random() * Math.PI, (random() - 0.5) * 0.25);
+      leaves.add(leaf);
+    }
+  });
   treeViewGroup.add(leaves);
+
+  const fallingLeavesGroup = new THREE.Group();
+  const fallingLeaves: FallingLeaf[] = [];
+  const fallingLeafGeometry = new THREE.BoxGeometry(0.32, 0.04, 0.24);
+  const fallingLeafMaterials = autumnColors.slice(0, 4).map((color) => new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+  const fallingLeafCount = mobile ? 32 : 65;
+  for (let index = 0; index < fallingLeafCount; index += 1) {
+    const mesh = new THREE.Mesh(fallingLeafGeometry, fallingLeafMaterials[index % fallingLeafMaterials.length]);
+    mesh.position.set((random() - 0.5) * 26, 4 + random() * 14, (random() - 0.5) * 26);
+    mesh.rotation.set(random() * Math.PI, random() * Math.PI, random() * Math.PI);
+    fallingLeavesGroup.add(mesh);
+    fallingLeaves.push({
+      mesh,
+      speedY: 0.025 + random() * 0.035,
+      flutter: 0.4 + random() * 0.8,
+      spinX: (random() - 0.5) * 0.035,
+      spinY: (random() - 0.5) * 0.045,
+      spinZ: (random() - 0.5) * 0.03,
+      seed: random() * Math.PI * 2,
+    });
+  }
+  treeViewGroup.add(fallingLeavesGroup);
 
   const train = new THREE.Group();
   const trainMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  addBox(train, trainMaterials, [18.4, 0.18, 4.8], [0, 0.28, 8], "#d6b969");
-  addBox(train, trainMaterials, [18.1, 0.2, 0.16], [0, 0.62, 10.26], "#8d5c27");
-  addBox(train, trainMaterials, [18.1, 0.2, 0.16], [0, 0.62, 5.74], "#b78739");
-  trainLightPositions.forEach((position, index) => {
-    addBox(train, trainMaterials, [0.74, 0.9, 0.74], [position.x, 0.82, position.z], index % 3 === 0 ? "#ddc77f" : "#caa654");
-    addBox(train, trainMaterials, [0.82, 0.12, 0.82], [position.x, 1.34, position.z], "#eed58a");
-  });
+  addBox(train, trainMaterials, [14.8, 0.68, 3.1], [0, 0.78, 8], "#35161a");
+  addBox(train, trainMaterials, [13.9, 2.3, 2.9], [-0.2, 2.05, 8], "#8c1f20");
+  addBox(train, trainMaterials, [13.4, 0.52, 3.2], [-0.35, 3.42, 8], "#27161c");
+  addBox(train, trainMaterials, [2.8, 3.1, 3], [6.2, 2.45, 8], "#74191a");
+  addBox(train, trainMaterials, [1.35, 1.5, 2.6], [8.05, 1.65, 8], "#b52c20");
+  addBox(train, trainMaterials, [0.55, 2.1, 0.55], [8.8, 2.45, 8], "#27161c");
+  addBox(train, trainMaterials, [0.95, 0.18, 0.95], [8.8, 3.55, 8], "#c58a38");
+  addBox(train, trainMaterials, [14.2, 0.12, 0.12], [-0.1, 1.12, 9.48], "#c58a38");
+  for (let index = 0; index < 7; index += 1) {
+    const windowMaterial = new THREE.MeshStandardMaterial({
+      color: 0xffcc55,
+      emissive: 0xe6872c,
+      emissiveIntensity: 0.65,
+      roughness: 0.52,
+      flatShading: true,
+    });
+    const trainWindow = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.08), windowMaterial);
+    trainWindow.position.set(-5.3 + index * 1.65, 2.35, 9.48);
+    train.add(trainWindow);
+  }
   trainModulePositions.forEach((position, index) => {
-    addBox(train, trainMaterials, [0.72, 1.22, 0.72], [position.x, 0.94, position.z], index % 4 === 0 ? "#7b2922" : "#641e1c");
-    addBox(train, trainMaterials, [0.82, 0.18, 0.82], [position.x, 1.62, position.z], "#8f3124");
-    if (index % 5 === 0) addLantern(train, lanternMaterials, new THREE.Vector3(position.x, 1.82, position.z), 0.31);
+    addBox(
+      train,
+      trainMaterials,
+      [0.78, 0.12, 0.78],
+      [position.x, 3.76, position.z],
+      index % 4 === 0 ? "#b52c20" : "#27161c",
+    );
   });
-  addBox(train, trainMaterials, [1.12, 1.8, 1.12], [8.25, 1.26, 8], "#8b3428");
-  addBox(train, trainMaterials, [0.42, 1.18, 0.42], [8.25, 2.66, 8], "#5a3020");
-  addBox(train, trainMaterials, [0.86, 0.16, 0.86], [8.25, 3.25, 8], "#d2a24d");
-  const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x1b1616, roughness: 1, flatShading: true });
-  [-7.1, -4.3, -1.5, 1.5, 4.3, 7.1].forEach((x) => {
-    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.46, 0.46, 0.24, 8), wheelMaterial);
+  const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x1c1717, roughness: 1, flatShading: true });
+  [-5.4, -2.6, 1.2, 4.7, 7.2].forEach((x) => {
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.54, 0.54, 0.24, 8), wheelMaterial);
     wheel.rotation.x = Math.PI / 2;
-    wheel.position.set(x, 0.56, 10.36);
+    wheel.position.set(x, 0.54, 9.38);
     train.add(wheel);
   });
   treeViewGroup.add(train);
@@ -523,6 +569,8 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     targetAzimuth: Math.atan2(camera.position.x, camera.position.z),
     targetPolar: Math.acos(camera.position.y / initialRadius),
     targetZoom: 1,
+    scanProgress: 0,
+    targetScanProgress: 0,
     snapping: null,
   };
   const pointers = new Map<number, { x: number; y: number }>();
@@ -543,6 +591,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     lastPinchDistance = pointerDistance();
     orbit.snapping = null;
+    orbit.targetScanProgress = 0;
     reportView(false);
   };
   const onPointerMove = (event: globalThis.PointerEvent) => {
@@ -564,18 +613,13 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     pointers.delete(event.pointerId);
     lastPinchDistance = pointerDistance();
     if (pointers.size > 0) return;
-    if (orbit.targetPolar <= 0.24) {
-      orbit.targetAzimuth = 0;
-      orbit.targetPolar = 0.015;
-      orbit.targetZoom = 1;
-      orbit.snapping = "top";
-      reportView(true);
-    } else {
-      reportView(false);
-    }
+    reportView(false);
   };
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
+    orbit.snapping = null;
+    orbit.targetScanProgress = 0;
+    reportView(false);
     orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * Math.exp(-event.deltaY * 0.001), 0.78, 1.5);
   };
   const stage = container.closest<HTMLElement>(".memory-tree-stage");
@@ -583,21 +627,14 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     if (!["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "+", "=", "-", "_"].includes(event.key)) return;
     event.preventDefault();
     orbit.snapping = null;
+    orbit.targetScanProgress = 0;
     if (event.key === "ArrowLeft") orbit.targetAzimuth -= 0.16;
     if (event.key === "ArrowRight") orbit.targetAzimuth += 0.16;
     if (event.key === "ArrowUp") orbit.targetPolar = Math.max(0.015, orbit.targetPolar - 0.12);
     if (event.key === "ArrowDown") orbit.targetPolar = Math.min(1.46, orbit.targetPolar + 0.12);
     if (event.key === "+" || event.key === "=") orbit.targetZoom = Math.min(1.5, orbit.targetZoom + 0.1);
     if (event.key === "-" || event.key === "_") orbit.targetZoom = Math.max(0.78, orbit.targetZoom - 0.1);
-    if (orbit.targetPolar <= 0.2) {
-      orbit.targetAzimuth = 0;
-      orbit.targetPolar = 0.015;
-      orbit.targetZoom = 1;
-      orbit.snapping = "top";
-      reportView(true);
-    } else {
-      reportView(false);
-    }
+    reportView(false);
   };
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -645,6 +682,8 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       topQrMaterials: [leafModuleMaterial, redModuleMaterial, finderModuleMaterial],
       qrShadowMaterial,
       leaves,
+      fallingLeaves,
+      fallingLeavesGroup,
       grass: grassGroup,
       train,
       orbit,
@@ -668,11 +707,13 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.orbit.targetAzimuth = 0;
       sceneState.orbit.targetPolar = 0.015;
       sceneState.orbit.targetZoom = 1;
+      sceneState.orbit.targetScanProgress = 1;
       sceneState.orbit.snapping = "top";
     } else {
       sceneState.orbit.targetAzimuth = 0.697;
       sceneState.orbit.targetPolar = 1.07;
       sceneState.orbit.targetZoom = 1;
+      sceneState.orbit.targetScanProgress = 0;
       sceneState.orbit.snapping = "iso";
     }
   }, [isTop, viewCommand]);
@@ -716,11 +757,12 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       orbit.azimuth += (orbit.targetAzimuth - orbit.azimuth) * response;
       orbit.polar += (orbit.targetPolar - orbit.polar) * response;
       orbit.zoom += (orbit.targetZoom - orbit.zoom) * response;
+      orbit.scanProgress += (orbit.targetScanProgress - orbit.scanProgress) * (reducedMotion ? 1 : Math.min(1, delta * 5.8));
       if (orbit.snapping && Math.abs(orbit.polar - orbit.targetPolar) < 0.0015 && Math.abs(orbit.azimuth - orbit.targetAzimuth) < 0.002) {
         orbit.snapping = null;
       }
 
-      const qrReveal = cubicEase(1 - THREE.MathUtils.smoothstep(orbit.polar, 0.04, 0.34));
+      const qrReveal = cubicEase(orbit.scanProgress);
       const radius = 62;
       const sinPolar = Math.sin(orbit.polar);
       const cosPolar = Math.cos(orbit.polar);
@@ -744,13 +786,29 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.topQrMaterials.forEach((material) => {
         material.opacity = qrReveal;
       });
-      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.16, 0.98, qrReveal);
+      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0, 0.98, qrReveal);
 
       const time = performance.now() * 0.001;
       const motion = reducedMotion ? 0 : 1 - qrReveal;
       sceneState.leaves.rotation.y = Math.sin(time * 0.34) * 0.008 * motion;
       sceneState.leaves.rotation.z = Math.sin(time * 0.53) * 0.004 * motion;
       sceneState.grass.rotation.z = Math.sin(time * 0.72) * 0.0028 * motion;
+      sceneState.fallingLeavesGroup.visible = !reducedMotion && qrReveal < 0.94;
+      if (!reducedMotion && sceneState.fallingLeavesGroup.visible) {
+        const frameFactor = delta * 60;
+        sceneState.fallingLeaves.forEach((leaf) => {
+          leaf.mesh.position.y -= leaf.speedY * frameFactor;
+          leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.008 * frameFactor;
+          leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.006 * frameFactor;
+          leaf.mesh.rotation.x += leaf.spinX * frameFactor;
+          leaf.mesh.rotation.y += leaf.spinY * frameFactor;
+          leaf.mesh.rotation.z += leaf.spinZ * frameFactor;
+          if (leaf.mesh.position.y < 0.32) {
+            leaf.mesh.position.set((Math.random() - 0.5) * 22, 12 + Math.random() * 6, (Math.random() - 0.5) * 22);
+          }
+          leaf.mesh.scale.setScalar(1 - qrReveal);
+        });
+      }
       const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * qrReveal) * (window.innerWidth < 720 ? 0.7 : 1.4);
       sceneState.renderer.domElement.style.filter = transitionBlur > 0.05 ? `blur(${transitionBlur}px)` : "none";
       sceneState.renderer.domElement.style.transform = `scale(${1 + Math.sin(Math.PI * qrReveal) * 0.008})`;
