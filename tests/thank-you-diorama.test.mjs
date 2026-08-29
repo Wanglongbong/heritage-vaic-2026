@@ -84,6 +84,19 @@ test("maps the bottom-right 5 by 5 alignment garden exactly", () => {
   assert.ok(cells.every(({ rowIndex, columnIndex }) => isProtectedQrModule(rowIndex, columnIndex, BANK_QR_MATRIX.size)));
 });
 
+test("finds all 45 protected modules that need ground grass", () => {
+  let bareProtected = 0;
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (!dark || classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size) !== "protected") return;
+      if (getQrFinderId(rowIndex, columnIndex, BANK_QR_MATRIX.size)) return;
+      if (isBottomRightAlignmentModule(rowIndex, columnIndex, BANK_QR_MATRIX.size)) return;
+      bareProtected += 1;
+    });
+  });
+  assert.equal(bareProtected, 45);
+});
+
 test("ships a QR-derived orbitable memory landscape with a classic autumn train", async () => {
   const [component, game, css, matrixFile, qr] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
@@ -115,6 +128,8 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /new THREE\.OrthographicCamera/);
   assert.match(component, /new THREE\.InstancedMesh/);
   assert.match(component, /landscapePositions/);
+  assert.match(component, /bareProtectedPositions/);
+  assert.match(component, /const groundGrassPositions = \[\.\.\.landscapePositions, \.\.\.bareProtectedPositions\]/);
   assert.match(component, /leafModulePositions/);
   assert.match(component, /trainModulePositions/);
   assert.doesNotMatch(component, /trainLightPositions/);
@@ -180,6 +195,9 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /Math\.min\(container\.clientHeight, 740\)/);
   assert.match(component, /sceneState\.leaves\.rotation/);
   assert.match(component, /sceneState\.grassBlades\.setMatrixAt/);
+  assert.match(component, /windX: 0\.025 \+ random\(\) \* 0\.018/);
+  assert.match(component, /topLeafCount = window\.innerWidth < 720 \? 16 : 24/);
+  assert.match(component, /THREE\.MathUtils\.lerp\(1, 0\.58, qrReveal\)/);
   assert.match(component, /leaf\.mesh\.visible = qrReveal < 0\.92 \|\| index < topLeafCount/);
   assert.match(component, /color: 0xf7f3ec/);
   assert.doesNotMatch(component, /artifactSprite|addArtifactSprite|artifactWorld|stationPixelPalette/);

@@ -69,6 +69,8 @@ type GrassBlade = {
   scale: THREE.Vector3;
   phase: number;
   lean: number;
+  windX: number;
+  windZ: number;
 };
 
 type TrainModuleSupport = "ground" | "carriage" | "cabin" | "nose";
@@ -366,6 +368,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const lightReliefPositions: THREE.Vector3[] = [];
   const leafModulePositions: THREE.Vector3[] = [];
   const trainModulePositions: THREE.Vector3[] = [];
+  const bareProtectedPositions: THREE.Vector3[] = [];
   const finderDarkPositions: THREE.Vector3[] = [];
   const finderLightPositions: THREE.Vector3[] = [];
   const alignmentDarkPositions: THREE.Vector3[] = [];
@@ -404,8 +407,11 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       if (visualRole === "train") trainModulePositions.push(position);
       else if (visualRole === "canopy") leafModulePositions.push(position);
       else if (visualRole === "landscape") landscapePositions.push(position);
+      else if (!finderId && !isBottomRightAlignmentModule(rowIndex, columnIndex, BANK_QR_MATRIX.size)) bareProtectedPositions.push(position);
     });
   });
+
+  const groundGrassPositions = [...landscapePositions, ...bareProtectedPositions];
 
   const dummy = new THREE.Object3D();
   const qrShadowMaterial = new THREE.MeshBasicMaterial({
@@ -430,11 +436,11 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   root.add(treeViewGroup);
 
   const grassGroup = new THREE.Group();
-  const patchGeometry = new THREE.BoxGeometry(0.88, 0.18, 0.88);
+  const patchGeometry = new THREE.BoxGeometry(0.88, 0.14, 0.88);
   const patchMaterial = new THREE.MeshStandardMaterial({ color: 0xa9a06a, roughness: 0.94, flatShading: true });
-  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, landscapePositions.length);
-  landscapePositions.forEach((position, index) => {
-    setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
+  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, groundGrassPositions.length);
+  groundGrassPositions.forEach((position, index) => {
+    setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.18, position.z), new THREE.Vector3(1, 1, 1));
   });
   grassPatches.instanceMatrix.needsUpdate = true;
   grassGroup.add(grassPatches);
@@ -446,16 +452,16 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const grassBlades = new THREE.InstancedMesh(
     bladeGeometry,
     bladeMaterial,
-    (landscapePositions.length + trainModulePositions.length) * bladesPerModule,
+    (groundGrassPositions.length + trainModulePositions.length) * bladesPerModule,
   );
   const grassBladeData: GrassBlade[] = [];
   let bladeIndex = 0;
-  landscapePositions.forEach((position) => {
+  groundGrassPositions.forEach((position) => {
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
-      const height = 0.55 + random() * 0.75;
+      const height = 0.32 + random() * 0.46;
       const offsetX = (random() - 0.5) * 0.5;
       const offsetZ = (random() - 0.5) * 0.5;
-      const bladePosition = new THREE.Vector3(position.x + offsetX, 0.35 + height * 0.5, position.z + offsetZ);
+      const bladePosition = new THREE.Vector3(position.x + offsetX, 0.25 + (0.78 * height) / 2, position.z + offsetZ);
       const bladeScale = new THREE.Vector3(0.75 + random() * 0.5, height, 0.75 + random() * 0.5);
       setInstance(
         grassBlades,
@@ -465,14 +471,21 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
         bladeScale,
         random() * Math.PI,
       );
-      grassBladeData.push({ position: bladePosition, scale: bladeScale, phase: random() * Math.PI * 2, lean: 0.055 + random() * 0.055 });
+      grassBladeData.push({
+        position: bladePosition,
+        scale: bladeScale,
+        phase: random() * Math.PI * 2,
+        lean: 0.045 + random() * 0.045,
+        windX: 0.025 + random() * 0.018,
+        windZ: 0.015 + random() * 0.014,
+      });
       bladeIndex += 1;
     }
   });
   trainModulePositions.forEach((position) => {
     const roofY = getTrainModuleHeight(position);
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
-      const height = 0.34 + random() * 0.28;
+      const height = 0.24 + random() * 0.18;
       const offsetX = (random() - 0.5) * 0.42;
       const offsetZ = (random() - 0.5) * 0.42;
       const bladePosition = new THREE.Vector3(
@@ -482,7 +495,14 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       );
       const bladeScale = new THREE.Vector3(0.82 + random() * 0.28, height, 0.82 + random() * 0.28);
       setInstance(grassBlades, dummy, bladeIndex, bladePosition, bladeScale, random() * Math.PI);
-      grassBladeData.push({ position: bladePosition, scale: bladeScale, phase: random() * Math.PI * 2, lean: 0.045 + random() * 0.05 });
+      grassBladeData.push({
+        position: bladePosition,
+        scale: bladeScale,
+        phase: random() * Math.PI * 2,
+        lean: 0.04 + random() * 0.04,
+        windX: 0.02 + random() * 0.016,
+        windZ: 0.014 + random() * 0.012,
+      });
       bladeIndex += 1;
     }
   });
@@ -1084,7 +1104,7 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.topQrMaterials.forEach((material) => {
         material.opacity = THREE.MathUtils.lerp(0.12, 0.7, qrReveal);
       });
-      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.04, 0.7, qrReveal);
+      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.04, 0.54, qrReveal);
       sceneState.woodMaterial.opacity = THREE.MathUtils.lerp(1, 0.02, qrReveal);
 
       const time = performance.now() * 0.001;
@@ -1135,7 +1155,11 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       if (!reducedMotion) {
         sceneState.grassBladeData.forEach((blade, index) => {
           const sway = Math.sin(time * 1.35 + blade.phase) * blade.lean;
-          sceneState.grassBladeObject.position.copy(blade.position);
+          sceneState.grassBladeObject.position.set(
+            blade.position.x + Math.sin(time * 1.35 + blade.phase) * blade.windX,
+            blade.position.y,
+            blade.position.z + Math.cos(time * 1.08 + blade.phase) * blade.windZ,
+          );
           sceneState.grassBladeObject.scale.copy(blade.scale);
           sceneState.grassBladeObject.rotation.set(sway * 0.35, 0, sway);
           sceneState.grassBladeObject.updateMatrix();
@@ -1146,12 +1170,12 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.fallingLeavesGroup.visible = !reducedMotion;
       if (!reducedMotion && sceneState.fallingLeavesGroup.visible) {
         const frameFactor = delta * 60;
-        const topLeafCount = window.innerWidth < 720 ? 12 : 18;
+        const topLeafCount = window.innerWidth < 720 ? 16 : 24;
         sceneState.fallingLeaves.forEach((leaf, index) => {
           leaf.mesh.visible = qrReveal < 0.92 || index < topLeafCount;
           leaf.mesh.position.y -= leaf.speedY * frameFactor;
-          leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.008 * frameFactor;
-          leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.006 * frameFactor;
+          leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.012 * frameFactor;
+          leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.01 * frameFactor;
           if (index < topLeafCount && qrReveal > 0.55) {
             leaf.mesh.position.x = THREE.MathUtils.lerp(leaf.mesh.position.x, THREE.MathUtils.clamp(leaf.mesh.position.x, -7.5, 7.5), qrReveal * 0.05);
             leaf.mesh.position.z = THREE.MathUtils.lerp(leaf.mesh.position.z, THREE.MathUtils.clamp(leaf.mesh.position.z, -7.5, 7.5), qrReveal * 0.05);
@@ -1163,7 +1187,7 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
             const spread = qrReveal > 0.55 && index < topLeafCount ? 14 : 22;
             leaf.mesh.position.set((Math.random() - 0.5) * spread, 12 + Math.random() * 6, (Math.random() - 0.5) * spread);
           }
-          leaf.mesh.scale.setScalar(THREE.MathUtils.lerp(1, 0.48, qrReveal));
+          leaf.mesh.scale.setScalar(THREE.MathUtils.lerp(1, 0.58, qrReveal));
         });
       }
       const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * qrReveal) * (window.innerWidth < 720 ? 0.25 : 0.5);
