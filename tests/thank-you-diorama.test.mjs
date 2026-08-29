@@ -5,6 +5,7 @@ import {
   BANK_QR_MATRIX,
   classifyQrDarkModule,
   getQrFinderId,
+  isBottomRightAlignmentModule,
   isProtectedQrModule,
   isTrainArtworkZone,
 } from "../lib/bank-qr-matrix.ts";
@@ -54,6 +55,18 @@ test("maps exactly three 7 by 7 finder gardens without touching the rest of the 
   assert.equal(getQrFinderId(20, 20, BANK_QR_MATRIX.size), null);
 });
 
+test("maps the bottom-right 5 by 5 alignment garden exactly", () => {
+  const cells = [];
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (isBottomRightAlignmentModule(rowIndex, columnIndex, BANK_QR_MATRIX.size)) cells.push({ rowIndex, columnIndex, dark });
+    });
+  });
+  assert.equal(cells.length, 25);
+  assert.equal(cells.filter(({ dark }) => dark).length, 17);
+  assert.ok(cells.every(({ rowIndex, columnIndex }) => isProtectedQrModule(rowIndex, columnIndex, BANK_QR_MATRIX.size)));
+});
+
 test("ships a QR-derived orbitable memory landscape with a classic autumn train", async () => {
   const [component, game, css, matrixFile, qr] = await Promise.all([
     readFile(new URL("components/thank-you-diorama.tsx", projectRoot), "utf8"),
@@ -96,6 +109,9 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /qrReveal/);
   assert.match(component, /memory-tree-fallback-code/);
   assert.match(component, /finderGardenGroup/);
+  assert.match(component, /alignmentGardenGroup/);
+  assert.match(component, /alignmentDarkPositions/);
+  assert.match(component, /alignmentLightPositions/);
   assert.match(component, /finderDarkPositions/);
   assert.match(component, /addLotus/);
   assert.match(component, /addBamboo/);
@@ -111,6 +127,10 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /fallingLeafCount = mobile \? 32 : 65/);
   assert.match(component, /fallingLeavesGroup/);
   assert.match(component, /autumnColors/);
+  assert.match(component, /color: 0xb99632/);
+  assert.match(component, /"#a77d20" : "#b99632"/);
+  assert.match(component, /lanternGlowMaterial\.emissiveIntensity/);
+  assert.match(component, /new THREE\.PointLight\(0xffad45, 5\.5, 8, 2\)/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
   assert.match(component, /data-view=\{isTop \? "top" : "tree"\}/);
   assert.match(component, /memory-tree-view-toggle/);

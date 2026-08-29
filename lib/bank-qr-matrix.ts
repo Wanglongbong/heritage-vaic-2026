@@ -5,6 +5,7 @@ export type QrMatrixData = {
 
 export type QrVisualRole = "protected" | "canopy" | "train" | "landscape";
 export type QrFinderId = "north-west" | "north-east" | "south-west";
+export type QrGardenId = QrFinderId | "alignment";
 
 export function getQrFinderId(row: number, column: number, size: number): QrFinderId | null {
   if (row <= 6 && column <= 6) return "north-west";
@@ -18,10 +19,14 @@ export function isProtectedQrModule(row: number, column: number, size: number) {
   const inTopRightFinder = row <= 8 && column >= size - 8;
   const inBottomLeftFinder = row >= size - 8 && column <= 8;
   const onTimingPattern = row === 6 || column === 6;
-  const alignmentCentre = size - 7;
-  const inBottomRightAlignment = Math.abs(row - alignmentCentre) <= 2 && Math.abs(column - alignmentCentre) <= 2;
+  const inBottomRightAlignment = isBottomRightAlignmentModule(row, column, size);
   const fixedDarkModule = row === size - 8 && column === 8;
   return inTopLeftFinder || inTopRightFinder || inBottomLeftFinder || onTimingPattern || inBottomRightAlignment || fixedDarkModule;
+}
+
+export function isBottomRightAlignmentModule(row: number, column: number, size: number) {
+  const alignmentCentre = size - 7;
+  return Math.abs(row - alignmentCentre) <= 2 && Math.abs(column - alignmentCentre) <= 2;
 }
 
 export function isTrainArtworkZone(row: number, column: number, size: number) {
