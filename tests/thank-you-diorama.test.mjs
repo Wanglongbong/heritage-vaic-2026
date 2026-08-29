@@ -101,8 +101,8 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /addBamboo/);
   assert.match(component, /addLandscapeDetail/);
   assert.match(component, /addLantern/);
-  assert.match(component, /const canopyShadow = new THREE\.Mesh/);
-  assert.match(component, /new THREE\.CircleGeometry\(11\.8, 32\)/);
+  assert.match(component, /const canopyShadows = new THREE\.InstancedMesh/);
+  assert.match(component, /canopyShadowMaterial/);
   assert.match(component, /const train = new THREE\.Group/);
   assert.match(component, /\[14\.8, 0\.68, 3\.1\]/);
   assert.match(component, /\[13\.9, 2\.3, 2\.9\]/);
@@ -121,7 +121,11 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.doesNotMatch(component, /orbit\.targetPolar <= 0\.24/);
   assert.doesNotMatch(component, /orbit\.targetPolar <= 0\.2/);
   assert.match(component, /targetScanProgress/);
-  assert.match(component, /const qrReveal = cubicEase\(orbit\.scanProgress\)/);
+  assert.match(component, /const angleAlignment = 1 - THREE\.MathUtils\.smoothstep\(orbit\.polar, 0\.12, 0\.72\)/);
+  assert.match(component, /Math\.max\(cubicEase\(angleAlignment\), cubicEase\(orbit\.scanProgress\)\)/);
+  assert.match(component, /object\.position\.lerpVectors\(artPosition, qrPosition, qrReveal\)/);
+  assert.match(component, /object\.scale\.lerpVectors\(artScale, qrScale, qrReveal\)/);
+  assert.doesNotMatch(component, /treeViewGroup\.scale\.y = THREE\.MathUtils\.lerp\(1, 0\.06/);
   assert.match(component, /ArrowLeft/);
   assert.match(component, /targetZoom/);
   assert.match(component, /event\.key !== "Enter" && event\.key !== " "/);
@@ -130,7 +134,9 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /Math\.min\(container\.clientWidth, 740\)/);
   assert.match(component, /Math\.min\(container\.clientHeight, 740\)/);
   assert.match(component, /sceneState\.leaves\.rotation/);
-  assert.match(component, /sceneState\.grass\.rotation/);
+  assert.match(component, /sceneState\.grassBlades\.setMatrixAt/);
+  assert.match(component, /leaf\.mesh\.visible = qrReveal < 0\.92 \|\| index < topLeafCount/);
+  assert.match(component, /color: 0xf7f3ec/);
   assert.doesNotMatch(component, /artifactSprite|addArtifactSprite|artifactWorld|stationPixelPalette/);
   assert.doesNotMatch(component, /stops\.slice\(0, 5\)/);
   assert.doesNotMatch(component, /subject-\$\{|subject-top\.webp/);

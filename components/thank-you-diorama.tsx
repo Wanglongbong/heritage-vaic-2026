@@ -63,6 +63,13 @@ type FallingLeaf = {
   seed: number;
 };
 
+type GrassBlade = {
+  position: THREE.Vector3;
+  scale: THREE.Vector3;
+  phase: number;
+  lean: number;
+};
+
 type SceneState = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
@@ -76,6 +83,10 @@ type SceneState = {
   fallingLeaves: FallingLeaf[];
   fallingLeavesGroup: THREE.Group;
   grass: THREE.Group;
+  grassBlades: THREE.InstancedMesh;
+  grassBladeData: GrassBlade[];
+  grassBladeObject: THREE.Object3D;
+  woodMaterial: THREE.MeshStandardMaterial;
   train: THREE.Group;
   orbit: OrbitState;
   disposeInteraction: () => void;
@@ -249,12 +260,12 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   redFill.position.set(0, 4, 10);
   scene.add(redFill);
 
-  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xe7dcc8, roughness: 1, flatShading: true });
+  const plateMaterial = new THREE.MeshStandardMaterial({ color: 0xf7f3ec, roughness: 1, flatShading: true });
   const plate = new THREE.Mesh(new THREE.BoxGeometry(49, 0.7, 49), plateMaterial);
   plate.position.y = -0.48;
   root.add(plate);
 
-  const tileGeometry = new THREE.BoxGeometry(0.91, 0.1, 0.91);
+  const tileGeometry = new THREE.BoxGeometry(0.9, 0.1, 0.9);
   const darkPositions: THREE.Vector3[] = [];
   const landscapePositions: THREE.Vector3[] = [];
   const lightReliefPositions: THREE.Vector3[] = [];
@@ -298,7 +309,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
 
   const dummy = new THREE.Object3D();
   const qrShadowMaterial = new THREE.MeshBasicMaterial({
-    color: 0x24140c,
+    color: 0x81763e,
     transparent: true,
     opacity: 0,
     depthWrite: false,
@@ -319,8 +330,8 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   root.add(treeViewGroup);
 
   const grassGroup = new THREE.Group();
-  const patchGeometry = new THREE.BoxGeometry(0.78, 0.18, 0.78);
-  const patchMaterial = new THREE.MeshBasicMaterial({ color: 0xd4c7ad, toneMapped: false });
+  const patchGeometry = new THREE.BoxGeometry(0.88, 0.18, 0.88);
+  const patchMaterial = new THREE.MeshStandardMaterial({ color: 0xa9a06a, roughness: 0.94, flatShading: true });
   const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, landscapePositions.length);
   landscapePositions.forEach((position, index) => {
     setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
@@ -330,23 +341,27 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
 
   const random = seededRandom(20260828);
   const bladeGeometry = new THREE.BoxGeometry(0.12, 0.78, 0.12);
-  const bladeMaterial = new THREE.MeshBasicMaterial({ color: 0xbbaa86, toneMapped: false });
+  const bladeMaterial = new THREE.MeshStandardMaterial({ color: 0xc5b66e, roughness: 0.9, flatShading: true });
   const bladesPerModule = 2;
   const grassBlades = new THREE.InstancedMesh(bladeGeometry, bladeMaterial, landscapePositions.length * bladesPerModule);
+  const grassBladeData: GrassBlade[] = [];
   let bladeIndex = 0;
   landscapePositions.forEach((position) => {
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
       const height = 0.55 + random() * 0.75;
       const offsetX = (random() - 0.5) * 0.5;
       const offsetZ = (random() - 0.5) * 0.5;
+      const bladePosition = new THREE.Vector3(position.x + offsetX, 0.35 + height * 0.5, position.z + offsetZ);
+      const bladeScale = new THREE.Vector3(0.75 + random() * 0.5, height, 0.75 + random() * 0.5);
       setInstance(
         grassBlades,
         dummy,
         bladeIndex,
-        new THREE.Vector3(position.x + offsetX, 0.35 + height * 0.5, position.z + offsetZ),
-        new THREE.Vector3(0.75 + random() * 0.5, height, 0.75 + random() * 0.5),
+        bladePosition,
+        bladeScale,
         random() * Math.PI,
       );
+      grassBladeData.push({ position: bladePosition, scale: bladeScale, phase: random() * Math.PI * 2, lean: 0.055 + random() * 0.055 });
       bladeIndex += 1;
     }
   });
@@ -354,12 +369,11 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   grassGroup.add(grassBlades);
   treeViewGroup.add(grassGroup);
 
-  const reliefMaterial = new THREE.MeshStandardMaterial({ color: 0xeee5d4, roughness: 1, flatShading: true });
-  const reliefGeometry = new THREE.BoxGeometry(0.76, 0.08, 0.76);
+  const reliefMaterial = new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 1, flatShading: true });
+  const reliefGeometry = new THREE.BoxGeometry(0.94, 0.08, 0.94);
   const lightRelief = new THREE.InstancedMesh(reliefGeometry, reliefMaterial, lightReliefPositions.length);
   lightReliefPositions.forEach((position, index) => {
-    const reliefScale = 0.76 + ((index * 17) % 5) * 0.045;
-    setInstance(lightRelief, dummy, index, new THREE.Vector3(position.x, 0.11, position.z), new THREE.Vector3(reliefScale, 1, reliefScale));
+    setInstance(lightRelief, dummy, index, new THREE.Vector3(position.x, 0.11, position.z), new THREE.Vector3(1, 1, 1));
   });
   lightRelief.instanceMatrix.needsUpdate = true;
   treeViewGroup.add(lightRelief);
@@ -374,7 +388,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
 
   const topQrGroup = new THREE.Group();
   const leafModuleGeometry = new THREE.BoxGeometry(0.74, 0.34, 0.74);
-  const leafModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x96600d, transparent: true, opacity: 0, toneMapped: false });
+  const leafModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x9b7724, transparent: true, opacity: 0.12, toneMapped: false });
   const leafModules = new THREE.InstancedMesh(leafModuleGeometry, leafModuleMaterial, leafModulePositions.length);
   leafModulePositions.forEach((position, index) => {
     setInstance(leafModules, dummy, index, new THREE.Vector3(position.x, 0.24, position.z), new THREE.Vector3(1, 1, 1));
@@ -383,7 +397,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   topQrGroup.add(leafModules);
 
   const redModuleGeometry = new THREE.BoxGeometry(0.76, 0.36, 0.76);
-  const redModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x74191a, transparent: true, opacity: 0, toneMapped: false });
+  const redModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x8c1f20, transparent: true, opacity: 0.12, toneMapped: false });
   const redModules = new THREE.InstancedMesh(redModuleGeometry, redModuleMaterial, trainModulePositions.length);
   trainModulePositions.forEach((position, index) => {
     setInstance(redModules, dummy, index, new THREE.Vector3(position.x, 0.25, position.z), new THREE.Vector3(1, 1, 1));
@@ -391,7 +405,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   redModules.instanceMatrix.needsUpdate = true;
   topQrGroup.add(redModules);
 
-  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x26391f, transparent: true, opacity: 0, toneMapped: false });
+  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x81763e, transparent: true, opacity: 0.12, toneMapped: false });
   const finderModules = new THREE.InstancedMesh(redModuleGeometry, finderModuleMaterial, finderDarkPositions.length);
   finderDarkPositions.forEach((position, index) => {
     setInstance(finderModules, dummy, index, new THREE.Vector3(position.x, 0.26, position.z), new THREE.Vector3(1, 1, 1));
@@ -399,7 +413,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   finderModules.instanceMatrix.needsUpdate = true;
   topQrGroup.add(finderModules);
 
-  topQrGroup.visible = false;
+  topQrGroup.visible = true;
   root.add(topQrGroup);
   const lanternMaterials: LanternMaterials = {
     frame: new THREE.MeshStandardMaterial({ color: 0x4a2118, roughness: 0.78, metalness: 0.12, flatShading: true }),
@@ -408,8 +422,8 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   };
 
   const finderGardenGroup = new THREE.Group();
-  const hedgeMaterial = new THREE.MeshStandardMaterial({ color: 0xc7b99b, roughness: 1, flatShading: true });
-  const hedgeGeometry = new THREE.BoxGeometry(0.78, 0.22, 0.78);
+  const hedgeMaterial = new THREE.MeshStandardMaterial({ color: 0xa59a5f, roughness: 1, flatShading: true });
+  const hedgeGeometry = new THREE.BoxGeometry(0.88, 0.26, 0.88);
   const hedgeModules = new THREE.InstancedMesh(hedgeGeometry, hedgeMaterial, finderDarkPositions.length);
   finderDarkPositions.forEach((position, index) => {
     setInstance(hedgeModules, dummy, index, new THREE.Vector3(position.x, 0.21, position.z), new THREE.Vector3(1, 1, 1));
@@ -417,8 +431,8 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   hedgeModules.instanceMatrix.needsUpdate = true;
   finderGardenGroup.add(hedgeModules);
 
-  const paleGardenMaterial = new THREE.MeshStandardMaterial({ color: 0xe1d5bf, roughness: 1, flatShading: true });
-  const paleGardenGeometry = new THREE.BoxGeometry(0.72, 0.16, 0.72);
+  const paleGardenMaterial = new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 1, flatShading: true });
+  const paleGardenGeometry = new THREE.BoxGeometry(0.92, 0.14, 0.92);
   const paleGardenModules = new THREE.InstancedMesh(paleGardenGeometry, paleGardenMaterial, finderLightPositions.length);
   finderLightPositions.forEach((position, index) => {
     setInstance(paleGardenModules, dummy, index, new THREE.Vector3(position.x, 0.2, position.z), new THREE.Vector3(1, 1, 1));
@@ -429,31 +443,33 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const gardenMaterials = new Map<string, THREE.MeshStandardMaterial>();
   const lotusGarden = finderPositions["north-west"].dark.filter((_, index) => index % 6 === 2);
   lotusGarden.forEach((position, index) => addLotus(finderGardenGroup, gardenMaterials, position, 0.76 + (index % 3) * 0.08));
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [-17, 0.36, -17], "#d1c3aa");
 
   const bambooGarden = finderPositions["north-east"].dark.filter((_, index) => index % 7 === 1);
   bambooGarden.forEach((position, index) => addBamboo(finderGardenGroup, gardenMaterials, position, 0.82 + (index % 2) * 0.12));
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [17, 0.36, -17], "#d0c2a8");
 
   const lanternGarden = finderPositions["south-west"].dark.filter((_, index) => index % 5 === 0);
   lanternGarden.forEach((position, index) => {
-    addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.7, position.z), 0.42 + (index % 2) * 0.07);
+    addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.46, position.z), 0.68 + (index % 2) * 0.08);
   });
-  addBox(finderGardenGroup, gardenMaterials, [3.7, 0.08, 3.7], [-17, 0.36, 17], "#cfbea4");
   treeViewGroup.add(finderGardenGroup);
 
-  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x4a220e, roughness: 1, flatShading: true });
-  const canopyShadow = new THREE.Mesh(
-    new THREE.CircleGeometry(11.8, 32),
-    new THREE.MeshBasicMaterial({ color: 0x4a2c12, transparent: true, opacity: 0.22, depthWrite: false, toneMapped: false }),
-  );
-  canopyShadow.rotation.x = -Math.PI / 2;
-  canopyShadow.position.y = 0.06;
-  canopyShadow.scale.z = 0.84;
-  treeViewGroup.add(canopyShadow);
+  const woodMaterial = new THREE.MeshStandardMaterial({ color: 0x4a220e, roughness: 1, flatShading: true, transparent: true });
+  const canopyShadowMaterial = new THREE.MeshBasicMaterial({
+    color: 0x7b6f37,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+    toneMapped: false,
+  });
+  const canopyShadows = new THREE.InstancedMesh(new THREE.BoxGeometry(0.9, 0.035, 0.9), canopyShadowMaterial, leafModulePositions.length);
+  leafModulePositions.forEach((position, index) => {
+    setInstance(canopyShadows, dummy, index, new THREE.Vector3(position.x, 0.18, position.z), new THREE.Vector3(1, 1, 1));
+  });
+  canopyShadows.instanceMatrix.needsUpdate = true;
+  treeViewGroup.add(canopyShadows);
 
-  const trunk = new THREE.Mesh(new THREE.BoxGeometry(2, 9.2, 2), woodMaterial);
-  trunk.position.y = 4.7;
+  const trunk = new THREE.Mesh(new THREE.BoxGeometry(2.05, 11.5, 2.05), woodMaterial);
+  trunk.position.y = 5.85;
   treeViewGroup.add(trunk);
   [
     [-1.45, 0.3, 0.72, 0], [1.45, 0.28, 0.72, 0], [0, 0.28, 1.45, Math.PI / 2], [0, 0.28, -1.45, Math.PI / 2],
@@ -464,19 +480,19 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     treeViewGroup.add(rootPiece);
   });
   const branchPoints: Array<[THREE.Vector3, THREE.Vector3, number]> = [
-    [new THREE.Vector3(0, 6, 0), new THREE.Vector3(7.2, 10.4, 2.8), 0.86],
-    [new THREE.Vector3(0, 6.2, 0), new THREE.Vector3(-7.1, 10.8, 3), 0.84],
-    [new THREE.Vector3(0, 7, 0), new THREE.Vector3(5.1, 12.4, -5.2), 0.76],
-    [new THREE.Vector3(0, 7.2, 0), new THREE.Vector3(-5.5, 12.1, -5), 0.74],
-    [new THREE.Vector3(0, 7.8, 0), new THREE.Vector3(1, 14.1, 0.3), 0.7],
-    [new THREE.Vector3(0, 8.5, 0), new THREE.Vector3(6.5, 12.2, -0.8), 0.58],
-    [new THREE.Vector3(0, 8.7, 0), new THREE.Vector3(-6.2, 12.7, -0.5), 0.56],
+    [new THREE.Vector3(0, 7.2, 0), new THREE.Vector3(7.3, 12.2, 2.8), 0.88],
+    [new THREE.Vector3(0, 7.5, 0), new THREE.Vector3(-7.2, 12.7, 3), 0.86],
+    [new THREE.Vector3(0, 8.1, 0), new THREE.Vector3(5.2, 14.2, -5.3), 0.78],
+    [new THREE.Vector3(0, 8.3, 0), new THREE.Vector3(-5.6, 14, -5.1), 0.76],
+    [new THREE.Vector3(0, 8.8, 0), new THREE.Vector3(1, 16.1, 0.3), 0.72],
+    [new THREE.Vector3(0, 9.3, 0), new THREE.Vector3(6.6, 14.2, -0.8), 0.6],
+    [new THREE.Vector3(0, 9.5, 0), new THREE.Vector3(-6.3, 14.7, -0.5), 0.58],
   ];
   branchPoints.forEach(([from, to, width]) => addBranch(treeViewGroup, woodMaterial, from, to, width));
 
   const mobile = window.matchMedia("(max-width: 720px)").matches;
   const leaves = new THREE.Group();
-  const leafGeometry = new THREE.BoxGeometry(0.98, 0.5, 0.98);
+  const leafGeometry = new THREE.BoxGeometry(0.9, 0.48, 0.9);
   const autumnColors = [0xf59e0b, 0xea580c, 0xd97706, 0xfbbf24, 0xb45309];
   const leafMaterials = autumnColors.map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true }));
   leafModulePositions.forEach((modulePosition, moduleIndex) => {
@@ -485,15 +501,24 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     for (let layer = 0; layer < layers; layer += 1) {
       const dome = Math.max(0, 1 - Math.pow(radius / 10.6, 1.55));
       const leaf = new THREE.Mesh(leafGeometry, leafMaterials[(moduleIndex + layer * 2) % leafMaterials.length]);
-      const spread = 1.25;
-      leaf.position.set(
+      const spread = 1.2;
+      const artPosition = new THREE.Vector3(
         modulePosition.x * spread + (random() - 0.5) * 0.72,
-        8.4 + dome * 5.3 + layer * 0.34 + (random() - 0.5) * 0.45,
+        10.6 + dome * 5.7 + layer * 0.4 + (random() - 0.5) * 0.5,
         modulePosition.z * spread + (random() - 0.5) * 0.72,
       );
+      const qrPosition = new THREE.Vector3(modulePosition.x, artPosition.y, modulePosition.z);
+      leaf.position.copy(artPosition);
       const scale = 0.78 + random() * 0.5;
-      leaf.scale.set(scale * (0.85 + random() * 0.35), scale, scale * (0.85 + random() * 0.35));
+      const artScale = new THREE.Vector3(scale * (0.85 + random() * 0.35), scale, scale * (0.85 + random() * 0.35));
+      const qrScale = new THREE.Vector3(0.96, scale, 0.96);
+      leaf.scale.copy(artScale);
       leaf.rotation.set((random() - 0.5) * 0.35, random() * Math.PI, (random() - 0.5) * 0.25);
+      leaf.userData.artPosition = artPosition;
+      leaf.userData.qrPosition = qrPosition;
+      leaf.userData.artScale = artScale;
+      leaf.userData.qrScale = qrScale;
+      leaf.userData.artRotation = leaf.rotation.clone();
       leaves.add(leaf);
     }
   });
@@ -525,11 +550,13 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const trainMaterials = new Map<string, THREE.MeshStandardMaterial>();
   addBox(train, trainMaterials, [14.8, 0.68, 3.1], [0, 0.78, 8], "#35161a");
   addBox(train, trainMaterials, [13.9, 2.3, 2.9], [-0.2, 2.05, 8], "#8c1f20");
-  addBox(train, trainMaterials, [13.4, 0.52, 3.2], [-0.35, 3.42, 8], "#27161c");
+  addBox(train, trainMaterials, [13.4, 0.52, 3.2], [-0.35, 3.42, 8], "#f7f3ec");
   addBox(train, trainMaterials, [2.8, 3.1, 3], [6.2, 2.45, 8], "#74191a");
+  addBox(train, trainMaterials, [3, 0.22, 3.16], [6.2, 4.08, 8], "#f7f3ec");
   addBox(train, trainMaterials, [1.35, 1.5, 2.6], [8.05, 1.65, 8], "#b52c20");
+  addBox(train, trainMaterials, [1.5, 0.2, 2.72], [8.05, 2.5, 8], "#f7f3ec");
   addBox(train, trainMaterials, [0.55, 2.1, 0.55], [8.8, 2.45, 8], "#27161c");
-  addBox(train, trainMaterials, [0.95, 0.18, 0.95], [8.8, 3.55, 8], "#c58a38");
+  addBox(train, trainMaterials, [0.95, 0.18, 0.95], [8.8, 3.55, 8], "#f7f3ec");
   addBox(train, trainMaterials, [14.2, 0.12, 0.12], [-0.1, 1.12, 9.48], "#c58a38");
   for (let index = 0; index < 7; index += 1) {
     const windowMaterial = new THREE.MeshStandardMaterial({
@@ -544,12 +571,13 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     train.add(trainWindow);
   }
   trainModulePositions.forEach((position, index) => {
+    const roofY = position.x >= 4.8 ? 4.24 : 3.76;
     addBox(
       train,
       trainMaterials,
       [0.78, 0.12, 0.78],
-      [position.x, 3.76, position.z],
-      index % 4 === 0 ? "#b52c20" : "#27161c",
+      [position.x, roofY, position.z],
+      index % 5 === 0 ? "#74191a" : "#b52c20",
     );
   });
   const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x1c1717, roughness: 1, flatShading: true });
@@ -685,6 +713,10 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       fallingLeaves,
       fallingLeavesGroup,
       grass: grassGroup,
+      grassBlades,
+      grassBladeData,
+      grassBladeObject: new THREE.Object3D(),
+      woodMaterial,
       train,
       orbit,
       disposeInteraction,
@@ -762,7 +794,8 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
         orbit.snapping = null;
       }
 
-      const qrReveal = cubicEase(orbit.scanProgress);
+      const angleAlignment = 1 - THREE.MathUtils.smoothstep(orbit.polar, 0.12, 0.72);
+      const qrReveal = Math.max(cubicEase(angleAlignment), cubicEase(orbit.scanProgress));
       const radius = 62;
       const sinPolar = Math.sin(orbit.polar);
       const cosPolar = Math.cos(orbit.polar);
@@ -779,37 +812,70 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
       sceneState.camera.updateProjectionMatrix();
       sceneState.camera.lookAt(0, targetY, 0);
 
-      sceneState.topQrGroup.visible = qrReveal > 0.01;
-      sceneState.treeViewGroup.visible = qrReveal < 0.985;
-      sceneState.treeViewGroup.scale.y = THREE.MathUtils.lerp(1, 0.06, qrReveal);
-      sceneState.treeViewGroup.position.y = THREE.MathUtils.lerp(0, -0.34, qrReveal);
+      sceneState.topQrGroup.visible = true;
+      sceneState.treeViewGroup.visible = true;
+      sceneState.treeViewGroup.scale.set(1, 1, 1);
+      sceneState.treeViewGroup.position.y = 0;
       sceneState.topQrMaterials.forEach((material) => {
-        material.opacity = qrReveal;
+        material.opacity = THREE.MathUtils.lerp(0.12, 0.7, qrReveal);
       });
-      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0, 0.98, qrReveal);
+      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.04, 0.7, qrReveal);
+      sceneState.woodMaterial.opacity = THREE.MathUtils.lerp(1, 0.16, qrReveal);
 
       const time = performance.now() * 0.001;
-      const motion = reducedMotion ? 0 : 1 - qrReveal;
+      const motion = reducedMotion ? 0 : 1 - qrReveal * 0.78;
+      sceneState.leaves.children.forEach((object) => {
+        if (!(object instanceof THREE.Mesh)) return;
+        const artPosition = object.userData.artPosition as THREE.Vector3 | undefined;
+        const qrPosition = object.userData.qrPosition as THREE.Vector3 | undefined;
+        const artRotation = object.userData.artRotation as THREE.Euler | undefined;
+        const artScale = object.userData.artScale as THREE.Vector3 | undefined;
+        const qrScale = object.userData.qrScale as THREE.Vector3 | undefined;
+        if (artPosition && qrPosition) object.position.lerpVectors(artPosition, qrPosition, qrReveal);
+        if (artScale && qrScale) object.scale.lerpVectors(artScale, qrScale, qrReveal);
+        if (artRotation) {
+          object.rotation.x = THREE.MathUtils.lerp(artRotation.x, 0, qrReveal);
+          object.rotation.y = THREE.MathUtils.lerp(artRotation.y, 0, qrReveal);
+          object.rotation.z = THREE.MathUtils.lerp(artRotation.z, 0, qrReveal);
+        }
+      });
       sceneState.leaves.rotation.y = Math.sin(time * 0.34) * 0.008 * motion;
       sceneState.leaves.rotation.z = Math.sin(time * 0.53) * 0.004 * motion;
-      sceneState.grass.rotation.z = Math.sin(time * 0.72) * 0.0028 * motion;
-      sceneState.fallingLeavesGroup.visible = !reducedMotion && qrReveal < 0.94;
+      if (!reducedMotion) {
+        sceneState.grassBladeData.forEach((blade, index) => {
+          const sway = Math.sin(time * 1.35 + blade.phase) * blade.lean;
+          sceneState.grassBladeObject.position.copy(blade.position);
+          sceneState.grassBladeObject.scale.copy(blade.scale);
+          sceneState.grassBladeObject.rotation.set(sway * 0.35, 0, sway);
+          sceneState.grassBladeObject.updateMatrix();
+          sceneState.grassBlades.setMatrixAt(index, sceneState.grassBladeObject.matrix);
+        });
+        sceneState.grassBlades.instanceMatrix.needsUpdate = true;
+      }
+      sceneState.fallingLeavesGroup.visible = !reducedMotion;
       if (!reducedMotion && sceneState.fallingLeavesGroup.visible) {
         const frameFactor = delta * 60;
-        sceneState.fallingLeaves.forEach((leaf) => {
+        const topLeafCount = window.innerWidth < 720 ? 12 : 18;
+        sceneState.fallingLeaves.forEach((leaf, index) => {
+          leaf.mesh.visible = qrReveal < 0.92 || index < topLeafCount;
           leaf.mesh.position.y -= leaf.speedY * frameFactor;
           leaf.mesh.position.x += Math.sin(time * leaf.flutter + leaf.seed) * 0.008 * frameFactor;
           leaf.mesh.position.z += Math.cos(time * leaf.flutter * 0.82 + leaf.seed) * 0.006 * frameFactor;
+          if (index < topLeafCount && qrReveal > 0.55) {
+            leaf.mesh.position.x = THREE.MathUtils.lerp(leaf.mesh.position.x, THREE.MathUtils.clamp(leaf.mesh.position.x, -7.5, 7.5), qrReveal * 0.05);
+            leaf.mesh.position.z = THREE.MathUtils.lerp(leaf.mesh.position.z, THREE.MathUtils.clamp(leaf.mesh.position.z, -7.5, 7.5), qrReveal * 0.05);
+          }
           leaf.mesh.rotation.x += leaf.spinX * frameFactor;
           leaf.mesh.rotation.y += leaf.spinY * frameFactor;
           leaf.mesh.rotation.z += leaf.spinZ * frameFactor;
           if (leaf.mesh.position.y < 0.32) {
-            leaf.mesh.position.set((Math.random() - 0.5) * 22, 12 + Math.random() * 6, (Math.random() - 0.5) * 22);
+            const spread = qrReveal > 0.55 && index < topLeafCount ? 14 : 22;
+            leaf.mesh.position.set((Math.random() - 0.5) * spread, 12 + Math.random() * 6, (Math.random() - 0.5) * spread);
           }
-          leaf.mesh.scale.setScalar(1 - qrReveal);
+          leaf.mesh.scale.setScalar(THREE.MathUtils.lerp(1, 0.48, qrReveal));
         });
       }
-      const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * qrReveal) * (window.innerWidth < 720 ? 0.7 : 1.4);
+      const transitionBlur = reducedMotion ? 0 : Math.sin(Math.PI * qrReveal) * (window.innerWidth < 720 ? 0.25 : 0.5);
       sceneState.renderer.domElement.style.filter = transitionBlur > 0.05 ? `blur(${transitionBlur}px)` : "none";
       sceneState.renderer.domElement.style.transform = `scale(${1 + Math.sin(Math.PI * qrReveal) * 0.008})`;
       sceneState.renderer.render(sceneState.scene, sceneState.camera);
