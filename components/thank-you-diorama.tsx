@@ -71,6 +71,25 @@ type GrassBlade = {
   lean: number;
 };
 
+type TrainModuleSupport = "ground" | "carriage" | "cabin" | "nose";
+
+type HedgeCrown = {
+  mesh: THREE.InstancedMesh;
+  index: number;
+  position: THREE.Vector3;
+  scale: THREE.Vector3;
+  phase: number;
+};
+
+type LanternHalo = {
+  sprite: THREE.Sprite;
+  material: THREE.SpriteMaterial;
+  baseScale: number;
+  baseOpacity: number;
+  phase: number;
+  hanging: boolean;
+};
+
 type SceneState = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.OrthographicCamera;
@@ -89,6 +108,10 @@ type SceneState = {
   grassBladeObject: THREE.Object3D;
   woodMaterial: THREE.MeshStandardMaterial;
   lanternGlowMaterial: THREE.MeshStandardMaterial;
+  hangingLanternMaterials: THREE.MeshStandardMaterial[];
+  hedgeCrowns: HedgeCrown[];
+  hedgeCrownObject: THREE.Object3D;
+  lanternHalos: LanternHalo[];
   train: THREE.Group;
   orbit: OrbitState;
   disposeInteraction: () => void;
@@ -110,6 +133,21 @@ function cubicEase(value: number) {
   return value < 0.5
     ? 4 * value * value * value
     : 1 - Math.pow(-2 * value + 2, 3) / 2;
+}
+
+function getTrainModuleSupport(position: THREE.Vector3): TrainModuleSupport {
+  if (position.z >= 7 && position.z <= 9 && position.x >= -7 && position.x <= 4) return "carriage";
+  if (position.z >= 7 && position.z <= 9 && position.x >= 5 && position.x <= 7) return "cabin";
+  if (position.z >= 7 && position.z <= 9 && position.x === 8) return "nose";
+  return "ground";
+}
+
+function getTrainModuleHeight(position: THREE.Vector3) {
+  const support = getTrainModuleSupport(position);
+  if (support === "carriage") return 3.76;
+  if (support === "cabin") return 4.24;
+  if (support === "nose") return 2.68;
+  return 0.3;
 }
 
 function setInstance(
@@ -187,6 +225,60 @@ function addLantern(
   lantern.position.copy(position);
   lantern.scale.setScalar(scale);
   parent.add(lantern);
+  return lantern;
+}
+
+function createLanternHaloTexture() {
+  const canvas = document.createElement("canvas");
+  canvas.width = 96;
+  canvas.height = 96;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const gradient = context.createRadialGradient(48, 48, 4, 48, 48, 46);
+    gradient.addColorStop(0, "rgba(255,235,158,.92)");
+    gradient.addColorStop(0.24, "rgba(255,174,61,.48)");
+    gradient.addColorStop(0.62, "rgba(219,77,31,.16)");
+    gradient.addColorStop(1, "rgba(219,77,31,0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, 96, 96);
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.colorSpace = THREE.SRGBColorSpace;
+  return texture;
+}
+
+function addLanternWithHalo(
+  parent: THREE.Group,
+  materials: LanternMaterials,
+  position: THREE.Vector3,
+  scale: number,
+  haloTexture: THREE.Texture,
+  halos: LanternHalo[],
+  hanging = false,
+) {
+  const lantern = addLantern(parent, materials, position, scale);
+  const haloMaterial = new THREE.SpriteMaterial({
+    map: haloTexture,
+    color: 0xffbd5b,
+    transparent: true,
+    opacity: hanging ? 0.3 : 0.27,
+    depthWrite: false,
+    blending: THREE.AdditiveBlending,
+    toneMapped: false,
+  });
+  const halo = new THREE.Sprite(haloMaterial);
+  const baseScale = 1.8 * scale;
+  halo.position.set(position.x, position.y + 0.5 * scale, position.z);
+  halo.scale.set(baseScale, baseScale, 1);
+  parent.add(halo);
+  halos.push({
+    sprite: halo,
+    material: haloMaterial,
+    baseScale,
+    baseOpacity: hanging ? 0.3 : 0.27,
+    phase: (position.x * 0.37 + position.z * 0.23) % (Math.PI * 2),
+    hanging,
+  });
   return lantern;
 }
 
@@ -378,7 +470,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     }
   });
   trainModulePositions.forEach((position) => {
-    const roofY = position.x >= 4.8 ? 4.24 : 3.76;
+    const roofY = getTrainModuleHeight(position);
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
       const height = 0.34 + random() * 0.28;
       const offsetX = (random() - 0.5) * 0.42;
@@ -434,7 +526,7 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   trainModules.instanceMatrix.needsUpdate = true;
   topQrGroup.add(trainModules);
 
-  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x81763e, transparent: true, opacity: 0.12, toneMapped: false });
+  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x496b38, transparent: true, opacity: 0.12, toneMapped: false });
   const finderModules = new THREE.InstancedMesh(trainModuleGeometry, finderModuleMaterial, finderDarkPositions.length);
   finderDarkPositions.forEach((position, index) => {
     setInstance(finderModules, dummy, index, new THREE.Vector3(position.x, 0.26, position.z), new THREE.Vector3(1, 1, 1));
@@ -449,12 +541,15 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     glow: new THREE.MeshStandardMaterial({ color: 0x9e2b22, emissive: 0xb84b1e, emissiveIntensity: 1.25, roughness: 0.58, flatShading: true }),
     tassel: new THREE.MeshStandardMaterial({ color: 0xc28a35, roughness: 0.8, flatShading: true }),
   };
+  const haloTexture = createLanternHaloTexture();
+  const lanternHalos: LanternHalo[] = [];
+  const hedgeCrowns: HedgeCrown[] = [];
 
   const finderGardenGroup = new THREE.Group();
   const hedgeMaterial = new THREE.MeshStandardMaterial({
-    color: 0xa59a5f,
-    emissive: 0x3b2c06,
-    emissiveIntensity: 0.08,
+    color: 0x496b38,
+    emissive: 0x17250f,
+    emissiveIntensity: 0.1,
     roughness: 1,
     flatShading: true,
   });
@@ -466,6 +561,17 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   });
   hedgeModules.instanceMatrix.needsUpdate = true;
   finderGardenGroup.add(hedgeModules);
+  const hedgeCrownMaterial = new THREE.MeshStandardMaterial({ color: 0x6f8b45, roughness: 0.94, flatShading: true });
+  const hedgeCrownGeometry = new THREE.BoxGeometry(0.68, 0.34, 0.68);
+  const finderHedgeCrowns = new THREE.InstancedMesh(hedgeCrownGeometry, hedgeCrownMaterial, finderDarkPositions.length);
+  finderDarkPositions.forEach((position, index) => {
+    const crownPosition = new THREE.Vector3(position.x, 0.67 + ((index * 3) % 4) * 0.025, position.z);
+    const crownScale = new THREE.Vector3(0.92 + (index % 2) * 0.06, 0.86 + ((index * 5) % 3) * 0.08, 0.92 + ((index + 1) % 2) * 0.06);
+    setInstance(finderHedgeCrowns, dummy, index, crownPosition, crownScale);
+    hedgeCrowns.push({ mesh: finderHedgeCrowns, index, position: crownPosition, scale: crownScale, phase: index * 0.71 });
+  });
+  finderHedgeCrowns.instanceMatrix.needsUpdate = true;
+  finderGardenGroup.add(finderHedgeCrowns);
 
   const paleGardenMaterial = new THREE.MeshStandardMaterial({ color: 0xfffdf8, roughness: 1, flatShading: true });
   const paleGardenGeometry = new THREE.BoxGeometry(0.92, 0.14, 0.92);
@@ -479,17 +585,17 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   const gardenMaterials = new Map<string, THREE.MeshStandardMaterial>();
   const lotusGarden = finderPositions["north-west"].dark.filter((position, index) => index % 6 === 2 && Math.hypot(position.x + 17, position.z + 17) > 1.4);
   lotusGarden.forEach((position, index) => addLotus(finderGardenGroup, gardenMaterials, position, 0.76 + (index % 3) * 0.08));
-  addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.52, -17), 0.96);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.52, -17), 0.96, haloTexture, lanternHalos);
 
   const bambooGarden = finderPositions["north-east"].dark.filter((position, index) => index % 7 === 1 && Math.hypot(position.x - 17, position.z + 17) > 1.4);
   bambooGarden.forEach((position, index) => addBamboo(finderGardenGroup, gardenMaterials, position, 0.82 + (index % 2) * 0.12));
-  addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(17, 0.52, -17), 0.96);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(17, 0.52, -17), 0.96, haloTexture, lanternHalos);
 
   const lanternGarden = finderPositions["south-west"].dark.filter((position, index) => index % 5 === 0 && Math.hypot(position.x + 17, position.z - 17) > 1.4);
   lanternGarden.forEach((position, index) => {
-    addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.5, position.z), 0.78 + (index % 2) * 0.08);
+    addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.5, position.z), 0.78 + (index % 2) * 0.08, haloTexture, lanternHalos);
   });
-  addLantern(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.54, 17), 1.02);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.54, 17), 1.02, haloTexture, lanternHalos);
   treeViewGroup.add(finderGardenGroup);
 
   const alignmentGardenGroup = new THREE.Group();
@@ -506,15 +612,24 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   });
   alignmentHedges.instanceMatrix.needsUpdate = true;
   alignmentGardenGroup.add(alignmentHedges);
+  const alignmentHedgeCrowns = new THREE.InstancedMesh(hedgeCrownGeometry, hedgeCrownMaterial, alignmentDarkPositions.length);
+  alignmentDarkPositions.forEach((position, index) => {
+    const crownPosition = new THREE.Vector3(position.x, position.x === 14 && position.z === 14 ? 0.79 : 0.67, position.z);
+    const crownScale = new THREE.Vector3(0.96, position.x === 14 && position.z === 14 ? 1.16 : 0.92 + (index % 2) * 0.08, 0.96);
+    setInstance(alignmentHedgeCrowns, dummy, index, crownPosition, crownScale);
+    hedgeCrowns.push({ mesh: alignmentHedgeCrowns, index, position: crownPosition, scale: crownScale, phase: 80 + index * 0.67 });
+  });
+  alignmentHedgeCrowns.instanceMatrix.needsUpdate = true;
+  alignmentGardenGroup.add(alignmentHedgeCrowns);
   const alignmentLightModules = new THREE.InstancedMesh(paleGardenGeometry, paleGardenMaterial, alignmentLightPositions.length);
   alignmentLightPositions.forEach((position, index) => {
     setInstance(alignmentLightModules, dummy, index, new THREE.Vector3(position.x, 0.2, position.z), new THREE.Vector3(1, 1, 1));
   });
   alignmentLightModules.instanceMatrix.needsUpdate = true;
   alignmentGardenGroup.add(alignmentLightModules);
-  addLantern(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(14, 0.56, 14), 1.02);
+  addLanternWithHalo(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(14, 0.56, 14), 1.02, haloTexture, lanternHalos);
   [[12, 12], [16, 12], [12, 16], [16, 16]].forEach(([x, z]) => {
-    addLantern(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(x, 0.46, z), 0.58);
+    addLanternWithHalo(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(x, 0.46, z), 0.58, haloTexture, lanternHalos);
   });
   treeViewGroup.add(alignmentGardenGroup);
 
@@ -568,6 +683,42 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
     [new THREE.Vector3(-0.4, 12.1, 0.1), new THREE.Vector3(-2.3, 15.3, 2.2), 0.36],
   ];
   branchPoints.forEach(([from, to, width]) => addBranch(treeViewGroup, woodMaterial, from, to, width));
+
+  const hangingLanternGroup = new THREE.Group();
+  const hangingLanternMaterials: LanternMaterials = {
+    frame: lanternMaterials.frame.clone(),
+    glow: lanternMaterials.glow.clone(),
+    tassel: lanternMaterials.tassel.clone(),
+  };
+  const hangingLanternMaterialList = Object.values(hangingLanternMaterials);
+  hangingLanternMaterialList.forEach((material) => {
+    material.transparent = true;
+    material.depthWrite = false;
+  });
+  const lanternCordMaterial = new THREE.MeshStandardMaterial({ color: 0x3b2418, roughness: 1, transparent: true, depthWrite: false });
+  hangingLanternMaterialList.push(lanternCordMaterial);
+  const hangingLanternPlacements: Array<[number, number, number, number, number]> = [
+    [4.4, 11.1, 2.8, 0.7, 1.05],
+    [-4.3, 11.5, 2.7, 0.72, 1.1],
+    [3.2, 12.7, -3.5, 0.66, 0.95],
+    [-3.4, 12.5, -3.4, 0.68, 1],
+    [0.8, 13.8, 0.5, 0.74, 1.15],
+  ];
+  hangingLanternPlacements.forEach(([x, y, z, scale, cordLength]) => {
+    const cord = new THREE.Mesh(new THREE.BoxGeometry(0.055, cordLength, 0.055), lanternCordMaterial);
+    cord.position.set(x, y + cordLength * 0.5 + 0.78 * scale, z);
+    hangingLanternGroup.add(cord);
+    addLanternWithHalo(
+      hangingLanternGroup,
+      hangingLanternMaterials,
+      new THREE.Vector3(x, y, z),
+      scale,
+      haloTexture,
+      lanternHalos,
+      true,
+    );
+  });
+  treeViewGroup.add(hangingLanternGroup);
 
   const leaves = new THREE.Group();
   const leafGeometry = new THREE.BoxGeometry(0.9, 0.48, 0.9);
@@ -635,21 +786,52 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
   addBox(train, trainMaterials, [1.5, 0.2, 2.72], [8.05, 2.5, 8], "#f7f3ec");
   addBox(train, trainMaterials, [0.55, 2.1, 0.55], [8.8, 2.45, 8], "#27161c");
   addBox(train, trainMaterials, [0.95, 0.18, 0.95], [8.8, 3.55, 8], "#f7f3ec");
-  addBox(train, trainMaterials, [14.2, 0.12, 0.12], [-0.1, 1.12, 9.48], "#c58a38");
-  for (let index = 0; index < 7; index += 1) {
-    const windowMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffcc55,
-      emissive: 0xe6872c,
-      emissiveIntensity: 0.65,
-      roughness: 0.52,
-      flatShading: true,
+  const windowMaterial = new THREE.MeshStandardMaterial({
+    color: 0xffcc55,
+    emissive: 0xe6872c,
+    emissiveIntensity: 0.72,
+    roughness: 0.48,
+    flatShading: true,
+  });
+  const windowFrameMaterial = new THREE.MeshStandardMaterial({ color: 0xc58a38, metalness: 0.2, roughness: 0.62, flatShading: true });
+  [6.5, 9.5].forEach((z) => {
+    addBox(train, trainMaterials, [14.2, 0.12, 0.12], [-0.1, 1.12, z], "#c58a38");
+    addBox(train, trainMaterials, [14.2, 0.09, 0.12], [-0.1, 3.08, z], "#d4a34d");
+    for (let index = 0; index < 7; index += 1) {
+      const x = -5.3 + index * 1.65;
+      const frame = new THREE.Mesh(new THREE.BoxGeometry(1.04, 1.02, 0.07), windowFrameMaterial);
+      frame.position.set(x, 2.35, z);
+      train.add(frame);
+      const trainWindow = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.76, 0.1), windowMaterial);
+      trainWindow.position.set(x, 2.35, z + (z > 8 ? 0.045 : -0.045));
+      train.add(trainWindow);
+      const mullion = new THREE.Mesh(new THREE.BoxGeometry(0.07, 0.78, 0.12), windowFrameMaterial);
+      mullion.position.set(x, 2.35, z + (z > 8 ? 0.09 : -0.09));
+      train.add(mullion);
+    }
+    const cabinWindow = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.86, 0.1), windowMaterial);
+    cabinWindow.position.set(6.28, 2.85, z + (z > 8 ? 0.05 : -0.05));
+    train.add(cabinWindow);
+    const cabinFrame = new THREE.Mesh(new THREE.BoxGeometry(1.12, 1.08, 0.07), windowFrameMaterial);
+    cabinFrame.position.set(6.28, 2.85, z);
+    train.add(cabinFrame);
+    const door = addBox(train, trainMaterials, [0.88, 1.72, 0.1], [5.02, 1.9, z + (z > 8 ? 0.06 : -0.06)], "#5d1d1c");
+    const doorMotif = addBox(train, trainMaterials, [0.3, 0.3, 0.13], [5.02, 1.9, z + (z > 8 ? 0.13 : -0.13)], "#d4a34d");
+    doorMotif.rotation.z = Math.PI / 4;
+    door.rotation.y = 0;
+    [-4.5, -1.2, 2.1].forEach((x) => {
+      const motif = addBox(train, trainMaterials, [0.26, 0.26, 0.13], [x, 1.35, z + (z > 8 ? 0.13 : -0.13)], "#d4a34d");
+      motif.rotation.z = Math.PI / 4;
     });
-    const trainWindow = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.82, 0.08), windowMaterial);
-    trainWindow.position.set(-5.3 + index * 1.65, 2.35, 9.48);
-    train.add(trainWindow);
-  }
+  });
+  const headlampMaterial = new THREE.MeshStandardMaterial({ color: 0xffd56b, emissive: 0xff9d2f, emissiveIntensity: 1.4, roughness: 0.42 });
+  const headlamp = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.58, 0.58), headlampMaterial);
+  headlamp.position.set(8.78, 1.82, 8);
+  train.add(headlamp);
+  addBox(train, trainMaterials, [0.5, 0.22, 0.5], [9.02, 0.76, 8], "#27161c");
+  addBox(train, trainMaterials, [0.42, 0.42, 0.42], [9.3, 0.76, 8], "#c58a38");
   trainModulePositions.forEach((position, index) => {
-    const roofY = position.x >= 4.8 ? 4.24 : 3.76;
+    const roofY = getTrainModuleHeight(position);
     addBox(
       train,
       trainMaterials,
@@ -796,6 +978,10 @@ function buildMemoryScene(container: HTMLDivElement, onViewStateChange: (isTop: 
       grassBladeObject: new THREE.Object3D(),
       woodMaterial,
       lanternGlowMaterial: lanternMaterials.glow,
+      hangingLanternMaterials: hangingLanternMaterialList,
+      hedgeCrowns,
+      hedgeCrownObject: new THREE.Object3D(),
+      lanternHalos,
       train,
       orbit,
       disposeInteraction,
@@ -903,6 +1089,31 @@ function MemoryTreeCanvas({ isTop, language, viewCommand, onViewStateChange }: M
 
       const time = performance.now() * 0.001;
       sceneState.lanternGlowMaterial.emissiveIntensity = reducedMotion ? 1.25 : 1.25 * (1 + Math.sin(time * 1.7) * 0.08);
+      const hangingOpacity = THREE.MathUtils.lerp(1, 0.05, qrReveal);
+      sceneState.hangingLanternMaterials.forEach((material) => {
+        material.opacity = hangingOpacity;
+      });
+      sceneState.lanternHalos.forEach((halo) => {
+        const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 1.55 + halo.phase) * 0.1;
+        const fade = halo.hanging ? hangingOpacity : 1;
+        halo.material.opacity = halo.baseOpacity * fade * (reducedMotion ? 1 : 0.92 + Math.sin(time * 1.55 + halo.phase) * 0.08);
+        halo.sprite.scale.set(halo.baseScale * pulse, halo.baseScale * pulse, 1);
+      });
+      if (!reducedMotion) {
+        const changedHedgeMeshes = new Set<THREE.InstancedMesh>();
+        sceneState.hedgeCrowns.forEach((crown) => {
+          const sway = Math.sin(time * 0.92 + crown.phase) * 0.018 * (1 - qrReveal * 0.45);
+          sceneState.hedgeCrownObject.position.copy(crown.position);
+          sceneState.hedgeCrownObject.scale.copy(crown.scale);
+          sceneState.hedgeCrownObject.rotation.set(sway * 0.45, 0, sway);
+          sceneState.hedgeCrownObject.updateMatrix();
+          crown.mesh.setMatrixAt(crown.index, sceneState.hedgeCrownObject.matrix);
+          changedHedgeMeshes.add(crown.mesh);
+        });
+        changedHedgeMeshes.forEach((mesh) => {
+          mesh.instanceMatrix.needsUpdate = true;
+        });
+      }
       const motion = reducedMotion ? 0 : 1 - qrReveal * 0.78;
       sceneState.leaves.children.forEach((object) => {
         if (!(object instanceof THREE.Mesh)) return;

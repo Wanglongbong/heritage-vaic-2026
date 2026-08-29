@@ -43,6 +43,23 @@ test("keeps every train module inside the compact QR artwork band", () => {
   });
 });
 
+test("grounds train QR modules on real carriage surfaces", () => {
+  const centre = (BANK_QR_MATRIX.size - 1) / 2;
+  const supports = { ground: 0, carriage: 0, cabin: 0, nose: 0 };
+  BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
+    row.forEach((dark, columnIndex) => {
+      if (!dark || classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size) !== "train") return;
+      const x = columnIndex - centre;
+      const z = rowIndex - centre;
+      if (z >= 7 && z <= 9 && x >= -7 && x <= 4) supports.carriage += 1;
+      else if (z >= 7 && z <= 9 && x >= 5 && x <= 7) supports.cabin += 1;
+      else if (z >= 7 && z <= 9 && x === 8) supports.nose += 1;
+      else supports.ground += 1;
+    });
+  });
+  assert.deepEqual(supports, { ground: 14, carriage: 19, cabin: 4, nose: 1 });
+});
+
 test("maps exactly three 7 by 7 finder gardens without touching the rest of the QR", () => {
   const counts = { "north-west": 0, "north-east": 0, "south-west": 0 };
   BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
@@ -129,6 +146,14 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(component, /autumnColors/);
   assert.match(component, /color: 0xb99632/);
   assert.match(component, /"#a77d20" : "#b99632"/);
+  assert.match(component, /type TrainModuleSupport = "ground" \| "carriage" \| "cabin" \| "nose"/);
+  assert.match(component, /getTrainModuleHeight\(position\)/);
+  assert.match(component, /color: 0x496b38/);
+  assert.match(component, /hedgeCrowns/);
+  assert.match(component, /addLanternWithHalo/);
+  assert.match(component, /hangingLanternPlacements/);
+  assert.match(component, /\[6\.5, 9\.5\]\.forEach/);
+  assert.match(component, /const headlamp = new THREE\.Mesh/);
   assert.match(component, /lanternGlowMaterial\.emissiveIntensity/);
   assert.match(component, /new THREE\.PointLight\(0xffad45, 5\.5, 8, 2\)/);
   assert.match(component, /const \[isTop, setIsTop\] = useState\(false\)/);
