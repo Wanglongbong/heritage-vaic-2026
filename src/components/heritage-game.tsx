@@ -93,6 +93,8 @@ const copy = {
     introSpecialEndingTip: "✨ Cuối hành trình: Khám phá không gian lưu trữ di sản & gửi gắm cảm nghĩ cùng nhiều điều thú vị đang chờ đón!",
     start: "Bắt đầu hành trình",
     instruction: "Di chuột gần một vật để đánh thức câu chuyện",
+    touchInstruction: "Chạm vào từng vật phẩm để trả lại màu ký ức",
+    orientationHint: "Mẹo: Xoay ngang điện thoại để xem toàn cảnh rõ hơn.",
     memoryLamp: "ĐÈN KÝ ỨC",
     memoryHint: "Soi tìm 3 dấu vết. Mỗi vật phẩm sẽ trả lại một phần màu sắc cho không gian.",
     memoryProgress: "dấu vết đã thức",
@@ -178,6 +180,8 @@ const copy = {
     introSpecialEndingTip: "✨ Journey's end: Discover the living archive & leave your reflections alongside special surprises!",
     start: "Begin the journey",
     instruction: "Move close to an object to wake its story",
+    touchInstruction: "Tap each object to restore its memory colours",
+    orientationHint: "Tip: Rotate your phone for a clearer full-scene view.",
     memoryLamp: "MEMORY LANTERN",
     memoryHint: "Find 3 traces. Each discovery returns a layer of colour to the living setting.",
     memoryProgress: "traces awakened",
@@ -590,6 +594,7 @@ export function HeritageGame() {
   const [stationTrackPosition, setStationTrackPosition] = useState(0);
   const [stationTrackDuration, setStationTrackDuration] = useState(0);
   const [externalReferenceOpen, setExternalReferenceOpen] = useState(false);
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -606,6 +611,18 @@ export function HeritageGame() {
     Boolean(previewPlaying) || Boolean(stationTrackPlaying) || externalReferenceOpen || phase === "ending" || phase === "travelling",
     volume
   );
+
+  useEffect(() => {
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const updatePointerMode = () => setIsCoarsePointer(coarsePointer.matches);
+    updatePointerMode();
+    if (typeof coarsePointer.addEventListener === "function") {
+      coarsePointer.addEventListener("change", updatePointerMode);
+      return () => coarsePointer.removeEventListener("change", updatePointerMode);
+    }
+    coarsePointer.addListener(updatePointerMode);
+    return () => coarsePointer.removeListener(updatePointerMode);
+  }, []);
 
   useEffect(() => {
     const imageSources = [
@@ -966,6 +983,7 @@ export function HeritageGame() {
   }
 
   function handlePointerMove(event: PointerEvent<HTMLDivElement>) {
+    if (isCoarsePointer) return;
     const scene = sceneRef.current;
     if (!scene) return;
     const sceneRect = scene.getBoundingClientRect();
@@ -987,9 +1005,10 @@ export function HeritageGame() {
   }
 
   const stationSealed = sealed.has(stop.id);
+  const journeyComplete = sealed.size === experienceStops.length;
 
   return (
-    <main className="game-shell" style={{ "--stop-accent": stop.palette } as CSSProperties}>
+    <main className={`game-shell ${isCoarsePointer ? "touch-interface" : "pointer-interface"}`} style={{ "--stop-accent": stop.palette } as CSSProperties}>
       {phase === "heritage" && <>
       <header className="topbar">
         <button className="wordmark" onClick={resetToLanding} aria-label={ui.brand}>
@@ -1056,7 +1075,10 @@ export function HeritageGame() {
             <h1>{stop.title[language]}</h1>
             <p>{stop.subtitle[language]}</p>
           </div>
-          <div className="instruction"><i className="mouse-glyph" /> {ui.instruction}</div>
+          <div className="instruction">
+            <i className={isCoarsePointer ? "touch-glyph" : "mouse-glyph"} />
+            {isCoarsePointer ? ui.touchInstruction : ui.instruction}
+          </div>
           {stop.hotspots.map((hotspot, index) => {
             const active = activeHotspotId === hotspot.id;
             const seen = visited.has(`${stop.id}:${hotspot.id}`);
@@ -1066,7 +1088,7 @@ export function HeritageGame() {
               data-hotspot={hotspot.id}
               className={`hotspot ${active ? "near" : ""} ${seen ? "seen" : ""} ${playable ? "has-audio" : ""}`}
               style={{ left: `${hotspot.x}%`, top: `${hotspot.y}%`, "--radius": `${hotspot.radius * 8}px` } as CSSProperties}
-              onPointerEnter={() => setActiveHotspotId(hotspot.id)}
+              onPointerEnter={() => { if (!isCoarsePointer) setActiveHotspotId(hotspot.id); }}
               onFocus={() => setActiveHotspotId(hotspot.id)}
               onBlur={() => setActiveHotspotId(null)}
               onClick={() => openRecord(hotspot)}
@@ -1077,11 +1099,15 @@ export function HeritageGame() {
               <span className="hotspot-label"><small>{hotspot.kicker[language]}</small><b>{hotspot.label[language]}</b>{playable && <em>♪ {ui.playAudio}</em>}</span>
             </button>;
           })}
-          {stationComplete && !stationSealed && !openHotspot && <aside className="station-reveal-card" role="status">
+          {stationComplete && !stationSealed && !openHotspot && <aside className="station-reveal-card station-reveal-card-desktop" role="status">
             <div><i aria-hidden="true">✦</i><span><b>{ui.sceneRestored}</b><small>{ui.sceneRestoredBody}</small></span></div>
             <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
           </aside>}
         </div>
+        {stationComplete && !stationSealed && !openHotspot && <aside className="station-reveal-card station-reveal-card-mobile" role="status">
+          <div><i aria-hidden="true">✦</i><span><b>{ui.sceneRestored}</b><small>{ui.sceneRestoredBody}</small></span></div>
+          <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
+        </aside>}
         <div className="scene-footer">
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
           {stationComplete && stop.unlock?.audio.src ? <div className="station-audio-player" data-playing={stationTrackPlaying === stop.id}>
@@ -1095,9 +1121,11 @@ export function HeritageGame() {
             </label>
           </div> : <p>{ui.illustration}</p>}
           <div className="station-controls">
-            {sealed.size === experienceStops.length && stopIndex !== experienceStops.length - 1 && <button className="journey-summary-button" onClick={finishJourney}><span aria-hidden="true">⌂</span><em>{ui.returnSummary}</em></button>}
+            {journeyComplete && <button className="journey-summary-button journey-summary-primary" onClick={finishJourney}><span aria-hidden="true">⌂</span><em>{ui.returnSummary}</em></button>}
             <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
-            {stopIndex === experienceStops.length - 1
+            {journeyComplete
+              ? stopIndex < experienceStops.length - 1 && <button className="station-direction station-next" aria-label={ui.next} onClick={() => beginTravel(stopIndex + 1)}><em>{ui.next}</em><span aria-hidden="true">→</span></button>
+              : stopIndex === experienceStops.length - 1
               ? <button className="finish-journey-button" disabled={!stationSealed || sealed.size < experienceStops.length} onClick={finishJourney}><em>{stationSealed ? ui.finishJourney : ui.stationLocked}</em><span aria-hidden="true">→</span></button>
               : <button className="station-direction station-next" aria-label={stationSealed ? ui.next : ui.stationLocked} disabled={!stationSealed} onClick={() => beginTravel(stopIndex + 1)}><em>{stationSealed ? ui.next : ui.stationLocked}</em><span aria-hidden="true">→</span></button>}
           </div>
@@ -1586,6 +1614,7 @@ function Intro({
         <span className="intro-ending-sparkle">🏛️</span>
         <p>{ui.introSpecialEndingTip}</p>
       </div>
+      <p className="intro-orientation-hint"><span aria-hidden="true">↻</span>{ui.orientationHint}</p>
       <div className="intro-actions">
         <button type="button" className="intro-start-button" onClick={onStart}>{ui.start}<span>→</span></button>
         <button type="button" className="intro-guide-button" onClick={() => { playPaperSfx({ muted, volume }); setGuideOpen(true); }}><span>📜</span> {ui.guideButton}</button>
