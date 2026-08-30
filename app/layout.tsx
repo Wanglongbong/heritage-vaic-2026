@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { headers } from "next/headers";
+import "@fontsource-variable/cormorant-garamond";
 import "@fontsource-variable/pixelify-sans";
 import "./globals.css";
 

@@ -79,6 +79,10 @@ test("ships the carriage, memory-lantern loop, heritage passport, grounded media
   assert.match(css, /\.conductor-character/);
   assert.match(css, /\.travel-track-image/);
   assert.match(css, /\.travel-train-image/);
+  assert.match(ui, /station-arrival-cover/);
+  assert.match(css, /\.station-arrival-cover/);
+  assert.doesNotMatch(ui, /travel-destination/);
+  assert.doesNotMatch(css, /travel-destination/);
   assert.match(css, /\.ending-cover-image/);
   assert.doesNotMatch(css, /\.pixel-conductor|\.travel-rail-glow/);
   assert.match(css, /\.hotspot\.near/);

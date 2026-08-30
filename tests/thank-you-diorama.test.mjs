@@ -121,7 +121,7 @@ test("ships a QR-derived orbitable memory landscape with a classic autumn train"
   assert.match(matrixFile, /module === "1"/);
 
   assert.match(game, /<ThankYouDiorama language=\{language\} \/>/);
-  assert.match(game, /href="#thank-you-stop"/);
+  assert.match(component, /href="#ending-restart"/);
   assert.match(component, /import \* as THREE from "three"/);
   assert.match(component, /BANK_QR_MATRIX/);
   assert.match(component, /new THREE\.WebGLRenderer/);

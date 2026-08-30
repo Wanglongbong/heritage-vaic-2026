@@ -12,6 +12,7 @@ Một trải nghiệm point-and-click góc nhìn thứ nhất đưa người ch�
 - Mỗi hồ sơ có bàn quan sát hand tracking: camera chỉ bật khi người chơi cấp quyền, xử lý khung hình cục bộ và luôn có chế độ kéo chuột/chạm thay thế. Điểm tạo hình gốm hỗ trợ hai tay để thay đổi hình khối minh họa.
 - Trước khi ga được mở khóa, nhạc nền là soundscape hiện đại, trung tính; khi bản ghi ga phát, nền tự hạ để không chồng âm.
 - Hộ chiếu di sản lưu tiến độ trên thiết bị và có thể xuất PDF/JSON kèm nguồn và quyền của âm thanh ga.
+- Ending đi qua Phòng trưng bày, góc sổ lưu bút chung, credit `Big thanks to...` cuộn từ người mới nhất, sau đó mới đến Cây ký ức.
 
 ## Nguyên tắc văn hóa
 
@@ -34,7 +35,18 @@ npm install
 npm run dev
 ```
 
-Phiên bản này không cần biến môi trường hoặc khóa API. Luồng giọng nói/GPT cũ đã được gỡ khỏi giao diện và khỏi các route public; nội dung hiện vật được đóng gói từ hồ sơ nguồn đã duyệt.
+Game vẫn chạy khi chưa có biến môi trường, nhưng sổ lưu bút online sẽ ở chế độ chỉ xem. Để bật lưu bút dùng chung:
+
+1. Tạo Supabase project và chạy [`db/guestbook.sql`](./db/guestbook.sql) trong SQL Editor.
+2. Sao chép `.env.example` thành `.env.local`, điền `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` và một `GUESTBOOK_HASH_SALT` dài, ngẫu nhiên.
+3. Khai báo cùng ba biến này trên Vercel. `SUPABASE_SERVICE_ROLE_KEY` chỉ được dùng bên trong route server.
+
+Hai bản nhạc ending do chủ dự án cung cấp sau khi xác nhận quyền sử dụng, với đúng tên file:
+
+- `public/media/golden-embers.mp3`
+- `public/media/david-instrumental-slowed.mp3`
+
+Luồng giọng nói/GPT cũ đã được gỡ khỏi giao diện và khỏi các route public; nội dung hiện vật được đóng gói từ hồ sơ nguồn đã duyệt.
 
 Kiểm tra bản phát hành:
 
@@ -45,7 +57,7 @@ npm test
 
 ## Quyền riêng tư và khóa API
 
-Repository không chứa khóa API và bản public không còn endpoint GPT/phiên âm. Hand tracking tải thư viện/mô hình MediaPipe rồi xử lý camera trong trình duyệt; không tải ảnh camera lên backend và không lưu dữ liệu cá nhân.
+Repository không chứa khóa API và bản public không còn endpoint GPT/phiên âm. Hand tracking tải thư viện/mô hình MediaPipe rồi xử lý camera trong trình duyệt; không tải ảnh camera lên backend. Sổ lưu bút lưu công khai tên hiển thị và lời nhắn do người chơi tự nguyện gửi; backend chỉ lưu hash một chiều của IP kèm salt để giới hạn spam, không lưu IP thô.
 
 ## Quyền sử dụng
 

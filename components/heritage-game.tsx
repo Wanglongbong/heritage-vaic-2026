@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import type { CSSProperties } from "react";
+import { GuestbookCredits } from "@/components/guestbook-credits";
 import { HandTrackingViewer } from "@/components/hand-tracking-viewer";
 import { ThankYouDiorama } from "@/components/thank-you-diorama";
 import { getSource, stops } from "@/lib/heritage";
@@ -520,7 +521,7 @@ export function HeritageGame() {
   const stopVisited = stop.hotspots.filter((hotspot) => visited.has(`${stop.id}:${hotspot.id}`)).length;
   const stationComplete = stopVisited === stop.hotspots.length;
   const ambienceEnvironment = phase === "heritage" && stationComplete ? stop.soundscape?.generatorPreset || stop.id : "carriage";
-  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted, Boolean(previewPlaying) || Boolean(stationTrackPlaying) || externalReferenceOpen);
+  const { enable: enableAmbient } = useAmbientAudio(ambienceEnvironment, muted || phase === "ending", Boolean(previewPlaying) || Boolean(stationTrackPlaying) || externalReferenceOpen);
 
   useEffect(() => {
     const imageSources = [
@@ -875,7 +876,8 @@ export function HeritageGame() {
         })}
       </section>
 
-      <section className="scene-wrap" style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
+      <section key={stop.id} className="scene-wrap" style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
+        <span className="station-arrival-cover" aria-hidden="true" />
         <div className="train-frame" aria-hidden="true"><span className="frame-top" /><span className="frame-left" /><span className="frame-right" /><span className="frame-bottom" /></div>
         <div
           ref={sceneRef}
@@ -955,7 +957,7 @@ export function HeritageGame() {
       {phase === "landing" && <Intro language={language} onLanguage={setLanguage} onStart={() => { enableAmbient(); setPhase("carriage"); }} />}
       {phase === "carriage" && <Carriage language={language} muted={muted} onLanguage={setLanguage} onToggleMuted={toggleMuted} onBack={resetToLanding} onDestination={beginTravel} onAudioActivate={enableAmbient} />}
       {phase === "travelling" && <TravelScreen stop={pendingStop} language={language} />}
-      {phase === "ending" && <Ending language={language} visited={visited} sealed={sealed} onLanguage={setLanguage} onVisitStop={beginTravel} onInspect={openMuseumRecord} onNewJourney={startNewJourney} />}
+      {phase === "ending" && <Ending language={language} visited={visited} sealed={sealed} onLanguage={setLanguage} onVisitStop={beginTravel} onInspect={openMuseumRecord} onNewJourney={startNewJourney} muted={muted} onToggleMuted={toggleMuted} />}
       {phase === "heritage" && <div className="ambient-disclosure" role="note">♪ {ui.neutralSound}<span>{ui.ambientNote}</span></div>}
       {openHotspot && <RecordDrawer
         key={`${stop.id}:${openHotspot.id}`}
@@ -1054,6 +1056,8 @@ function Ending({
   onVisitStop,
   onInspect,
   onNewJourney,
+  muted,
+  onToggleMuted,
 }: {
   language: Language;
   visited: Set<string>;
@@ -1062,6 +1066,8 @@ function Ending({
   onVisitStop: (index: number) => void;
   onInspect: (record: MuseumRecord) => void;
   onNewJourney: () => void;
+  muted: boolean;
+  onToggleMuted: () => void;
 }) {
   const ui = copy[language];
   const [passportOpen, setPassportOpen] = useState(false);
@@ -1077,7 +1083,7 @@ function Ending({
   }
 
   return <section className="ending-screen" aria-labelledby="ending-title">
-    <div className="ending-hero">
+    <div className="ending-hero" id="ending-top">
       <Image className="ending-cover-image" src="/og.webp" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
       <div className="ending-vignette" aria-hidden="true" />
       <div className="ending-language" aria-label={language === "vi" ? "Chọn ngôn ngữ" : "Choose language"}>
@@ -1093,11 +1099,9 @@ function Ending({
           <button className="ending-cta ending-primary" onClick={() => setPassportOpen(true)}>{ui.openPassport}<b>↗</b></button>
           <button className="ending-cta ending-secondary ending-new-game" onClick={() => setResetOpen(true)}>{ui.newJourney} <b>↻</b></button>
         </div>
-        <a className="ending-cta ending-gallery-cta" href="#thank-you-stop"><span>{language === "vi" ? "MỞ GA CUỐI" : "OPEN THE FINAL STOP"}</span><i>↓</i></a>
+        <a className="ending-cta ending-gallery-cta" href="#memory-map"><span>{language === "vi" ? "MỞ PHÒNG TRƯNG BÀY" : "OPEN THE GALLERY"}</span><i>↓</i></a>
       </div>
     </div>
-
-    <ThankYouDiorama language={language} />
 
     <div className="ending-hub" id="memory-map">
       <section className="museum-vault" aria-labelledby="museum-title" style={{ "--museum-bg": "url(/museum/heritage-gallery-v2.webp)", "--museum-accent": activeMuseumStop.palette } as CSSProperties}>
@@ -1146,12 +1150,17 @@ function Ending({
         </div>
         <p className="museum-illustration-note">{ui.illustration}<br /><a href="https://commons.wikimedia.org/wiki/File:Interior_view_-_Museum_of_Vietnamese_History_-_Ho_Chi_Minh_City_-_DSC05932.JPG" target="_blank" rel="noreferrer">{language === "vi" ? "Nền phòng trưng bày chuyển thể pixel từ ảnh Bảo tàng Lịch sử Việt Nam, TP. Hồ Chí Minh · Daderot · CC0 1.0." : "Gallery background pixel adaptation from the Museum of Vietnamese History, Ho Chi Minh City · Daderot · CC0 1.0."}</a></p>
       </section>
-
-      <section className="ending-reset-panel">
-        <div><span>{language === "vi" ? "MỘT CHUYẾN TÀU KHÁC" : "ANOTHER JOURNEY"}</span><h2>{ui.resetTitle}</h2><p>{ui.resetBody}</p></div>
-        <button type="button" onClick={() => setResetOpen(true)}>{ui.newJourney}<b>↻</b></button>
-      </section>
+      <div className="guestbook-gallery-band">
+        <GuestbookCredits language={language} muted={muted} onToggleMuted={onToggleMuted} />
+      </div>
     </div>
+
+    <ThankYouDiorama language={language} />
+
+    <section className="ending-reset-panel" id="ending-restart">
+      <div><span>{language === "vi" ? "MỘT CHUYẾN TÀU KHÁC" : "ANOTHER JOURNEY"}</span><h2>{ui.resetTitle}</h2><p>{ui.resetBody}</p></div>
+      <button type="button" onClick={() => setResetOpen(true)}>{ui.newJourney}<b>↻</b></button>
+    </section>
 
     {resetOpen && <div className="reset-dialog-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && setResetOpen(false)}>
       <section className="reset-dialog" role="alertdialog" aria-modal="true" aria-labelledby="reset-title" aria-describedby="reset-body">
@@ -1249,7 +1258,6 @@ function TravelScreen({ stop, language }: { stop: ExperienceStop; language: Lang
   const ui = copy[language];
   return <section className="travel-screen" aria-live="polite" aria-label={`${ui.arrival} ${stop.location[language]}`}>
     <Image className="travel-landscape" src="/train/coastal-transit-v2.webp" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
-    <Image className="travel-destination" src={stop.scene} alt="" fill unoptimized sizes="100vw" aria-hidden="true" />
     <Image className="travel-track-image" src="/train/straight-track-v2.png" alt="" fill priority unoptimized sizes="100vw" aria-hidden="true" />
     <Image className="travel-train-image" src="/train/heritage-express.webp" alt="" width={2086} height={218} priority unoptimized aria-hidden="true" />
     <div className="travel-vignette" aria-hidden="true" />
@@ -1402,7 +1410,7 @@ function Archive({ language, visited, sealed, passport = false, onClose }: { lan
         <p>{hotspot.story[language]}</p>
         <div className="passport-source-note"><small>✓ {hotspot.sourceIds.map((id) => getSource(id)?.title[language] || id).join(" · ")}</small><em>{hotspot.sourceIds.map((id) => getSource(id)?.rights[language]).filter(Boolean).join(" · ")}</em></div>
       </article>)}</div>}
-      <footer><div><button disabled={records.length === 0} onClick={() => downloadPassportJson(exportRecords, exportSeals)}>{ui.export} ↓</button><button disabled={records.length === 0 || exportingPdf} onClick={exportPdf}>{exportingPdf ? ui.exportingPdf : ui.exportPdf} ↓</button></div><span>CAMERA LOCAL ONLY · NO UPLOAD · NO PERSONAL DATA</span><Image className="passport-crane-mark passport-crane-mark-bottom" src="/motifs/crane-stamp-gold.png" alt="" width={106} height={106} unoptimized aria-hidden="true" /></footer>
+      <footer><div><button disabled={records.length === 0} onClick={() => downloadPassportJson(exportRecords, exportSeals)}>{ui.export} ↓</button><button disabled={records.length === 0 || exportingPdf} onClick={exportPdf}>{exportingPdf ? ui.exportingPdf : ui.exportPdf} ↓</button></div><span>CAMERA LOCAL ONLY · GUESTBOOK NAME &amp; MESSAGE ARE PUBLIC</span><Image className="passport-crane-mark passport-crane-mark-bottom" src="/motifs/crane-stamp-gold.png" alt="" width={106} height={106} unoptimized aria-hidden="true" /></footer>
     </div>
   </div>;
 }

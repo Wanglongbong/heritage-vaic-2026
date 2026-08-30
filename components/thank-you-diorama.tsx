@@ -21,7 +21,7 @@ const text = {
     topView: "Chạm để trở lại bên cây ký ức",
     orbit: "Kéo xoay · Cuộn hoặc chụm để thu phóng",
     loading: "Đang dựng cây mùa thu và chuyến tàu ký ức…",
-    museum: "Mở Phòng trưng bày",
+    museum: "Khép lại hành trình",
   },
   en: {
     kicker: "FINAL STOP · MEMORY TREE",
@@ -31,7 +31,7 @@ const text = {
     topView: "Tap to return to the memory tree",
     orbit: "Drag to orbit · Scroll or pinch to zoom",
     loading: "Building the autumn tree and memory train…",
-    museum: "Open the gallery",
+    museum: "Close the journey",
   },
 } as const;
 
@@ -1299,6 +1299,6 @@ export function ThankYouDiorama({ language }: { language: Language }) {
       <button className="memory-tree-top-note" type="button" data-visible={isTop ? "true" : "false"} onClick={() => requestView(false)} tabIndex={isTop ? 0 : -1}><i>↓</i><span>{ui.topView}</span></button>
     </div>
 
-    <a className="thank-you-museum-link" href="#memory-map"><span>{ui.museum}</span><b>↓</b></a>
+    <a className="thank-you-museum-link" href="#ending-restart"><span>{ui.museum}</span><b>↓</b></a>
   </section>;
 }
