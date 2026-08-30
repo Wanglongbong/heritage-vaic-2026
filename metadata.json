@@ -1,0 +1,6 @@
+{
+  "name": "Tàu Di Sản Việt Nam",
+  "description": "Trò chơi tương tác khám phá 5 di sản văn hóa phi vật thể và nghề thủ công Việt Nam qua đoàn tàu Bắc–Nam, Đèn Ký Ức, Hand Pilot và Hộ chiếu Di sản.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
