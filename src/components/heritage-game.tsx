@@ -1645,6 +1645,7 @@ function Carriage({
           type="button"
           onClick={() => { playPaperSfx({ muted, volume }); setGuideOpen(true); }}
           className="carriage-guide-button"
+          aria-label={ui.guide}
           title={ui.guide}
         >
           <span>📜</span> <b className="guide-btn-text">{ui.guide}</b>
