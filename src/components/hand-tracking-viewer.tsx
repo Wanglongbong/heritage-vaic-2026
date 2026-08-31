@@ -268,11 +268,11 @@ export function HandTrackingViewer({ language, spriteSrc, label }: { language: L
         <b>{label}</b>
         <span>{ui.views[activeView]} · {activeView + 1}/4</span>
       </div>
-      <nav className="object-view-switcher" aria-label={language === "vi" ? "Chọn mặt quan sát" : "Choose object view"}>
-        {ui.views.map((view, index) => <button key={view} type="button" className={activeView === index ? "active" : ""} onPointerDown={(event) => event.stopPropagation()} onClick={() => selectView(index)} aria-pressed={activeView === index}><i />{view}</button>)}
-      </nav>
       <small>{status}</small>
     </div>
+    <nav className="object-view-switcher object-view-switcher-below" aria-label={language === "vi" ? "Chọn mặt quan sát" : "Choose object view"}>
+      {ui.views.map((view, index) => <button key={view} type="button" className={activeView === index ? "active" : ""} onClick={() => selectView(index)} aria-pressed={activeView === index}><i />{view}</button>)}
+    </nav>
     <div className="tracking-actions">
       <button type="button" className="tracking-toggle" onClick={trackingState === "running" ? stopTracking : startTracking} disabled={trackingState === "loading"}>{trackingState === "running" ? ui.stop : ui.start}</button>
       <button type="button" className="tracking-swap" onClick={() => setSwapHands((value) => { const next = !value; swapHandsRef.current = next; return next; })} aria-pressed={swapHands}>{ui.swap}</button>

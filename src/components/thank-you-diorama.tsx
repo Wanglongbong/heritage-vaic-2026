@@ -151,10 +151,13 @@ function getTopFitZoom(container: HTMLElement) {
   const width = Math.max(rect.width, 260);
   const height = Math.max(rect.height, 260);
   const view = width < 560 ? 60 : 56;
-  const qrWorldSizeWithQuietZone = 54;
+  const landscapeLightbox = width > height && Boolean(container.closest(".memory-tree-lightbox-card"));
+  // Include a generous quiet zone so the outer QR modules never meet the
+  // stage border on narrow portrait screens.
+  const qrWorldSizeWithQuietZone = landscapeLightbox ? 56 : 58;
   const fitWidth = (view * (width / height)) / qrWorldSizeWithQuietZone;
   const fitHeight = view / qrWorldSizeWithQuietZone;
-  return THREE.MathUtils.clamp(Math.min(fitWidth, fitHeight) * 0.94, 0.34, 1);
+  return THREE.MathUtils.clamp(Math.min(fitWidth, fitHeight) * (landscapeLightbox ? 0.98 : 0.9), 0.34, landscapeLightbox ? 1.16 : 1);
 }
 
 function getTrainModuleSupport(position: THREE.Vector3): TrainModuleSupport {
@@ -1035,7 +1038,13 @@ function buildMemoryScene(
     camera.right = (view * aspect) / 2;
     camera.top = view / 2;
     camera.bottom = -view / 2;
-    const nextTopFitZoom = THREE.MathUtils.clamp(Math.min((view * aspect) / 54, view / 54) * 0.94, 0.34, 1);
+    const landscapeLightbox = width > height && Boolean(container.closest(".memory-tree-lightbox-card"));
+    const fitWorldSize = landscapeLightbox ? 56 : 58;
+    const nextTopFitZoom = THREE.MathUtils.clamp(
+      Math.min((view * aspect) / fitWorldSize, view / fitWorldSize) * (landscapeLightbox ? 0.98 : 0.9),
+      0.34,
+      landscapeLightbox ? 1.16 : 1,
+    );
     const isTopView = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
     const wasFitted = Math.abs(orbit.targetZoom - lastTopFitZoom) < 0.035;
     if (isTopView && wasFitted) {

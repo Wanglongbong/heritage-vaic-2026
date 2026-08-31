@@ -595,6 +595,7 @@ export function HeritageGame() {
   const [stationTrackDuration, setStationTrackDuration] = useState(0);
   const [externalReferenceOpen, setExternalReferenceOpen] = useState(false);
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
+  const [isSceneImmersive, setIsSceneImmersive] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -716,9 +717,14 @@ export function HeritageGame() {
   const stopStationTrack = useCallback(() => {
     const audio = stationAudioRef.current;
     if (audio) {
+      audio.onloadedmetadata = null;
+      audio.ontimeupdate = null;
+      audio.onended = null;
+      audio.onerror = null;
       audio.pause();
       audio.currentTime = 0;
       audio.src = "";
+      audio.load();
     }
     stationAudioRef.current = null;
     setStationTrackPlaying(null);
@@ -743,7 +749,9 @@ export function HeritageGame() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (museumRecord) {
+      if (isSceneImmersive) {
+        setIsSceneImmersive(false);
+      } else if (museumRecord) {
         stopPreview();
         setExternalReferenceOpen(false);
         setMuseumRecord(null);
@@ -757,7 +765,16 @@ export function HeritageGame() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [museumRecord, openHotspot, phase, stopPreview]);
+  }, [isSceneImmersive, museumRecord, openHotspot, phase, stopPreview]);
+
+  useEffect(() => {
+    if (!isSceneImmersive) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isSceneImmersive]);
 
   // Global subtle click sound effects for interactive elements
   useEffect(() => {
@@ -915,6 +932,10 @@ export function HeritageGame() {
     if (travelTimerRef.current) window.clearTimeout(travelTimerRef.current);
     stopPreview();
     stopStationTrack();
+    // Mobile browsers can suspend the Web Audio context when a MediaElement
+    // track is stopped. Resume it while this navigation is still a user tap.
+    enableAmbient();
+    setIsSceneImmersive(false);
     setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
@@ -937,6 +958,7 @@ export function HeritageGame() {
     setMuseumRecord(null);
     setOpenHotspot(null);
     setExternalReferenceOpen(false);
+    setIsSceneImmersive(false);
     setPhase("landing");
   }
 
@@ -948,6 +970,7 @@ export function HeritageGame() {
     setMuseumRecord(null);
     setOpenHotspot(null);
     setActiveHotspotId(null);
+    setIsSceneImmersive(false);
     setPhase("ending");
   }
 
@@ -1046,18 +1069,30 @@ export function HeritageGame() {
           <b>{stop.location[language].split("·")[0]}</b>
           <small>{stopIndex < experienceStops.length - 1 ? `${language === "vi" ? "Tiếp" : "Next"}: ${followingStop.location[language].split("·")[0]}` : (language === "vi" ? "Ga cuối" : "Final stop")}</small>
         </div>
-        <span className="route-rail" aria-hidden="true" />
-        {experienceStops.map((item, index) => {
-          const completed = item.hotspots.every((hotspot) => visited.has(`${item.id}:${hotspot.id}`));
-          const hasSeal = sealed.has(item.id);
-          return <button key={item.id} className={`${index === stopIndex ? "current" : ""} ${completed ? "completed" : ""} ${hasSeal ? "sealed" : ""}`} onClick={() => beginTravel(index)}>
-            <i />
-            <span>{item.location[language].split("·")[0]}</span>
-          </button>;
-        })}
+        <div className="route-stops">
+          <span className="route-rail" aria-hidden="true" />
+          {experienceStops.map((item, index) => {
+            const completed = item.hotspots.every((hotspot) => visited.has(`${item.id}:${hotspot.id}`));
+            const hasSeal = sealed.has(item.id);
+            return <button key={item.id} className={`${index === stopIndex ? "current" : ""} ${completed ? "completed" : ""} ${hasSeal ? "sealed" : ""}`} onClick={() => beginTravel(index)}>
+              <i />
+              <span>{item.location[language].split("·")[0]}</span>
+            </button>;
+          })}
+        </div>
       </section>
 
-      <section className="scene-wrap" style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
+      <section className={`scene-wrap ${isSceneImmersive ? "is-immersive" : ""}`} style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
+        <button
+          type="button"
+          className="scene-immersive-toggle"
+          onClick={() => setIsSceneImmersive((current) => !current)}
+          aria-pressed={isSceneImmersive}
+          aria-label={isSceneImmersive ? (language === "vi" ? "Thoát xem toàn cảnh" : "Exit immersive view") : (language === "vi" ? "Xem tranh toàn cảnh" : "View immersive scene")}
+        >
+          <span aria-hidden="true">{isSceneImmersive ? "×" : "⛶"}</span>
+          <em>{isSceneImmersive ? (language === "vi" ? "Thoát" : "Exit") : (language === "vi" ? "Toàn cảnh" : "Immersive")}</em>
+        </button>
         <div className="train-frame" aria-hidden="true"><span className="frame-top" /><span className="frame-left" /><span className="frame-right" /><span className="frame-bottom" /></div>
         <div
           ref={sceneRef}
@@ -1165,6 +1200,11 @@ export function HeritageGame() {
             </label>
           </div> : <p>{ui.illustration}</p>}
           <div className="station-controls">
+            {stationComplete && !stationSealed && <button className="station-claim-compact" type="button" onClick={requestSeal}>
+              <span aria-hidden="true">✦</span>
+              <em className="claim-long">{ui.claimSeal}</em>
+              <em className="claim-short">{language === "vi" ? "Nhận dấu" : "Claim seal"}</em>
+            </button>}
             {journeyComplete && <button className="journey-summary-button journey-summary-primary" onClick={finishJourney}><span aria-hidden="true">⌂</span><em>{ui.returnSummary}</em></button>}
             <button className="station-direction station-previous" aria-label={ui.previous} disabled={stopIndex === 0} onClick={() => beginTravel(stopIndex - 1)}><span aria-hidden="true">←</span><em>{ui.previous}</em></button>
             {journeyComplete
