@@ -33,6 +33,7 @@ import {
 import type { HeritageStop, Hotspot, Language, LocalizedText } from "@/lib/types";
 
 type JourneyPhase = "landing" | "carriage" | "travelling" | "heritage" | "ending";
+type FullscreenMode = "off" | "native" | "fallback";
 type AudioPreview = {
   id?: string;
   kind?: "local-audio" | "official-source" | "youtube-embed" | "synthesized";
@@ -593,7 +594,8 @@ export function HeritageGame() {
   const [stationTrackDuration, setStationTrackDuration] = useState(0);
   const [externalReferenceOpen, setExternalReferenceOpen] = useState(false);
   const [isCoarsePointer, setIsCoarsePointer] = useState(false);
-  const [isSceneImmersive, setIsSceneImmersive] = useState(false);
+  const [fullscreenMode, setFullscreenMode] = useState<FullscreenMode>("off");
+  const [showInstallHint, setShowInstallHint] = useState(false);
   const sceneRef = useRef<HTMLDivElement>(null);
   const travelTimerRef = useRef<number | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
@@ -701,6 +703,30 @@ export function HeritageGame() {
     }
   }, [volume]);
 
+  useEffect(() => {
+    const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
+    const syncFullscreenState = () => {
+      const activeElement = document.fullscreenElement || fullscreenDocument.webkitFullscreenElement;
+      setFullscreenMode((current) => activeElement ? "native" : current === "native" ? "off" : current);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreenState);
+    document.addEventListener("webkitfullscreenchange", syncFullscreenState);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreenState);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreenState);
+    };
+  }, []);
+
+  useEffect(() => {
+    const fallbackActive = fullscreenMode === "fallback";
+    document.documentElement.classList.toggle("heritage-fullscreen-fallback", fallbackActive);
+    document.body.classList.toggle("heritage-fullscreen-fallback", fallbackActive);
+    return () => {
+      document.documentElement.classList.remove("heritage-fullscreen-fallback");
+      document.body.classList.remove("heritage-fullscreen-fallback");
+    };
+  }, [fullscreenMode]);
+
   const stopPreview = useCallback(() => {
     const audio = previewAudioRef.current;
     if (audio) {
@@ -747,8 +773,12 @@ export function HeritageGame() {
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;
-      if (isSceneImmersive) {
-        setIsSceneImmersive(false);
+      if (fullscreenMode === "fallback") {
+        setFullscreenMode("off");
+      } else if (fullscreenMode === "native") {
+        // The browser owns Escape in native fullscreen. Avoid also closing a
+        // record drawer or changing chapters on the same key press.
+        return;
       } else if (museumRecord) {
         stopPreview();
         setExternalReferenceOpen(false);
@@ -763,16 +793,7 @@ export function HeritageGame() {
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [isSceneImmersive, museumRecord, openHotspot, phase, stopPreview]);
-
-  useEffect(() => {
-    if (!isSceneImmersive) return;
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = previousOverflow;
-    };
-  }, [isSceneImmersive]);
+  }, [fullscreenMode, museumRecord, openHotspot, phase, stopPreview]);
 
   // Global subtle click sound effects for interactive elements
   useEffect(() => {
@@ -807,6 +828,69 @@ export function HeritageGame() {
     if (muted && newVol > 0) {
       setMuted(false);
     }
+  }
+
+  function shouldOfferHomeScreen() {
+    const navigatorWithStandalone = navigator as Navigator & { standalone?: boolean };
+    const isiOS = /iPad|iPhone|iPod/.test(navigator.userAgent)
+      || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const standalone = window.matchMedia("(display-mode: standalone)").matches
+      || navigatorWithStandalone.standalone === true;
+    return isiOS && !standalone && window.localStorage.getItem("heritage-home-screen-hint-dismissed") !== "true";
+  }
+
+  function activateFullscreenFallback() {
+    setFullscreenMode("fallback");
+    if (shouldOfferHomeScreen()) setShowInstallHint(true);
+  }
+
+  async function enterExperienceFullscreen() {
+    const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
+    if (document.fullscreenElement || fullscreenDocument.webkitFullscreenElement) {
+      setFullscreenMode("native");
+      return;
+    }
+
+    const root = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
+    try {
+      if (root.requestFullscreen) {
+        await root.requestFullscreen({ navigationUI: "hide" });
+        setFullscreenMode("native");
+      } else if (root.webkitRequestFullscreen) {
+        await Promise.resolve(root.webkitRequestFullscreen());
+        setFullscreenMode("native");
+      } else {
+        activateFullscreenFallback();
+      }
+    } catch {
+      activateFullscreenFallback();
+    }
+  }
+
+  async function exitExperienceFullscreen() {
+    const fullscreenDocument = document as Document & {
+      webkitFullscreenElement?: Element | null;
+      webkitExitFullscreen?: () => Promise<void> | void;
+    };
+    try {
+      if (document.fullscreenElement && document.exitFullscreen) {
+        await document.exitFullscreen();
+      } else if (fullscreenDocument.webkitFullscreenElement && fullscreenDocument.webkitExitFullscreen) {
+        await Promise.resolve(fullscreenDocument.webkitExitFullscreen());
+      }
+    } finally {
+      setFullscreenMode("off");
+    }
+  }
+
+  function toggleExperienceFullscreen() {
+    if (fullscreenMode === "off") void enterExperienceFullscreen();
+    else void exitExperienceFullscreen();
+  }
+
+  function dismissInstallHint() {
+    window.localStorage.setItem("heritage-home-screen-hint-dismissed", "true");
+    setShowInstallHint(false);
   }
 
   function playPreview(hotspot: ExperienceHotspot, keyOverride?: string) {
@@ -933,7 +1017,6 @@ export function HeritageGame() {
     // Mobile browsers can suspend the Web Audio context when a MediaElement
     // track is stopped. Resume it while this navigation is still a user tap.
     enableAmbient();
-    setIsSceneImmersive(false);
     setExternalReferenceOpen(false);
     setMuseumRecord(null);
     setOpenHotspot(null);
@@ -956,7 +1039,6 @@ export function HeritageGame() {
     setMuseumRecord(null);
     setOpenHotspot(null);
     setExternalReferenceOpen(false);
-    setIsSceneImmersive(false);
     setPhase("landing");
   }
 
@@ -968,7 +1050,6 @@ export function HeritageGame() {
     setMuseumRecord(null);
     setOpenHotspot(null);
     setActiveHotspotId(null);
-    setIsSceneImmersive(false);
     setPhase("ending");
   }
 
@@ -1033,7 +1114,12 @@ export function HeritageGame() {
   const followingStop = experienceStops[Math.min(stopIndex + 1, experienceStops.length - 1)];
 
   return (
-    <main className={`game-shell ${isCoarsePointer ? "touch-interface" : "pointer-interface"}`} style={{ "--stop-accent": stop.palette } as CSSProperties}>
+    <main className={`game-shell ${fullscreenMode !== "off" ? "is-fullscreen-experience" : ""} ${isCoarsePointer ? "touch-interface" : "pointer-interface"}`} style={{ "--stop-accent": stop.palette } as CSSProperties}>
+      {fullscreenMode !== "off" && phase !== "landing" && phase !== "heritage" && (
+        <button type="button" className="experience-fullscreen-exit" onClick={() => void exitExperienceFullscreen()}>
+          <span aria-hidden="true">×</span><em>{language === "vi" ? "Thoát toàn màn hình" : "Exit fullscreen"}</em>
+        </button>
+      )}
       {phase === "heritage" && <>
       <header className="topbar">
         <button className="wordmark" onClick={resetToLanding} aria-label={ui.brand}>
@@ -1080,16 +1166,16 @@ export function HeritageGame() {
         </div>
       </section>
 
-      <section className={`scene-wrap ${isSceneImmersive ? "is-immersive" : ""}`} style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
+      <section className="scene-wrap" style={{ "--scene-image": `url(${stop.scene})` } as CSSProperties}>
         <button
           type="button"
           className="scene-immersive-toggle"
-          onClick={() => setIsSceneImmersive((current) => !current)}
-          aria-pressed={isSceneImmersive}
-          aria-label={isSceneImmersive ? (language === "vi" ? "Thoát xem toàn cảnh" : "Exit immersive view") : (language === "vi" ? "Xem tranh toàn cảnh" : "View immersive scene")}
+          onClick={toggleExperienceFullscreen}
+          aria-pressed={fullscreenMode !== "off"}
+          aria-label={fullscreenMode !== "off" ? (language === "vi" ? "Thoát toàn màn hình" : "Exit fullscreen") : (language === "vi" ? "Chơi toàn màn hình" : "Play fullscreen")}
         >
-          <span aria-hidden="true">{isSceneImmersive ? "×" : "⛶"}</span>
-          <em>{isSceneImmersive ? (language === "vi" ? "Thoát" : "Exit") : (language === "vi" ? "Toàn cảnh" : "Immersive")}</em>
+          <span aria-hidden="true">{fullscreenMode !== "off" ? "×" : "⛶"}</span>
+          <em>{fullscreenMode !== "off" ? (language === "vi" ? "Thoát" : "Exit") : (language === "vi" ? "Toàn màn hình" : "Fullscreen")}</em>
         </button>
         <div className="train-frame" aria-hidden="true"><span className="frame-top" /><span className="frame-left" /><span className="frame-right" /><span className="frame-bottom" /></div>
         <div
@@ -1223,7 +1309,10 @@ export function HeritageGame() {
           onLanguage={setLanguage}
           onToggleMuted={toggleMuted}
           onVolumeChange={handleVolumeChange}
+          fullscreenActive={fullscreenMode !== "off"}
+          onFullscreen={toggleExperienceFullscreen}
           onStart={() => {
+            if (fullscreenMode === "off") void enterExperienceFullscreen();
             enableAmbient();
             setPhase("carriage");
           }}
@@ -1279,6 +1368,15 @@ export function HeritageGame() {
         onClose={closeMuseumRecord}
       />}
       {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} onContinue={collectSeal} muted={muted} volume={volume} />}
+      {showInstallHint && <div className="home-screen-hint-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && dismissInstallHint()}>
+        <section className="home-screen-hint" role="dialog" aria-modal="true" aria-labelledby="home-screen-hint-title">
+          <Image src="/icons/heritage-train-192.png" alt="" width={72} height={72} unoptimized aria-hidden="true" />
+          <small>{language === "vi" ? "TOÀN MÀN HÌNH TRÊN iPHONE" : "FULLSCREEN ON iPHONE"}</small>
+          <h2 id="home-screen-hint-title">{language === "vi" ? "Mở Tàu Di Sản như một ứng dụng" : "Open Heritage Train like an app"}</h2>
+          <p>{language === "vi" ? "Safari không thể tự ẩn hoàn toàn thanh trình duyệt. Chạm nút Chia sẻ, chọn “Thêm vào Màn hình chính”, rồi mở biểu tượng Tàu Di Sản để chơi trọn màn hình." : "Safari cannot fully hide its browser bars. Tap Share, choose “Add to Home Screen”, then open the Heritage Train icon for the full experience."}</p>
+          <button type="button" onClick={dismissInstallHint}>{language === "vi" ? "Đã hiểu · Tiếp tục chơi" : "Got it · Continue"}</button>
+        </section>
+      </div>}
     </main>
   );
 }
@@ -1658,6 +1756,8 @@ function Intro({
   onLanguage,
   onToggleMuted,
   onVolumeChange,
+  fullscreenActive,
+  onFullscreen,
   onStart,
 }: {
   language: Language;
@@ -1666,6 +1766,8 @@ function Intro({
   onLanguage: (language: Language) => void;
   onToggleMuted: () => void;
   onVolumeChange: (vol: number) => void;
+  fullscreenActive: boolean;
+  onFullscreen: () => void;
   onStart: () => void;
 }) {
   const ui = copy[language];
@@ -1699,6 +1801,10 @@ function Intro({
       <div className="intro-actions">
         <button type="button" className="intro-start-button" onClick={onStart}>{ui.start}<span>→</span></button>
         <button type="button" className="intro-guide-button" onClick={() => { playPaperSfx({ muted, volume }); setGuideOpen(true); }}><span>📜</span> {ui.guideButton}</button>
+        <button type="button" className="intro-fullscreen-button" onClick={onFullscreen} aria-pressed={fullscreenActive}>
+          <span aria-hidden="true">{fullscreenActive ? "×" : "⛶"}</span>
+          {fullscreenActive ? (language === "vi" ? "Thoát toàn màn hình" : "Exit fullscreen") : (language === "vi" ? "Chơi toàn màn hình" : "Play fullscreen")}
+        </button>
       </div>
     </div>
     <div className="intro-source"><span>●</span> 05 UNESCO FILES <i /> 15 VERIFIED RECORDS <i /> NO CULTURAL FABRICATION</div>

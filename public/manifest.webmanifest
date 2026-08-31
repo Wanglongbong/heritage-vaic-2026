@@ -1,0 +1,27 @@
+{
+  "name": "Tàu Di Sản Việt Nam",
+  "short_name": "Tàu Di Sản",
+  "description": "Hành trình tương tác khám phá năm ga di sản văn hóa Việt Nam.",
+  "lang": "vi",
+  "start_url": "/",
+  "scope": "/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "any",
+  "background_color": "#080a09",
+  "theme_color": "#0b1711",
+  "icons": [
+    {
+      "src": "/icons/heritage-train-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/heritage-train-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

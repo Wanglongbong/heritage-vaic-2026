@@ -6010,6 +6010,229 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   }
 }
 
+/* =========================================================================
+   WHOLE-JOURNEY FULLSCREEN + iOS HOME-SCREEN FALLBACK · 2026-08-31
+   ========================================================================= */
+
+html:fullscreen,
+html:fullscreen body,
+html:-webkit-full-screen,
+html:-webkit-full-screen body {
+  width: 100%;
+  min-height: 100%;
+  margin: 0;
+  background: #080a09;
+}
+
+html.heritage-fullscreen-fallback,
+body.heritage-fullscreen-fallback {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  overscroll-behavior: none;
+  background: #080a09;
+}
+
+body.heritage-fullscreen-fallback .game-shell {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.game-shell.is-fullscreen-experience {
+  min-height: 100dvh;
+  background: #080a09;
+}
+
+.experience-fullscreen-exit {
+  position: fixed;
+  z-index: 150000;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: max(14px, env(safe-area-inset-bottom));
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 13px;
+  color: #fff0cf;
+  background: rgba(6, 9, 7, .9);
+  border: 1px solid rgba(214, 173, 103, .6);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .56);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+.experience-fullscreen-exit span {
+  font: 800 20px/1 var(--mono);
+}
+
+.experience-fullscreen-exit em {
+  font: 800 8px/1 var(--mono);
+  font-style: normal;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.intro-actions > button.intro-fullscreen-button {
+  min-height: 56px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 20px;
+  color: #ffe3a6;
+  background: rgba(7, 18, 13, .9);
+  border: 1px solid rgba(214, 173, 103, .62);
+  box-shadow: 4px 4px 0 rgba(0, 0, 0, .55);
+  font: 800 12px/1 var(--mono);
+  letter-spacing: .045em;
+  text-transform: uppercase;
+  backdrop-filter: blur(8px);
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.intro-actions > button.intro-fullscreen-button:hover,
+.intro-actions > button.intro-fullscreen-button:focus-visible {
+  color: #fff8e8;
+  background: rgba(25, 43, 32, .96);
+  border-color: #ffda8d;
+  transform: translate(-1px, -1px);
+}
+
+.intro-actions > button.intro-fullscreen-button span {
+  font-size: 18px;
+}
+
+/* Drawers and dialogs must remain above every game chapter in document fullscreen. */
+.game-shell.is-fullscreen-experience .drawer-backdrop,
+.game-shell.is-fullscreen-experience .seal-overlay,
+.game-shell.is-fullscreen-experience .archive-overlay,
+.game-shell.is-fullscreen-experience .reset-dialog-backdrop,
+.game-shell.is-fullscreen-experience .support-modal-backdrop,
+.game-shell.is-fullscreen-experience .floating-wishes-overlay,
+.game-shell.is-fullscreen-experience .memory-tree-lightbox-backdrop {
+  z-index: 220000 !important;
+}
+
+.home-screen-hint-backdrop {
+  position: fixed;
+  z-index: 300000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: max(18px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(18px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  background: rgba(3, 6, 4, .86);
+  backdrop-filter: blur(12px);
+}
+
+.home-screen-hint {
+  width: min(430px, 100%);
+  padding: 24px;
+  color: #f7ecd3;
+  text-align: center;
+  background: linear-gradient(145deg, #16231b, #0a0f0c);
+  border: 1px solid rgba(214, 173, 103, .58);
+  box-shadow: 10px 12px 0 rgba(0, 0, 0, .46), 0 24px 80px rgba(0, 0, 0, .7);
+}
+
+.home-screen-hint img {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 13px;
+  border-radius: 18px;
+  box-shadow: 0 7px 24px rgba(0, 0, 0, .42);
+}
+
+.home-screen-hint small {
+  color: #d6ad67;
+  font: 800 8px/1 var(--mono);
+  letter-spacing: .16em;
+}
+
+.home-screen-hint h2 {
+  margin: 10px 0 9px;
+  font: 700 clamp(25px, 7vw, 35px)/1.08 var(--serif);
+}
+
+.home-screen-hint p {
+  margin: 0;
+  color: rgba(247, 236, 211, .78);
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.home-screen-hint button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 18px;
+  color: #101410;
+  background: #d6ad67;
+  border: 0;
+  box-shadow: 4px 4px 0 #4c2c1f;
+  font: 850 11px/1 var(--mono);
+  letter-spacing: .055em;
+  text-transform: uppercase;
+}
+
+@media (max-width: 720px) {
+  .intro-actions > button.intro-fullscreen-button {
+    width: 100%;
+    min-height: 52px;
+    justify-content: space-between;
+    font-size: 10px;
+  }
+
+  .experience-fullscreen-exit {
+    min-height: 38px;
+    padding-inline: 10px;
+  }
+
+  .experience-fullscreen-exit em {
+    font-size: 7px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .intro-actions > button.intro-fullscreen-button {
+    min-height: 37px;
+    padding-inline: 11px;
+    font-size: 7.5px;
+  }
+
+  .home-screen-hint {
+    width: min(600px, calc(100vw - 36px));
+    padding: 14px 18px;
+  }
+
+  .home-screen-hint img {
+    width: 46px;
+    height: 46px;
+    margin-bottom: 7px;
+    border-radius: 12px;
+  }
+
+  .home-screen-hint h2 {
+    margin: 6px 0;
+    font-size: 22px;
+  }
+
+  .home-screen-hint p {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .home-screen-hint button {
+    min-height: 37px;
+    margin-top: 9px;
+    font-size: 8px;
+  }
+}
+
 @media (min-width: 721px) and (max-width: 1100px) {
   .scene-footer:has(.station-audio-player) {
     grid-template-columns: minmax(0, 1fr) auto;
@@ -7847,73 +8070,6 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
 .station-claim-compact,
 .claim-short {
   display: none;
-}
-
-.scene-wrap.is-immersive {
-  position: fixed;
-  z-index: 1000;
-  inset: 0;
-  width: 100vw;
-  height: 100dvh;
-  min-height: 0;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-  background: #030504;
-}
-
-.scene-wrap.is-immersive::before {
-  display: block;
-  inset: -24px;
-  opacity: .72;
-}
-
-.scene-wrap.is-immersive .scene {
-  width: min(100vw, calc(100dvh * 1.77778));
-  height: min(100dvh, calc(100vw * .5625));
-  min-height: 0;
-  max-width: none;
-  max-height: none;
-  margin: auto;
-  background-size: cover;
-  border-color: rgba(214, 173, 103, .38);
-}
-
-.scene-wrap.is-immersive .train-frame,
-.scene-wrap.is-immersive .scene-footer,
-.scene-wrap.is-immersive .mobile-next-step,
-.scene-wrap.is-immersive .instruction,
-.scene-wrap.is-immersive .station-reveal-card {
-  display: none !important;
-}
-
-.scene-wrap.is-immersive .scene-immersive-toggle {
-  position: fixed;
-  top: max(10px, env(safe-area-inset-top));
-  right: max(10px, env(safe-area-inset-right));
-}
-
-.scene-wrap.is-immersive .scene-heading {
-  top: auto;
-  bottom: max(12px, env(safe-area-inset-bottom));
-  left: max(12px, env(safe-area-inset-left));
-  max-width: min(56vw, 420px);
-  padding: 7px 10px;
-  background: rgba(4, 7, 5, .72);
-  border-left: 3px solid var(--stop-accent);
-  backdrop-filter: blur(6px);
-}
-
-.scene-wrap.is-immersive .scene-heading > span,
-.scene-wrap.is-immersive .scene-heading p {
-  display: none;
-}
-
-.scene-wrap.is-immersive .scene-heading h1 {
-  margin: 0;
-  font-size: clamp(15px, 2.2vw, 24px);
-  line-height: 1.1;
 }
 
 @media (max-width: 720px) and (orientation: portrait) {
