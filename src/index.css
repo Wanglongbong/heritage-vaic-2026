@@ -7769,3 +7769,814 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     line-height: 1.42;
   }
 }
+
+/* =========================================================================
+   MOBILE ENDING POLISH · COMPACT CREDITS, GUESTBOOK & FULL QR VIEW
+   Keep this final block authoritative over the older responsive rules above.
+   ========================================================================= */
+
+.wishes-control-icon,
+.wishes-speed-value,
+.wishes-heart-count {
+  flex: 0 0 auto;
+}
+
+.wishes-speed-value,
+.wishes-heart-count {
+  font: 800 10px/1 var(--mono);
+}
+
+.wishes-msg-input {
+  min-height: 34px;
+  resize: none;
+  overflow-y: auto;
+  line-height: 1.3;
+}
+
+.lightbox-zoom-controls {
+  display: inline-grid;
+  grid-template-columns: 40px auto 40px;
+  align-items: center;
+  overflow: hidden;
+  border: 1px solid rgba(214, 173, 103, .58);
+  border-radius: 9px;
+  background: rgba(8, 12, 9, .9);
+  box-shadow: 0 5px 18px rgba(0, 0, 0, .42);
+}
+
+.lightbox-zoom-controls button {
+  min-width: 40px;
+  min-height: 38px;
+  padding: 0 10px;
+  color: #ffde94;
+  background: transparent;
+  border: 0;
+  font: 900 20px/1 var(--mono);
+  cursor: pointer;
+}
+
+.lightbox-zoom-controls button + button {
+  border-left: 1px solid rgba(214, 173, 103, .28);
+}
+
+.lightbox-zoom-controls .lightbox-zoom-reset {
+  font-size: 10px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.memory-tree-stage-zoom {
+  touch-action: none !important;
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  .ending-secondary-row {
+    align-items: center;
+    gap: 8px;
+  }
+
+  .ending-secondary-row .ending-cta {
+    width: min(100%, 292px);
+    max-width: 292px;
+    min-height: 40px;
+    flex: 0 0 auto;
+    padding: 9px 12px;
+    font-size: 9.5px;
+    line-height: 1.25;
+    letter-spacing: .055em;
+  }
+
+  .ending-gallery-cta i {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 768px) {
+  .floating-wishes-overlay {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .wishes-top-bar {
+    z-index: 60;
+    flex: 0 0 auto;
+    min-height: calc(52px + env(safe-area-inset-top));
+    padding: calc(6px + env(safe-area-inset-top)) 7px 6px;
+    gap: 4px;
+  }
+
+  .wishes-header-branding {
+    flex: 0 0 23px;
+    min-width: 23px;
+    gap: 0;
+  }
+
+  .heritage-crest-icon {
+    font-size: 19px;
+  }
+
+  .wishes-header-branding > div {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .wishes-top-controls {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: space-between;
+    gap: 3px;
+  }
+
+  .wishes-ctrl-btn,
+  .wishes-close-btn {
+    flex: 0 0 auto;
+    width: 39px;
+    height: 40px;
+    min-width: 39px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  .wishes-ctrl-btn:nth-of-type(4) {
+    width: 44px;
+  }
+
+  .wishes-ctrl-btn.heart-btn {
+    width: 49px;
+    gap: 2px;
+    font-size: 12px;
+  }
+
+  .wishes-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .wishes-speed-value {
+    margin-left: -3px;
+    font-size: 8px;
+  }
+
+  .wishes-heart-count {
+    font-size: 8px;
+  }
+
+  .credits-fixed-hero-marquee {
+    top: calc(52px + env(safe-area-inset-top));
+    z-index: 40;
+    padding: 10px 12px 18px;
+  }
+
+  .credits-hero-inner {
+    gap: 5px;
+  }
+
+  .credits-super-kicker {
+    font-size: 8px;
+    line-height: 1.25;
+    letter-spacing: .16em;
+  }
+
+  .credits-movie-title {
+    font-size: clamp(28px, 9.5vw, 40px);
+    line-height: 1;
+    letter-spacing: .1em;
+  }
+
+  .credits-tribute-subtitle {
+    max-width: 92vw;
+    font-size: 9.5px;
+    line-height: 1.3;
+    letter-spacing: .08em;
+  }
+
+  .credits-decorative-divider {
+    width: min(230px, 72vw);
+    gap: 9px;
+  }
+
+  .credits-dissolve-under-title {
+    bottom: -28px;
+    height: 28px;
+  }
+
+  .credits-crawl-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+    z-index: 10;
+  }
+
+  .credits-crawling-track {
+    padding-inline: 14px;
+  }
+
+  .credits-vignette-fade.bottom-fade {
+    bottom: calc(60px + env(safe-area-inset-bottom));
+  }
+
+  .wishes-bottom-dock {
+    z-index: 60;
+    flex: 0 0 auto;
+    padding: 8px 9px calc(8px + env(safe-area-inset-bottom));
+  }
+
+  .wishes-input-wrapper {
+    display: grid;
+    grid-template-columns: minmax(78px, .7fr) minmax(110px, 1.3fr) 44px;
+    gap: 5px;
+    align-items: stretch;
+  }
+
+  .wishes-name-input,
+  .wishes-msg-input,
+  .wishes-send-submit-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    max-height: 58px;
+    margin: 0;
+    padding: 9px 8px;
+    border-radius: 7px;
+    font-size: 16px;
+  }
+
+  .wishes-name-input {
+    font-family: var(--sans);
+  }
+
+  .wishes-msg-input {
+    padding-top: 10px;
+  }
+
+  .wishes-send-submit-btn {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    font-size: 17px;
+  }
+
+  .wishes-send-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .memory-tree-lightbox-card {
+    --mobile-lightbox-header: calc(58px + env(safe-area-inset-top));
+    --mobile-lightbox-footer: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .lightbox-header {
+    min-height: var(--mobile-lightbox-header);
+    padding: calc(8px + env(safe-area-inset-top)) 10px 8px;
+    gap: 8px;
+  }
+
+  .lightbox-title-group {
+    min-width: 0;
+    gap: 7px;
+  }
+
+  .lightbox-icon {
+    font-size: 20px;
+  }
+
+  .lightbox-title-group h3 {
+    overflow: hidden;
+    font-size: 12px;
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .lightbox-title-group p,
+  .lightbox-header .lightbox-orbit-btn {
+    display: none;
+  }
+
+  .lightbox-close-btn {
+    flex: 0 0 42px;
+    width: 42px;
+    height: 42px;
+  }
+
+  .lightbox-3d-stage-container {
+    top: var(--mobile-lightbox-header);
+    bottom: var(--mobile-lightbox-footer);
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .lightbox-footer {
+    min-height: var(--mobile-lightbox-footer);
+    padding: 7px 9px calc(8px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 6px;
+    background: rgba(4, 7, 5, .97);
+  }
+
+  .lightbox-bank-info {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 6px;
+    font-size: 10px;
+  }
+
+  .lightbox-bank-info strong {
+    font-size: 12px;
+  }
+
+  .lightbox-bank-info .bank-name {
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .bank-copy-btn {
+    min-height: 36px;
+    padding: 5px 8px;
+    font-size: 9px;
+  }
+
+  .lightbox-hints {
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 7px;
+  }
+
+  .lightbox-orbit-btn-footer,
+  .lightbox-dismiss-btn {
+    display: none;
+  }
+
+  .lightbox-view-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 7px 12px;
+    white-space: nowrap;
+  }
+
+  .lightbox-zoom-controls {
+    flex: 0 1 auto;
+  }
+
+  .memory-tree-stage-zoom .memory-tree-orbit-guide {
+    bottom: 8px;
+    max-width: calc(100% - 20px);
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+  }
+}
+
+@media (min-width: 769px) and (max-width: 900px) and (orientation: portrait) {
+  .ending-secondary-row {
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+  }
+
+  .ending-secondary-row .ending-cta {
+    width: min(100%, 320px);
+    max-width: 320px;
+    min-height: 42px;
+    flex: 0 0 auto;
+    padding: 10px 14px;
+    font-size: 10px;
+  }
+
+  .floating-wishes-overlay {
+    height: 100dvh;
+    min-height: 100dvh;
+  }
+
+  .wishes-top-bar {
+    z-index: 60;
+    flex: 0 0 auto;
+    min-height: calc(56px + env(safe-area-inset-top));
+    padding: calc(7px + env(safe-area-inset-top)) 10px 7px;
+    gap: 6px;
+  }
+
+  .wishes-header-branding {
+    flex: 0 0 26px;
+    min-width: 26px;
+    gap: 0;
+  }
+
+  .wishes-header-branding > div {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .wishes-top-controls {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+
+  .wishes-ctrl-btn,
+  .wishes-close-btn {
+    flex: 0 0 auto;
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 12px;
+    font-size: 15px;
+  }
+
+  .wishes-ctrl-btn:nth-of-type(4) {
+    width: 48px;
+  }
+
+  .wishes-ctrl-btn.heart-btn {
+    width: 54px;
+    gap: 3px;
+    font-size: 12px;
+  }
+
+  .wishes-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .credits-fixed-hero-marquee {
+    top: calc(56px + env(safe-area-inset-top));
+    z-index: 40;
+  }
+
+  .credits-crawl-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  .wishes-bottom-dock {
+    z-index: 60;
+    flex: 0 0 auto;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+  }
+
+  .memory-tree-lightbox-card {
+    --mobile-lightbox-header: calc(62px + env(safe-area-inset-top));
+    --mobile-lightbox-footer: calc(104px + env(safe-area-inset-bottom));
+  }
+
+  .lightbox-header {
+    min-height: var(--mobile-lightbox-header);
+    padding: calc(9px + env(safe-area-inset-top)) 14px 9px;
+  }
+
+  .lightbox-title-group p,
+  .lightbox-header .lightbox-orbit-btn {
+    display: none;
+  }
+
+  .lightbox-3d-stage-container {
+    top: var(--mobile-lightbox-header);
+    bottom: var(--mobile-lightbox-footer);
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .lightbox-footer {
+    min-height: var(--mobile-lightbox-footer);
+    padding: 8px 12px calc(9px + env(safe-area-inset-bottom));
+    display: grid;
+    grid-template-columns: 1fr;
+    align-content: center;
+    gap: 7px;
+    background: rgba(4, 7, 5, .97);
+  }
+
+  .lightbox-bank-info {
+    justify-content: center;
+  }
+
+  .lightbox-hints {
+    flex-wrap: nowrap;
+    justify-content: center;
+  }
+
+  .lightbox-orbit-btn-footer,
+  .lightbox-dismiss-btn {
+    display: none;
+  }
+
+  .lightbox-view-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 14px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 360px) {
+  .wishes-top-bar {
+    padding-inline: 4px;
+    gap: 2px;
+  }
+
+  .wishes-header-branding {
+    flex-basis: 20px;
+    min-width: 20px;
+  }
+
+  .heritage-crest-icon {
+    font-size: 17px;
+  }
+
+  .wishes-top-controls {
+    gap: 2px;
+  }
+
+  .wishes-ctrl-btn,
+  .wishes-close-btn {
+    width: 37px;
+    min-width: 37px;
+  }
+
+  .wishes-ctrl-btn:nth-of-type(4) {
+    width: 42px;
+  }
+
+  .wishes-ctrl-btn.heart-btn {
+    width: 46px;
+  }
+
+  .wishes-input-wrapper {
+    grid-template-columns: 75px minmax(98px, 1fr) 42px;
+  }
+}
+
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
+  .wishes-top-bar {
+    z-index: 60;
+    flex: 0 0 auto;
+    min-height: calc(44px + env(safe-area-inset-top));
+    padding: calc(4px + env(safe-area-inset-top)) max(7px, env(safe-area-inset-right)) 4px max(7px, env(safe-area-inset-left));
+    gap: 5px;
+  }
+
+  .wishes-header-branding {
+    flex: 0 0 24px;
+    min-width: 24px;
+    gap: 0;
+  }
+
+  .wishes-header-branding > div {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .heritage-crest-icon {
+    font-size: 19px;
+  }
+
+  .wishes-top-controls {
+    flex: 1 1 auto;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 5px;
+  }
+
+  .wishes-ctrl-btn,
+  .wishes-close-btn {
+    flex: 0 0 auto;
+    width: 38px;
+    min-width: 38px;
+    height: 36px;
+    padding: 0;
+    justify-content: center;
+    border-radius: 11px;
+    font-size: 14px;
+  }
+
+  .wishes-ctrl-btn:nth-of-type(4) {
+    width: 45px;
+  }
+
+  .wishes-ctrl-btn.heart-btn {
+    width: 50px;
+    gap: 2px;
+    font-size: 12px;
+  }
+
+  .wishes-control-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .credits-fixed-hero-marquee {
+    z-index: 40;
+    top: calc(44px + env(safe-area-inset-top));
+    padding: 6px 10px 11px;
+  }
+
+  .credits-super-kicker,
+  .credits-tribute-subtitle,
+  .credits-fixed-hero-marquee .credits-decorative-divider {
+    display: none;
+  }
+
+  .credits-movie-title {
+    font-size: 27px;
+  }
+
+  .wishes-bottom-dock {
+    z-index: 60;
+    flex: 0 0 auto;
+    padding: 5px max(8px, env(safe-area-inset-right)) calc(5px + env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+  }
+
+  .wishes-input-wrapper {
+    display: grid;
+    grid-template-columns: minmax(120px, .7fr) minmax(220px, 2fr) 44px;
+    gap: 6px;
+    align-items: stretch;
+  }
+
+  .wishes-name-input,
+  .wishes-msg-input,
+  .wishes-send-submit-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    max-height: 40px;
+    margin: 0;
+    padding: 8px 10px;
+    border-radius: 7px;
+    font-size: 15px;
+  }
+
+  .wishes-send-submit-btn {
+    display: grid;
+    place-items: center;
+    padding: 0;
+    font-size: 16px;
+  }
+
+  .wishes-send-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .credits-crawl-viewport {
+    flex: 1 1 auto;
+    min-height: 0;
+    height: auto;
+  }
+
+  .credits-vignette-fade.bottom-fade {
+    bottom: calc(50px + env(safe-area-inset-bottom));
+  }
+
+  .memory-tree-lightbox-card {
+    --mobile-lightbox-header: calc(66px + env(safe-area-inset-top));
+    --mobile-lightbox-footer: calc(68px + env(safe-area-inset-bottom));
+  }
+
+  .lightbox-header {
+    min-height: var(--mobile-lightbox-header);
+    padding: calc(7px + env(safe-area-inset-top)) max(12px, env(safe-area-inset-right)) 7px max(12px, env(safe-area-inset-left));
+  }
+
+  .lightbox-title-group h3 {
+    font-size: 14px;
+  }
+
+  .lightbox-title-group p {
+    font-size: 10px;
+  }
+
+  .lightbox-3d-stage-container {
+    top: var(--mobile-lightbox-header);
+    bottom: var(--mobile-lightbox-footer);
+    width: 100%;
+    height: auto;
+    min-height: 0;
+  }
+
+  .lightbox-footer {
+    min-height: var(--mobile-lightbox-footer);
+    grid-template-columns: minmax(260px, 1fr) auto;
+    padding: 7px max(9px, env(safe-area-inset-right)) calc(7px + env(safe-area-inset-bottom)) max(9px, env(safe-area-inset-left));
+    display: grid;
+    align-content: center;
+    gap: 10px;
+    background: rgba(4, 7, 5, .97);
+  }
+
+  .lightbox-bank-info {
+    min-width: 0;
+    display: flex;
+    gap: 8px;
+    font-size: 10px;
+  }
+
+  .lightbox-bank-info .bank-name {
+    display: none;
+  }
+
+  .bank-copy-btn {
+    min-height: 38px;
+    padding: 5px 9px;
+    font-size: 9px;
+  }
+
+  .lightbox-hints {
+    min-width: 0;
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    gap: 7px;
+  }
+
+  .lightbox-orbit-btn-footer,
+  .lightbox-dismiss-btn {
+    display: none;
+  }
+
+  .lightbox-view-btn {
+    min-height: 40px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 7px 12px;
+    white-space: nowrap;
+  }
+}

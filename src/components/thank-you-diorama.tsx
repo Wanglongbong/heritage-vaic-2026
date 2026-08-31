@@ -45,6 +45,7 @@ type MemoryTreeCanvasProps = {
   isAutoOrbiting?: boolean;
   language: Language;
   viewCommand: number;
+  zoomCommand?: { id: number; action: "in" | "out" | "reset" };
   onViewStateChange: (isTop: boolean) => void;
   onCanvasTap?: () => void;
 };
@@ -143,6 +144,17 @@ function cubicEase(value: number) {
   return value < 0.5
     ? 4 * value * value * value
     : 1 - Math.pow(-2 * value + 2, 3) / 2;
+}
+
+function getTopFitZoom(container: HTMLElement) {
+  const rect = container.getBoundingClientRect();
+  const width = Math.max(rect.width, 260);
+  const height = Math.max(rect.height, 260);
+  const view = width < 560 ? 60 : 56;
+  const qrWorldSizeWithQuietZone = 54;
+  const fitWidth = (view * (width / height)) / qrWorldSizeWithQuietZone;
+  const fitHeight = view / qrWorldSizeWithQuietZone;
+  return THREE.MathUtils.clamp(Math.min(fitWidth, fitHeight) * 0.94, 0.34, 1);
 }
 
 function getTrainModuleSupport(position: THREE.Vector3): TrainModuleSupport {
@@ -901,12 +913,14 @@ function buildMemoryScene(
     targetScanProgress: 0,
     snapping: null,
   };
+  let lastTopFitZoom = getTopFitZoom(container);
   const pointers = new Map<number, { x: number; y: number }>();
   let lastPinchDistance = 0;
   let lastReportedTop = false;
   let pointerDownTime = 0;
   let pointerMovedDist = 0;
   let pointerStartPos = { x: 0, y: 0 };
+  let pointerSessionTop = false;
 
   const reportView = (next: boolean) => {
     if (lastReportedTop === next) return;
@@ -925,9 +939,17 @@ function buildMemoryScene(
     pointerStartPos = { x: event.clientX, y: event.clientY };
     pointerMovedDist = 0;
     lastPinchDistance = pointerDistance();
+    if (pointers.size === 1) {
+      pointerSessionTop = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
+    }
     orbit.snapping = null;
-    orbit.targetScanProgress = 0;
-    reportView(false);
+    if (pointerSessionTop) {
+      orbit.targetScanProgress = 1;
+      reportView(true);
+    } else {
+      orbit.targetScanProgress = 0;
+      reportView(false);
+    }
   };
   const onPointerMove = (event: globalThis.PointerEvent) => {
     const previous = pointers.get(event.pointerId);
@@ -935,13 +957,14 @@ function buildMemoryScene(
     pointerMovedDist += Math.hypot(event.clientX - previous.x, event.clientY - previous.y);
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.size === 1) {
+      if (pointerSessionTop) return;
       orbit.targetAzimuth -= (event.clientX - previous.x) * 0.008;
       orbit.targetPolar = THREE.MathUtils.clamp(orbit.targetPolar + (event.clientY - previous.y) * 0.008, 0.015, 1.46);
       return;
     }
     const nextDistance = pointerDistance();
     if (lastPinchDistance > 0 && nextDistance > 0) {
-      orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * (nextDistance / lastPinchDistance), 0.78, 1.5);
+      orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * (nextDistance / lastPinchDistance), 0.34, 2.4);
     }
     lastPinchDistance = nextDistance;
   };
@@ -953,14 +976,15 @@ function buildMemoryScene(
       onCanvasTap?.();
     }
     if (pointers.size > 0) return;
-    reportView(false);
+    reportView(pointerSessionTop);
   };
   const onWheel = (event: WheelEvent) => {
     event.preventDefault();
     orbit.snapping = null;
-    orbit.targetScanProgress = 0;
-    reportView(false);
-    orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * Math.exp(-event.deltaY * 0.001), 0.78, 1.5);
+    const stayingTop = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
+    orbit.targetScanProgress = stayingTop ? 1 : 0;
+    reportView(stayingTop);
+    orbit.targetZoom = THREE.MathUtils.clamp(orbit.targetZoom * Math.exp(-event.deltaY * 0.001), 0.34, 2.4);
   };
   const stage = container.closest<HTMLElement>(".memory-tree-stage");
   const onStageKeyDown = (event: globalThis.KeyboardEvent) => {
@@ -972,9 +996,10 @@ function buildMemoryScene(
     if (event.key === "ArrowRight") orbit.targetAzimuth += 0.16;
     if (event.key === "ArrowUp") orbit.targetPolar = Math.max(0.015, orbit.targetPolar - 0.12);
     if (event.key === "ArrowDown") orbit.targetPolar = Math.min(1.46, orbit.targetPolar + 0.12);
-    if (event.key === "+" || event.key === "=") orbit.targetZoom = Math.min(1.5, orbit.targetZoom + 0.1);
-    if (event.key === "-" || event.key === "_") orbit.targetZoom = Math.max(0.78, orbit.targetZoom - 0.1);
-    reportView(false);
+    if (event.key === "+" || event.key === "=") orbit.targetZoom = Math.min(2.4, orbit.targetZoom + 0.12);
+    if (event.key === "-" || event.key === "_") orbit.targetZoom = Math.max(0.34, orbit.targetZoom - 0.12);
+    const stayingTop = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
+    reportView(stayingTop);
   };
   renderer.domElement.addEventListener("pointerdown", onPointerDown);
   renderer.domElement.addEventListener("pointermove", onPointerMove);
@@ -1010,8 +1035,16 @@ function buildMemoryScene(
     camera.right = (view * aspect) / 2;
     camera.top = view / 2;
     camera.bottom = -view / 2;
+    const nextTopFitZoom = THREE.MathUtils.clamp(Math.min((view * aspect) / 54, view / 54) * 0.94, 0.34, 1);
+    const isTopView = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
+    const wasFitted = Math.abs(orbit.targetZoom - lastTopFitZoom) < 0.035;
+    if (isTopView && wasFitted) {
+      orbit.zoom = nextTopFitZoom;
+      orbit.targetZoom = nextTopFitZoom;
+    }
+    lastTopFitZoom = nextTopFitZoom;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.35 : 1.8));
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.75 : 1.8));
     renderer.setSize(width, height, false);
   };
   resize();
@@ -1063,7 +1096,7 @@ function buildMemoryScene(
   };
 }
 
-function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand, onViewStateChange, onCanvasTap }: MemoryTreeCanvasProps) {
+function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand, zoomCommand, onViewStateChange, onCanvasTap }: MemoryTreeCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<SceneState | null>(null);
   const [ready, setReady] = useState(false);
@@ -1080,7 +1113,7 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
     if (isTop) {
       sceneState.orbit.targetAzimuth = 0;
       sceneState.orbit.targetPolar = 0.015;
-      sceneState.orbit.targetZoom = 1;
+      sceneState.orbit.targetZoom = getTopFitZoom(containerRef.current ?? document.documentElement);
       sceneState.orbit.targetScanProgress = 1;
       sceneState.orbit.snapping = "top";
     } else {
@@ -1091,6 +1124,19 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
       sceneState.orbit.snapping = "iso";
     }
   }, [isTop, viewCommand]);
+
+  useEffect(() => {
+    const sceneState = sceneRef.current;
+    const container = containerRef.current;
+    if (!sceneState || !container || !zoomCommand) return;
+    sceneState.orbit.snapping = null;
+    if (zoomCommand.action === "reset") {
+      sceneState.orbit.targetZoom = isTop ? getTopFitZoom(container) : 1;
+      return;
+    }
+    const factor = zoomCommand.action === "in" ? 1.22 : 1 / 1.22;
+    sceneState.orbit.targetZoom = THREE.MathUtils.clamp(sceneState.orbit.targetZoom * factor, 0.34, 2.4);
+  }, [isTop, zoomCommand]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -1106,6 +1152,17 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
       sceneState = built.state;
       sceneRef.current = sceneState;
       resizeObserver = built.resizeObserver;
+      if (isTop) {
+        sceneState.orbit.azimuth = 0;
+        sceneState.orbit.polar = 0.015;
+        sceneState.orbit.targetAzimuth = 0;
+        sceneState.orbit.targetPolar = 0.015;
+        sceneState.orbit.zoom = getTopFitZoom(container);
+        sceneState.orbit.targetZoom = sceneState.orbit.zoom;
+        sceneState.orbit.scanProgress = 1;
+        sceneState.orbit.targetScanProgress = 1;
+        sceneState.orbit.snapping = "top";
+      }
       readyFrame = requestAnimationFrame(() => {
         if (!disposed) setReady(true);
       });
@@ -1315,6 +1372,7 @@ export function ThankYouDiorama({
   const [isAutoOrbiting, setIsAutoOrbiting] = useState(false);
   const [isZoomed, setIsZoomed] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [zoomCommand, setZoomCommand] = useState<{ id: number; action: "in" | "out" | "reset" }>({ id: 0, action: "reset" });
 
   const requestView = useCallback((next: boolean) => {
     setIsTop(next);
@@ -1323,6 +1381,9 @@ export function ThankYouDiorama({
   const toggleView = useCallback(() => requestView(!isTop), [isTop, requestView]);
   const toggleAutoOrbit = useCallback(() => setIsAutoOrbiting((prev) => !prev), []);
   const onViewStateChange = useCallback((next: boolean) => setIsTop(next), []);
+  const requestZoom = useCallback((action: "in" | "out" | "reset") => {
+    setZoomCommand((current) => ({ id: current.id + 1, action }));
+  }, []);
 
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {
     if (event.target !== event.currentTarget) return;
@@ -1349,6 +1410,14 @@ export function ThankYouDiorama({
     return () => window.removeEventListener("keydown", handleGlobalKeyDown);
   }, [isZoomed]);
 
+  const zoomControls = isTop ? (
+    <div className="lightbox-zoom-controls" role="group" aria-label={language === "vi" ? "Thu phóng mã QR" : "QR zoom controls"}>
+      <button type="button" onClick={() => requestZoom("out")} aria-label={language === "vi" ? "Thu nhỏ mã QR" : "Zoom QR out"}>−</button>
+      <button type="button" className="lightbox-zoom-reset" onClick={() => requestZoom("reset")}>{language === "vi" ? "Vừa khung" : "Fit"}</button>
+      <button type="button" onClick={() => requestZoom("in")} aria-label={language === "vi" ? "Phóng to mã QR" : "Zoom QR in"}>+</button>
+    </div>
+  ) : null;
+
   if (compact) {
     return (
       <div className="author-diorama-compact-widget">
@@ -1369,6 +1438,7 @@ export function ThankYouDiorama({
               isAutoOrbiting={isAutoOrbiting}
               language={language}
               viewCommand={viewCommand}
+              zoomCommand={zoomCommand}
               onViewStateChange={onViewStateChange}
               onCanvasTap={() => setIsZoomed(true)}
             />
@@ -1499,6 +1569,7 @@ export function ThankYouDiorama({
                     isAutoOrbiting={isAutoOrbiting}
                     language={language}
                     viewCommand={viewCommand}
+                    zoomCommand={zoomCommand}
                     onViewStateChange={onViewStateChange}
                   />
                   <div className="memory-tree-grid" aria-hidden="true" />
@@ -1520,6 +1591,7 @@ export function ThankYouDiorama({
                   </button>
                 </div>
                 <div className="lightbox-hints">
+                  {zoomControls}
                   <button
                     type="button"
                     className="lightbox-orbit-btn-footer"
@@ -1532,8 +1604,10 @@ export function ThankYouDiorama({
                     type="button"
                     className="lightbox-view-btn"
                     onClick={toggleView}
+                    aria-label={isTop ? (language === "vi" ? "Trở về Cây Kí Ức" : "Return to Memory Tree") : (language === "vi" ? "Xem toàn bộ mã QR" : "View the full QR code")}
                   >
-                    <span>{isTop ? "📐 " + ui.topView : "👁️ " + ui.treeView}</span>
+                    <span aria-hidden="true">{isTop ? "🌳" : "▦"}</span>
+                    <span className="lightbox-view-label">{isTop ? (language === "vi" ? "Về Cây" : "Tree") : (language === "vi" ? "Xem QR" : "View QR")}</span>
                   </button>
                   <button
                     type="button"
@@ -1576,6 +1650,7 @@ export function ThankYouDiorama({
           isAutoOrbiting={isAutoOrbiting}
           language={language}
           viewCommand={viewCommand}
+          zoomCommand={zoomCommand}
           onViewStateChange={onViewStateChange}
           onCanvasTap={() => setIsZoomed(true)}
         />
@@ -1681,6 +1756,7 @@ export function ThankYouDiorama({
                 isAutoOrbiting={isAutoOrbiting}
                 language={language}
                 viewCommand={viewCommand}
+                zoomCommand={zoomCommand}
                 onViewStateChange={onViewStateChange}
               />
               <div className="memory-tree-grid" aria-hidden="true" />
@@ -1702,6 +1778,7 @@ export function ThankYouDiorama({
               </button>
             </div>
             <div className="lightbox-hints">
+              {zoomControls}
               <button
                 type="button"
                 className="lightbox-orbit-btn-footer"
@@ -1714,8 +1791,10 @@ export function ThankYouDiorama({
                 type="button"
                 className="lightbox-view-btn"
                 onClick={toggleView}
+                aria-label={isTop ? (language === "vi" ? "Trở về Cây Kí Ức" : "Return to Memory Tree") : (language === "vi" ? "Xem toàn bộ mã QR" : "View the full QR code")}
               >
-                <span>{isTop ? "📐 " + ui.topView : "👁️ " + ui.treeView}</span>
+                <span aria-hidden="true">{isTop ? "🌳" : "▦"}</span>
+                <span className="lightbox-view-label">{isTop ? (language === "vi" ? "Về Cây" : "Tree") : (language === "vi" ? "Xem QR" : "View QR")}</span>
               </button>
               <button
                 type="button"

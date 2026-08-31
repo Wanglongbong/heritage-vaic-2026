@@ -229,8 +229,10 @@ export function FloatingWishesScreen({
               setIsMusicEnabled((m) => !m);
             }}
             title={language === "vi" ? "Nhạc phim David (Instrumental Slowed)" : "David (Instrumental Slowed) Soundtrack"}
+            aria-label={language === "vi" ? (isMusicEnabled ? "Tắt nhạc phim" : "Bật nhạc phim") : (isMusicEnabled ? "Mute soundtrack" : "Play soundtrack")}
           >
-            <span>{isMusicEnabled ? (language === "vi" ? "🎶 Nhạc phim" : "🎶 Soundtrack") : (language === "vi" ? "🔇 Tắt nhạc" : "🔇 Muted")}</span>
+            <span className="wishes-control-icon" aria-hidden="true">{isMusicEnabled ? "🎶" : "🔇"}</span>
+            <span className="wishes-control-label">{isMusicEnabled ? (language === "vi" ? "Nhạc phim" : "Soundtrack") : (language === "vi" ? "Tắt nhạc" : "Muted")}</span>
           </button>
 
           <button
@@ -241,8 +243,10 @@ export function FloatingWishesScreen({
               setIsPaused((p) => !p);
             }}
             title={language === "vi" ? "Tạm dừng / Tiếp tục cuộn" : "Pause / Resume"}
+            aria-label={language === "vi" ? (isPaused ? "Tiếp tục cuộn credits" : "Tạm dừng cuộn credits") : (isPaused ? "Resume credits" : "Pause credits")}
           >
-            <span>{isPaused ? "▶️ Tiếp tục" : "⏸️ Tạm dừng"}</span>
+            <span className="wishes-control-icon" aria-hidden="true">{isPaused ? "▶️" : "⏸️"}</span>
+            <span className="wishes-control-label">{isPaused ? (language === "vi" ? "Tiếp tục" : "Resume") : (language === "vi" ? "Tạm dừng" : "Pause")}</span>
           </button>
 
           <button
@@ -250,8 +254,10 @@ export function FloatingWishesScreen({
             className="wishes-ctrl-btn"
             onClick={handleResetScroll}
             title={language === "vi" ? "Cuộn lại từ đầu" : "Rewind to top"}
+            aria-label={language === "vi" ? "Cuộn credits lại từ đầu" : "Rewind credits"}
           >
-            <span>↺ {language === "vi" ? "Từ đầu" : "Rewind"}</span>
+            <span className="wishes-control-icon" aria-hidden="true">↺</span>
+            <span className="wishes-control-label">{language === "vi" ? "Từ đầu" : "Rewind"}</span>
           </button>
 
           <button
@@ -262,10 +268,11 @@ export function FloatingWishesScreen({
               setSpeedMultiplier((s) => (s === 1 ? 1.6 : s === 1.6 ? 0.6 : 1));
             }}
             title={language === "vi" ? "Tốc độ cuộn chữ" : "Scroll Speed"}
+            aria-label={language === "vi" ? "Thay đổi tốc độ cuộn chữ" : "Change credits speed"}
           >
-            <span>
-              ⚡ {speedMultiplier === 1.6 ? (language === "vi" ? "Nhanh" : "Fast") : speedMultiplier === 0.6 ? (language === "vi" ? "Chậm" : "Slow") : (language === "vi" ? "Chuẩn" : "Normal")}
-            </span>
+            <span className="wishes-control-icon" aria-hidden="true">⚡</span>
+            <span className="wishes-speed-value" aria-hidden="true">{speedMultiplier === 1.6 ? "1.6×" : speedMultiplier === 0.6 ? "0.6×" : "1×"}</span>
+            <span className="wishes-control-label">{speedMultiplier === 1.6 ? (language === "vi" ? "Nhanh" : "Fast") : speedMultiplier === 0.6 ? (language === "vi" ? "Chậm" : "Slow") : (language === "vi" ? "Chuẩn" : "Normal")}</span>
           </button>
 
           <button
@@ -273,8 +280,10 @@ export function FloatingWishesScreen({
             className="wishes-ctrl-btn heart-btn"
             onClick={(e) => triggerFloatingHeart(e.clientX, e.clientY)}
             title={language === "vi" ? "Thả tim tri ân" : "Send love"}
+            aria-label={language === "vi" ? `Thả tim tri ân, hiện có ${heartCount}` : `Send love, ${heartCount} hearts`}
           >
-            <span>❤️ {heartCount}</span>
+            <span className="wishes-control-icon" aria-hidden="true">❤️</span>
+            <span className="wishes-heart-count">{heartCount}</span>
           </button>
 
           <button
@@ -444,30 +453,33 @@ export function FloatingWishesScreen({
             <input
               type="text"
               className="wishes-name-input"
-              placeholder={language === "vi" ? "Tên bạn (hiện trên màn chiếu)..." : "Your name for credits..."}
+              aria-label={language === "vi" ? "Tên hoặc biệt danh" : "Name or nickname"}
+              placeholder={language === "vi" ? "Tên / biệt danh" : "Name / nickname"}
               value={quickSender}
               onChange={(e) => setQuickSender(e.target.value)}
               maxLength={40}
+              autoComplete="nickname"
             />
-            <input
-              type="text"
+            <textarea
               className="wishes-msg-input"
+              aria-label={language === "vi" ? "Nội dung lưu bút" : "Guestbook message"}
               placeholder={
                 language === "vi"
-                  ? "Viết lời lưu bút để tên & lời chúc của bạn cuộn lên màn chiếu ngay..."
-                  : "Write your reflection to roll onto the movie credits..."
+                  ? "Viết lời lưu bút..."
+                  : "Write a reflection..."
               }
               value={quickInput}
               onChange={(e) => setQuickInput(e.target.value)}
               maxLength={240}
+              rows={1}
             />
             <button
               type="submit"
               className="wishes-send-submit-btn"
               disabled={!quickInput.trim()}
             >
-              <span>🎬</span>{" "}
-              {language === "vi" ? "GỬI VÀO MÀN CHIẾU" : "ADD TO CREDITS"}
+              <span aria-hidden="true">➤</span>
+              <span className="wishes-send-label">{language === "vi" ? "GỬI VÀO MÀN CHIẾU" : "ADD TO CREDITS"}</span>
             </button>
           </div>
         </form>
