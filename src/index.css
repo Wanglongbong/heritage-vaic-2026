@@ -6079,35 +6079,6 @@ body.heritage-fullscreen-fallback .game-shell {
   text-transform: uppercase;
 }
 
-.intro-actions > button.intro-fullscreen-button {
-  min-height: 56px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  padding: 0 20px;
-  color: #ffe3a6;
-  background: rgba(7, 18, 13, .9);
-  border: 1px solid rgba(214, 173, 103, .62);
-  box-shadow: 4px 4px 0 rgba(0, 0, 0, .55);
-  font: 800 12px/1 var(--mono);
-  letter-spacing: .045em;
-  text-transform: uppercase;
-  backdrop-filter: blur(8px);
-  transition: transform .2s ease, border-color .2s ease, background .2s ease;
-}
-
-.intro-actions > button.intro-fullscreen-button:hover,
-.intro-actions > button.intro-fullscreen-button:focus-visible {
-  color: #fff8e8;
-  background: rgba(25, 43, 32, .96);
-  border-color: #ffda8d;
-  transform: translate(-1px, -1px);
-}
-
-.intro-actions > button.intro-fullscreen-button span {
-  font-size: 18px;
-}
-
 /* Drawers and dialogs must remain above every game chapter in document fullscreen. */
 .game-shell.is-fullscreen-experience .drawer-backdrop,
 .game-shell.is-fullscreen-experience .seal-overlay,
@@ -6180,13 +6151,6 @@ body.heritage-fullscreen-fallback .game-shell {
 }
 
 @media (max-width: 720px) {
-  .intro-actions > button.intro-fullscreen-button {
-    width: 100%;
-    min-height: 52px;
-    justify-content: space-between;
-    font-size: 10px;
-  }
-
   .experience-fullscreen-exit {
     min-height: 38px;
     padding-inline: 10px;
@@ -6198,12 +6162,6 @@ body.heritage-fullscreen-fallback .game-shell {
 }
 
 @media (orientation: landscape) and (max-height: 520px) {
-  .intro-actions > button.intro-fullscreen-button {
-    min-height: 37px;
-    padding-inline: 11px;
-    font-size: 7.5px;
-  }
-
   .home-screen-hint {
     width: min(600px, calc(100vw - 36px));
     padding: 14px 18px;

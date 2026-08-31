@@ -12,13 +12,13 @@
   "theme_color": "#0b1711",
   "icons": [
     {
-      "src": "/icons/heritage-train-192.png",
+      "src": "/icons/heritage-t-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/icons/heritage-train-512.png",
+      "src": "/icons/heritage-t-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"

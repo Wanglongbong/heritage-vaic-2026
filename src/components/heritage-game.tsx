@@ -1309,8 +1309,6 @@ export function HeritageGame() {
           onLanguage={setLanguage}
           onToggleMuted={toggleMuted}
           onVolumeChange={handleVolumeChange}
-          fullscreenActive={fullscreenMode !== "off"}
-          onFullscreen={toggleExperienceFullscreen}
           onStart={() => {
             if (fullscreenMode === "off") void enterExperienceFullscreen();
             enableAmbient();
@@ -1370,7 +1368,7 @@ export function HeritageGame() {
       {sealStopId && <StationSeal language={language} stop={experienceStops.find((item) => item.id === sealStopId) || stop} onContinue={collectSeal} muted={muted} volume={volume} />}
       {showInstallHint && <div className="home-screen-hint-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && dismissInstallHint()}>
         <section className="home-screen-hint" role="dialog" aria-modal="true" aria-labelledby="home-screen-hint-title">
-          <Image src="/icons/heritage-train-192.png" alt="" width={72} height={72} unoptimized aria-hidden="true" />
+          <Image src="/icons/heritage-t-192.png" alt="" width={72} height={72} unoptimized aria-hidden="true" />
           <small>{language === "vi" ? "TOÀN MÀN HÌNH TRÊN iPHONE" : "FULLSCREEN ON iPHONE"}</small>
           <h2 id="home-screen-hint-title">{language === "vi" ? "Mở Tàu Di Sản như một ứng dụng" : "Open Heritage Train like an app"}</h2>
           <p>{language === "vi" ? "Safari không thể tự ẩn hoàn toàn thanh trình duyệt. Chạm nút Chia sẻ, chọn “Thêm vào Màn hình chính”, rồi mở biểu tượng Tàu Di Sản để chơi trọn màn hình." : "Safari cannot fully hide its browser bars. Tap Share, choose “Add to Home Screen”, then open the Heritage Train icon for the full experience."}</p>
@@ -1756,8 +1754,6 @@ function Intro({
   onLanguage,
   onToggleMuted,
   onVolumeChange,
-  fullscreenActive,
-  onFullscreen,
   onStart,
 }: {
   language: Language;
@@ -1766,8 +1762,6 @@ function Intro({
   onLanguage: (language: Language) => void;
   onToggleMuted: () => void;
   onVolumeChange: (vol: number) => void;
-  fullscreenActive: boolean;
-  onFullscreen: () => void;
   onStart: () => void;
 }) {
   const ui = copy[language];
@@ -1801,10 +1795,6 @@ function Intro({
       <div className="intro-actions">
         <button type="button" className="intro-start-button" onClick={onStart}>{ui.start}<span>→</span></button>
         <button type="button" className="intro-guide-button" onClick={() => { playPaperSfx({ muted, volume }); setGuideOpen(true); }}><span>📜</span> {ui.guideButton}</button>
-        <button type="button" className="intro-fullscreen-button" onClick={onFullscreen} aria-pressed={fullscreenActive}>
-          <span aria-hidden="true">{fullscreenActive ? "×" : "⛶"}</span>
-          {fullscreenActive ? (language === "vi" ? "Thoát toàn màn hình" : "Exit fullscreen") : (language === "vi" ? "Chơi toàn màn hình" : "Play fullscreen")}
-        </button>
       </div>
     </div>
     <div className="intro-source"><span>●</span> 05 UNESCO FILES <i /> 15 VERIFIED RECORDS <i /> NO CULTURAL FABRICATION</div>
