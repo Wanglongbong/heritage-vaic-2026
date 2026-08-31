@@ -94,7 +94,6 @@ const copy = {
     start: "Bắt đầu hành trình",
     instruction: "Di chuột gần một vật để đánh thức câu chuyện",
     touchInstruction: "Chạm vào từng vật phẩm để trả lại màu ký ức",
-    orientationHint: "Mẹo: Xoay ngang điện thoại để xem toàn cảnh rõ hơn.",
     memoryLamp: "ĐÈN KÝ ỨC",
     memoryHint: "Soi tìm 3 dấu vết. Mỗi vật phẩm sẽ trả lại một phần màu sắc cho không gian.",
     memoryProgress: "dấu vết đã thức",
@@ -181,7 +180,6 @@ const copy = {
     start: "Begin the journey",
     instruction: "Move close to an object to wake its story",
     touchInstruction: "Tap each object to restore its memory colours",
-    orientationHint: "Tip: Rotate your phone for a clearer full-scene view.",
     memoryLamp: "MEMORY LANTERN",
     memoryHint: "Find 3 traces. Each discovery returns a layer of colour to the living setting.",
     memoryProgress: "traces awakened",
@@ -1698,7 +1696,6 @@ function Intro({
         <span className="intro-ending-sparkle">🏛️</span>
         <p>{ui.introSpecialEndingTip}</p>
       </div>
-      <p className="intro-orientation-hint"><span aria-hidden="true">↻</span>{ui.orientationHint}</p>
       <div className="intro-actions">
         <button type="button" className="intro-start-button" onClick={onStart}>{ui.start}<span>→</span></button>
         <button type="button" className="intro-guide-button" onClick={() => { playPaperSfx({ muted, volume }); setGuideOpen(true); }}><span>📜</span> {ui.guideButton}</button>
