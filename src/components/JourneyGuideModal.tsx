@@ -5,10 +5,12 @@ interface JourneyGuideModalProps {
   language: Language;
   onClose: () => void;
   onStart?: () => void;
+  entryContext?: 'intro' | 'carriage';
 }
 
-export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideModalProps) {
+export function JourneyGuideModal({ language, onClose, onStart, entryContext = 'intro' }: JourneyGuideModalProps) {
   const [activeTab, setActiveTab] = useState<'story' | 'steps' | 'passport' | 'hand'>('story');
+  const [mobileStep, setMobileStep] = useState(entryContext === 'carriage' ? 1 : 0);
 
   const content = {
     vi: {
@@ -91,6 +93,81 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
     }
   }[language];
 
+  const mobileSteps = language === 'vi' ? [
+    {
+      icon: '🚂',
+      eyebrow: 'BƯỚC 01 · LÊN TÀU',
+      title: 'Bắt đầu một hành trình có nguồn',
+      body: 'Bạn sẽ đi qua năm ga di sản từ Bắc vào Nam. Mỗi câu chuyện, hình ảnh và âm thanh đều đi kèm hồ sơ đối chiếu rõ ràng.',
+      note: 'Bấm “Bắt đầu hành trình” để bước vào toa tàu và gặp nhân viên soát vé.',
+    },
+    {
+      icon: '🎫',
+      eyebrow: 'BƯỚC 02 · CHỌN GA',
+      title: 'Chọn tấm vé cho điểm đến tiếp theo',
+      body: 'Trong toa tàu, chạm vào một trong năm tấm vé. Bạn có thể bắt đầu từ bất kỳ ga nào và quay lại ga đã đi qua.',
+      note: 'Trên điện thoại, danh sách vé có thể cuộn; không cần cố nhìn toàn bộ trong một khung.',
+    },
+    {
+      icon: '🏮',
+      eyebrow: 'BƯỚC 03 · ĐÈN KÝ ỨC',
+      title: 'Chạm ba điểm sáng trong cảnh ga',
+      body: 'Cảnh ga ban đầu chìm trong màu tối. Mỗi lần chạm đúng một vật phẩm, vùng ký ức đó sẽ trở lại nguyên màu và mở hồ sơ hiện vật.',
+      note: 'Đánh thức đủ 3/3 vật phẩm để toàn bộ bức tranh bừng sáng.',
+    },
+    {
+      icon: '✦',
+      eyebrow: 'BƯỚC 04 · NHẬN CON DẤU',
+      title: 'Xác nhận đã xem trọn vẹn cảnh ga',
+      body: 'Sau khi tìm đủ ba vật phẩm, bấm “Nhận con dấu di sản”. Con dấu mở đường đến ga kế tiếp và được lưu trong Hộ chiếu.',
+      note: 'Thẻ “Bước tiếp theo” bên dưới cảnh sẽ luôn chỉ đúng hành động bạn cần làm.',
+    },
+    {
+      icon: '🏛️',
+      eyebrow: 'BƯỚC 05 · TỔNG KẾT',
+      title: 'Mở Hộ chiếu, phòng trưng bày và lưu bút',
+      body: 'Khi đã đủ năm con dấu, nút về Trang tổng kết sẽ phát sáng. Tại đó bạn có thể xem lại hiện vật, tải Hộ chiếu và gửi cảm nghĩ.',
+      note: 'Hand Pilot là tùy chọn. Camera chỉ được xử lý ngay trên thiết bị và không tải hình ảnh ra ngoài.',
+    },
+  ] : [
+    {
+      icon: '🚂',
+      eyebrow: 'STEP 01 · BOARD THE TRAIN',
+      title: 'Begin a source-backed journey',
+      body: 'Travel through five living-heritage stops from North to South. Every story, image, and sound is paired with a clear source record.',
+      note: 'Tap “Begin journey” to enter the carriage and meet the ticket conductor.',
+    },
+    {
+      icon: '🎫',
+      eyebrow: 'STEP 02 · CHOOSE A STOP',
+      title: 'Choose the ticket for your next destination',
+      body: 'Inside the carriage, tap one of five tickets. You may begin at any stop and revisit places you have already explored.',
+      note: 'On a phone the ticket area may scroll; everything does not need to fit into one frame.',
+    },
+    {
+      icon: '🏮',
+      eyebrow: 'STEP 03 · MEMORY LANTERN',
+      title: 'Tap the three lights in the station scene',
+      body: 'Each station begins in darkness. Tapping an object restores that memory region to full colour and opens its sourced record.',
+      note: 'Awaken all 3/3 objects to restore the complete scene.',
+    },
+    {
+      icon: '✦',
+      eyebrow: 'STEP 04 · CLAIM THE SEAL',
+      title: 'Confirm that you viewed the complete station',
+      body: 'After finding all three objects, claim the heritage seal. It unlocks the next stop and is saved in your Passport.',
+      note: 'The “Next step” card below the scene always shows the action you need now.',
+    },
+    {
+      icon: '🏛️',
+      eyebrow: 'STEP 05 · JOURNEY SUMMARY',
+      title: 'Open your Passport, gallery, and guestbook',
+      body: 'After five seals, the Journey Summary button glows. Revisit objects, download your Passport, and leave a reflection there.',
+      note: 'Hand Pilot is optional. Camera processing stays on your device and no camera imagery is uploaded.',
+    },
+  ];
+  const currentMobileStep = mobileSteps[mobileStep];
+
   return (
     <div
       className="fixed inset-0 z-[160] flex items-center justify-center p-2.5 sm:p-6 bg-stone-950/85 backdrop-blur-md overflow-y-auto"
@@ -98,12 +175,12 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
       aria-modal="true"
       aria-labelledby="guide-modal-title"
     >
-      <div className="relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-[#0f1411] border-2 border-amber-500/60 shadow-[0_20px_70px_rgba(0,0,0,0.85)] text-stone-100 overflow-hidden rounded-none my-auto">
+      <div className="journey-guide-shell relative w-full max-w-4xl max-h-[92vh] flex flex-col bg-[#0f1411] border-2 border-amber-500/60 shadow-[0_20px_70px_rgba(0,0,0,0.85)] text-stone-100 overflow-hidden rounded-none my-auto">
         {/* Top Gold Ornament Bar */}
         <div className="h-1.5 w-full bg-gradient-to-r from-amber-700 via-amber-400 to-amber-700 shrink-0" />
 
         {/* Header */}
-        <div className="p-3.5 sm:p-6 border-b border-amber-500/20 bg-gradient-to-b from-amber-950/40 to-transparent flex items-start justify-between gap-3 shrink-0">
+        <div className="journey-guide-header p-3.5 sm:p-6 border-b border-amber-500/20 bg-gradient-to-b from-amber-950/40 to-transparent flex items-start justify-between gap-3 shrink-0">
           <div className="min-w-0 pr-2">
             <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-mono font-bold tracking-widest text-amber-400 uppercase">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 bg-red-600 rotate-45 inline-block shrink-0" />
@@ -126,7 +203,7 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
         </div>
 
         {/* Tab Switcher - Scrollable horizontally so tabs never crush */}
-        <div className="flex overflow-x-auto border-b border-stone-800 bg-stone-950/70 text-[11px] sm:text-xs font-mono scrollbar-none shrink-0">
+        <div className="journey-guide-tabs flex overflow-x-auto border-b border-stone-800 bg-stone-950/70 text-[11px] sm:text-xs font-mono scrollbar-none shrink-0">
           <button
             onClick={() => setActiveTab('story')}
             className={`px-3.5 sm:px-4 py-2.5 transition-colors border-b-2 shrink-0 whitespace-nowrap ${
@@ -169,8 +246,25 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
           </button>
         </div>
 
+        <div className="journey-guide-mobile" aria-live="polite">
+          <div className="journey-guide-mobile-progress" aria-label={`${mobileStep + 1} / ${mobileSteps.length}`}>
+            <span>{String(mobileStep + 1).padStart(2, '0')} / {String(mobileSteps.length).padStart(2, '0')}</span>
+            <i><b style={{ width: `${((mobileStep + 1) / mobileSteps.length) * 100}%` }} /></i>
+          </div>
+          <article className="journey-guide-mobile-card" key={mobileStep}>
+            <span className="journey-guide-mobile-icon" aria-hidden="true">{currentMobileStep.icon}</span>
+            <small>{currentMobileStep.eyebrow}</small>
+            <h3>{currentMobileStep.title}</h3>
+            <p>{currentMobileStep.body}</p>
+            <aside><span aria-hidden="true">→</span>{currentMobileStep.note}</aside>
+          </article>
+          <div className="journey-guide-mobile-dots" aria-hidden="true">
+            {mobileSteps.map((_, index) => <i key={index} className={index === mobileStep ? 'active' : index < mobileStep ? 'done' : ''} />)}
+          </div>
+        </div>
+
         {/* Content Body */}
-        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 text-stone-300 font-sans text-xs sm:text-sm leading-relaxed max-h-[58vh] break-words">
+        <div className="journey-guide-desktop-body p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-5 text-stone-300 font-sans text-xs sm:text-sm leading-relaxed max-h-[58vh] break-words">
           {activeTab === 'story' && (
             <div className="space-y-3.5 sm:space-y-4 animate-fadeIn">
               <div className="p-3 sm:p-4 border-l-4 border-amber-500 bg-amber-950/20 text-amber-100 font-serif text-sm sm:text-base italic leading-relaxed">
@@ -301,7 +395,7 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
         </div>
 
         {/* Footer Actions */}
-        <div className="p-3 sm:p-5 border-t border-stone-800 bg-stone-950 flex items-center justify-between gap-2.5 shrink-0">
+        <div className="journey-guide-desktop-footer p-3 sm:p-5 border-t border-stone-800 bg-stone-950 flex items-center justify-between gap-2.5 shrink-0">
           <button
             onClick={onClose}
             className="px-3 sm:px-4 py-2 text-[11px] sm:text-xs font-mono text-stone-400 hover:text-stone-200 border border-stone-800 hover:border-stone-700 transition-colors"
@@ -319,6 +413,24 @@ export function JourneyGuideModal({ language, onClose, onStart }: JourneyGuideMo
             >
               <span>{content.startNow}</span>
               <span className="text-sm sm:text-base font-sans">→</span>
+            </button>
+          )}
+        </div>
+        <div className="journey-guide-mobile-footer">
+          <button type="button" onClick={() => mobileStep === 0 ? onClose() : setMobileStep((step) => step - 1)}>
+            {mobileStep === 0 ? content.close : (language === 'vi' ? '← Trước' : '← Back')}
+          </button>
+          {mobileStep < mobileSteps.length - 1 ? (
+            <button type="button" className="primary" onClick={() => setMobileStep((step) => step + 1)}>
+              {language === 'vi' ? 'Tiếp theo' : 'Next'} <span>→</span>
+            </button>
+          ) : onStart ? (
+            <button type="button" className="primary" onClick={() => { onClose(); onStart(); }}>
+              {content.startNow} <span>→</span>
+            </button>
+          ) : (
+            <button type="button" className="primary" onClick={onClose}>
+              {language === 'vi' ? 'Đã hiểu · Đóng' : 'Got it · Close'} <span>✓</span>
             </button>
           )}
         </div>

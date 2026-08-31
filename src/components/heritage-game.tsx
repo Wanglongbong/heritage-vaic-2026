@@ -1006,6 +1006,10 @@ export function HeritageGame() {
 
   const stationSealed = sealed.has(stop.id);
   const journeyComplete = sealed.size === experienceStops.length;
+  const nextUnvisitedHotspot = stop.hotspots.find((hotspot) => !visited.has(`${stop.id}:${hotspot.id}`));
+  const recommendedStopIndex = experienceStops.findIndex((item) => !sealed.has(item.id));
+  const recommendedStop = recommendedStopIndex >= 0 ? experienceStops[recommendedStopIndex] : null;
+  const followingStop = experienceStops[Math.min(stopIndex + 1, experienceStops.length - 1)];
 
   return (
     <main className={`game-shell ${isCoarsePointer ? "touch-interface" : "pointer-interface"}`} style={{ "--stop-accent": stop.palette } as CSSProperties}>
@@ -1037,6 +1041,11 @@ export function HeritageGame() {
       </header>
 
       <section className="route-bar" aria-label={ui.allStops}>
+        <div className="mobile-route-summary" aria-hidden="true">
+          <span>GA {stop.number} / 05</span>
+          <b>{stop.location[language].split("·")[0]}</b>
+          <small>{stopIndex < experienceStops.length - 1 ? `${language === "vi" ? "Tiếp" : "Next"}: ${followingStop.location[language].split("·")[0]}` : (language === "vi" ? "Ga cuối" : "Final stop")}</small>
+        </div>
         <span className="route-rail" aria-hidden="true" />
         {experienceStops.map((item, index) => {
           const completed = item.hotspots.every((hotspot) => visited.has(`${item.id}:${hotspot.id}`));
@@ -1104,9 +1113,44 @@ export function HeritageGame() {
             <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
           </aside>}
         </div>
-        {stationComplete && !stationSealed && !openHotspot && <aside className="station-reveal-card station-reveal-card-mobile" role="status">
-          <div><i aria-hidden="true">✦</i><span><b>{ui.sceneRestored}</b><small>{ui.sceneRestoredBody}</small></span></div>
-          <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
+        {!openHotspot && <aside className="mobile-next-step" role="status" aria-live="polite">
+          {!stationComplete && <>
+            <div className="mobile-next-step-mark" aria-hidden="true">{String(stopVisited + 1).padStart(2, "0")}</div>
+            <div className="mobile-next-step-copy">
+              <small>{language === "vi" ? "BƯỚC TIẾP THEO · ĐÈN KÝ ỨC" : "NEXT STEP · MEMORY LANTERN"}</small>
+              <h2>{language === "vi" ? "Chạm điểm sáng tiếp theo trong tranh" : "Tap the next light in the scene"}</h2>
+              <p>{nextUnvisitedHotspot
+                ? `${nextUnvisitedHotspot.label[language]} · ${stop.hotspots.length - stopVisited} ${language === "vi" ? "vật phẩm còn lại" : "objects remaining"}`
+                : ui.memoryHint}</p>
+            </div>
+          </>}
+          {stationComplete && !stationSealed && <>
+            <div className="mobile-next-step-mark complete" aria-hidden="true">✦</div>
+            <div className="mobile-next-step-copy">
+              <small>{ui.sceneRestored}</small>
+              <h2>{language === "vi" ? "Toàn cảnh đã trở lại nguyên màu" : "The complete scene is awake"}</h2>
+              <p>{ui.sceneRestoredBody}</p>
+              <button type="button" onClick={requestSeal}>{ui.claimSeal}<strong>→</strong></button>
+            </div>
+          </>}
+          {stationSealed && !journeyComplete && recommendedStop && <>
+            <div className="mobile-next-step-mark sealed" aria-hidden="true">✓</div>
+            <div className="mobile-next-step-copy">
+              <small>{language === "vi" ? "CON DẤU ĐÃ ĐƯỢC LƯU" : "SEAL SAVED"}</small>
+              <h2>{language === "vi" ? "Tiếp tục đến ga chưa có con dấu" : "Continue to an unsealed station"}</h2>
+              <p>GA {recommendedStop.number} · {recommendedStop.location[language]} · {recommendedStop.title[language]}</p>
+              <button type="button" onClick={() => beginTravel(recommendedStopIndex)}>{language === "vi" ? "Đi đến ga tiếp theo" : "Go to next station"}<strong>→</strong></button>
+            </div>
+          </>}
+          {journeyComplete && <>
+            <div className="mobile-next-step-mark summary" aria-hidden="true">⌂</div>
+            <div className="mobile-next-step-copy">
+              <small>{language === "vi" ? "05 / 05 CON DẤU HOÀN TẤT" : "05 / 05 SEALS COMPLETE"}</small>
+              <h2>{language === "vi" ? "Trang tổng kết đã mở khóa" : "Journey Summary unlocked"}</h2>
+              <p>{language === "vi" ? "Mở Hộ chiếu, phòng trưng bày và lưu lại cảm nghĩ của bạn." : "Open your Passport, gallery, and leave your reflection."}</p>
+              <button type="button" className="mobile-summary-cta" onClick={finishJourney}>{ui.returnSummary}<strong>↗</strong></button>
+            </div>
+          </>}
         </aside>}
         <div className="scene-footer">
           <div><b>{stopVisited}/{stop.hotspots.length}</b><span>{ui.explored}</span></div>
@@ -1621,7 +1665,7 @@ function Intro({
       </div>
     </div>
     <div className="intro-source"><span>●</span> 05 UNESCO FILES <i /> 15 VERIFIED RECORDS <i /> NO CULTURAL FABRICATION</div>
-    {guideOpen && <JourneyGuideModal language={language} onClose={() => setGuideOpen(false)} onStart={() => { setGuideOpen(false); onStart(); }} />}
+    {guideOpen && <JourneyGuideModal language={language} entryContext="intro" onClose={() => setGuideOpen(false)} onStart={() => { setGuideOpen(false); onStart(); }} />}
   </section>;
 }
 
@@ -1705,7 +1749,7 @@ function Carriage({
         </div>
       </div>
     </div>
-    {guideOpen && <JourneyGuideModal language={language} onClose={() => setGuideOpen(false)} />}
+    {guideOpen && <JourneyGuideModal language={language} entryContext="carriage" onClose={() => setGuideOpen(false)} />}
   </section>;
 }
 
