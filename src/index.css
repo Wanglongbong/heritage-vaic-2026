@@ -7201,3 +7201,571 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
     animation: none;
   }
 }
+
+/* 2026-08-31 mobile interaction scale pass: preserve the desktop dossier
+   order while giving touch screens their own density and ceremony ratios. */
+@media (max-width: 720px) {
+  .drawer-backdrop {
+    align-items: stretch;
+    background: rgba(3, 5, 4, .82);
+    backdrop-filter: blur(8px);
+  }
+
+  .record-drawer {
+    width: 100%;
+    height: 100dvh;
+    border-left: 0;
+    border-top: 1px solid rgba(214, 173, 103, .42);
+    scroll-padding-top: calc(52px + env(safe-area-inset-top));
+  }
+
+  .drawer-top {
+    position: sticky;
+    z-index: 24;
+    top: 0;
+    height: calc(52px + env(safe-area-inset-top));
+    padding: env(safe-area-inset-top) 10px 0 15px;
+    background: rgba(12, 18, 14, .94);
+    border-bottom-color: rgba(214, 173, 103, .26);
+    backdrop-filter: blur(12px);
+  }
+
+  .drawer-top span {
+    max-width: calc(100% - 58px);
+    overflow: hidden;
+    font-size: 8.5px;
+    line-height: 1.4;
+    letter-spacing: .1em;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .drawer-top button {
+    width: 44px;
+    height: 44px;
+    font-size: 21px;
+  }
+
+  .record-heading {
+    padding: 20px 16px 16px;
+  }
+
+  .record-heading > span {
+    font-size: 9px;
+    letter-spacing: .11em;
+  }
+
+  .record-heading h2 {
+    margin: 8px 0 10px;
+    font-size: clamp(30px, 8.8vw, 34px);
+    line-height: 1.06;
+  }
+
+  .record-heading p {
+    font-size: 13.5px;
+    line-height: 1.55;
+  }
+
+  .fact-list {
+    margin: 0 16px 16px;
+  }
+
+  .fact-list > div {
+    gap: 10px;
+    padding: 11px 0;
+  }
+
+  .fact-list span,
+  .fact-bullet {
+    font-size: 10px;
+  }
+
+  .fact-list p {
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .media-card,
+  .craft-animation,
+  .guide-box,
+  .object-record-summary,
+  .hand-viewer {
+    margin: 0 16px 16px;
+    padding: 14px;
+    border-radius: 4px;
+  }
+
+  .media-card > span {
+    margin-bottom: 9px;
+    font-size: 9px;
+  }
+
+  .media-card p,
+  .media-card button em {
+    font-size: 11.5px;
+    line-height: 1.48;
+  }
+
+  .media-card small {
+    margin-top: 9px;
+    font-size: 10.5px;
+    line-height: 1.45;
+  }
+
+  .direct-audio-card > button {
+    min-height: 66px;
+    grid-template-columns: 52px 1fr;
+    padding: 8px 10px;
+  }
+
+  .direct-audio-card .sound-wave {
+    height: 42px;
+  }
+
+  .object-record-summary > div {
+    gap: 10px;
+  }
+
+  .record-mark {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+  }
+
+  .object-record-summary b {
+    font-size: 15px;
+  }
+
+  .object-record-summary small {
+    font-size: 10.5px;
+  }
+
+  .object-record-summary dl {
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .object-record-summary dl > div {
+    grid-template-columns: 1fr;
+    gap: 4px;
+    padding-top: 9px;
+  }
+
+  .object-record-summary dt {
+    font-size: 9px;
+  }
+
+  .object-record-summary dd {
+    font-size: 12px;
+    line-height: 1.48;
+  }
+
+  .hand-viewer-copy > span {
+    font-size: 9px;
+  }
+
+  .hand-viewer-copy h3 {
+    margin: 6px 0 4px;
+    font-size: 19px;
+  }
+
+  .hand-viewer-copy p {
+    font-size: 12px;
+    line-height: 1.48;
+  }
+
+  .hand-guide {
+    margin-top: 10px;
+    padding: 10px;
+    overflow: hidden;
+  }
+
+  .hand-guide > b {
+    margin-bottom: 8px;
+    font-size: 9px;
+  }
+
+  .hand-guide > div {
+    display: flex;
+    gap: 7px;
+    padding-bottom: 4px;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+  }
+
+  .hand-guide p {
+    flex: 0 0 132px;
+    min-height: 48px;
+    align-items: flex-start;
+    padding: 7px;
+    background: rgba(255, 255, 255, .025);
+    border: 1px solid rgba(214, 173, 103, .12);
+    font-size: 9px;
+    line-height: 1.3;
+    scroll-snap-align: start;
+  }
+
+  .hand-guide p i {
+    width: 24px;
+    height: 24px;
+    flex-basis: 24px;
+    font-size: 11px;
+  }
+
+  .hand-guide p strong {
+    font-size: 9px;
+  }
+
+  .hand-guide > small {
+    margin-top: 7px;
+    padding-top: 7px;
+    font-size: 9px;
+  }
+
+  .hand-viewer-stage {
+    height: clamp(185px, 52vw, 205px);
+    margin-top: 10px;
+  }
+
+  .tracked-object {
+    top: 50%;
+    width: min(62%, 190px);
+    height: 62%;
+  }
+
+  .tracked-object b {
+    bottom: -7px;
+    max-width: 82%;
+    padding: 4px 8px;
+    overflow: hidden;
+    font-size: 9px;
+    text-overflow: ellipsis;
+  }
+
+  .tracked-object > span {
+    top: -4px;
+    padding: 4px 7px;
+    font-size: 8px;
+  }
+
+  .object-view-switcher {
+    top: 7px;
+    right: 7px;
+    left: 7px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 3px;
+  }
+
+  .object-view-switcher button {
+    min-height: 34px;
+    justify-content: center;
+    padding: 0 3px;
+    font-size: 5.5px;
+  }
+
+  .hand-viewer-stage > small {
+    right: 8px;
+    bottom: 7px;
+    left: 8px;
+    padding: 5px 7px;
+    overflow: hidden;
+    font-size: 8px;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .tracking-actions {
+    gap: 7px;
+    margin-top: 10px;
+  }
+
+  .tracking-toggle,
+  .tracking-swap {
+    min-width: 0;
+    min-height: 44px;
+    flex: 1 1 135px;
+    padding: 0 10px;
+    font-size: 8px;
+  }
+
+  .source-stack {
+    gap: 10px;
+    padding: 0 16px calc(28px + env(safe-area-inset-bottom));
+  }
+
+  .source-stack article {
+    padding: 14px;
+    border-radius: 4px;
+  }
+
+  .source-stack article > div small,
+  .source-stack dt {
+    font-size: 8.5px;
+  }
+
+  .source-stack h3 {
+    margin: 7px 0 4px;
+    font-size: 16px;
+  }
+
+  .source-stack > article > p,
+  .source-stack dd,
+  .source-stack a {
+    font-size: 11px;
+    line-height: 1.42;
+  }
+
+  .source-stack dl {
+    gap: 7px;
+    margin: 10px 0;
+  }
+
+  .source-stack dl div {
+    padding-top: 7px;
+  }
+
+  .seal-overlay {
+    padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+    overflow-y: auto;
+  }
+
+  .station-seal-card {
+    width: min(316px, calc(100vw - 24px));
+    max-height: calc(100dvh - 24px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding: 22px 16px 18px;
+  }
+
+  .seal-emblem-wrap {
+    width: 92px;
+    height: 92px;
+    margin-bottom: 12px;
+  }
+
+  .seal-emblem {
+    width: 86px;
+    height: 86px;
+    padding: 7px 5px;
+    border-width: 3px;
+    box-shadow: 0 0 0 2px var(--seal-accent), 0 0 0 5px #1c130b, 0 0 0 6px rgba(214, 173, 103, .8), 0 8px 22px rgba(0, 0, 0, .55), 0 0 30px color-mix(in srgb, var(--seal-accent) 42%, transparent);
+  }
+
+  .seal-emblem-ring {
+    inset: 4px;
+  }
+
+  .seal-emblem-kicker {
+    font-size: 4.6px;
+    letter-spacing: .17em;
+  }
+
+  .seal-emblem i.seal-number {
+    font-size: 24px;
+  }
+
+  .seal-emblem b.seal-star {
+    font-size: 10px;
+  }
+
+  .seal-emblem-footer {
+    font-size: 4.4px;
+  }
+
+  .seal-badge-label {
+    gap: 8px;
+    margin-bottom: 4px;
+  }
+
+  .seal-kicker-text {
+    font-size: 6.5px;
+    letter-spacing: .14em;
+  }
+
+  .station-seal-card h2 {
+    margin: 7px 0 3px;
+    font-size: clamp(24px, 7.5vw, 27px);
+    line-height: 1.05;
+  }
+
+  .station-seal-card .seal-location {
+    font-size: 12.5px;
+  }
+
+  .station-seal-card .seal-body-desc {
+    margin: 11px auto 13px;
+    font-size: 10.5px;
+    line-height: 1.45;
+  }
+
+  .seal-continue-btn {
+    min-height: 46px;
+    gap: 10px;
+    padding: 0 12px;
+    font-size: 8.5px;
+    line-height: 1.28;
+  }
+
+  .seal-continue-btn b {
+    font-size: 15px;
+  }
+}
+
+/* Stop the contextual card from becoming larger than the restored artwork. */
+@media (max-width: 1100px) and (orientation: portrait) {
+  .mobile-next-step {
+    width: min(100%, 760px);
+    min-height: 150px;
+    flex: 0 0 auto;
+    align-self: center;
+    margin-block: auto;
+  }
+
+  .mobile-next-step:has(button) {
+    min-height: 184px;
+  }
+}
+
+@media (max-width: 720px) and (orientation: portrait) {
+  .mobile-next-step {
+    width: 100%;
+    min-height: 132px;
+    padding: 12px;
+  }
+
+  .mobile-next-step:has(button) {
+    min-height: 166px;
+  }
+
+  .mobile-next-step-copy h2 {
+    margin: 5px 0 4px;
+    font-size: clamp(19px, 5.7vw, 23px);
+  }
+
+  .mobile-next-step-copy p {
+    font-size: 10px;
+    line-height: 1.4;
+  }
+
+  .mobile-next-step-copy button {
+    min-height: 44px;
+    margin-top: 9px;
+  }
+}
+
+/* A short landscape phone needs a horizontal stamp ceremony, not the desktop
+   card squeezed into a shallow viewport. */
+@media (orientation: landscape) and (max-height: 520px) and (max-width: 950px) {
+  .seal-overlay {
+    place-items: center;
+    padding: 8px max(8px, env(safe-area-inset-right)) 8px max(8px, env(safe-area-inset-left));
+    overflow-y: auto;
+  }
+
+  .station-seal-card {
+    width: min(720px, calc(100vw - 16px - env(safe-area-inset-left) - env(safe-area-inset-right)));
+    max-height: calc(100dvh - 16px);
+    display: grid;
+    grid-template-columns: 122px minmax(0, 1fr);
+    grid-template-rows: auto auto auto auto auto;
+    align-items: center;
+    column-gap: 18px;
+    padding: 16px 18px;
+    text-align: left;
+  }
+
+  .seal-emblem-wrap {
+    grid-column: 1;
+    grid-row: 1 / 6;
+    width: 104px;
+    height: 104px;
+    margin: 0 auto;
+  }
+
+  .seal-emblem {
+    width: 96px;
+    height: 96px;
+    padding: 7px 5px;
+  }
+
+  .seal-emblem i.seal-number {
+    font-size: 26px;
+  }
+
+  .seal-badge-label {
+    grid-column: 2;
+    grid-row: 1;
+    justify-content: flex-start;
+    margin: 0 0 2px;
+  }
+
+  .seal-badge-label .seal-ribbon-line:last-child {
+    display: none;
+  }
+
+  .station-seal-card h2 {
+    grid-column: 2;
+    grid-row: 2;
+    margin: 3px 0 1px;
+    font-size: clamp(23px, 4vw, 31px);
+    line-height: 1;
+  }
+
+  .station-seal-card .seal-location {
+    grid-column: 2;
+    grid-row: 3;
+    font-size: 12px;
+  }
+
+  .station-seal-card .seal-body-desc {
+    grid-column: 2;
+    grid-row: 4;
+    max-width: none;
+    margin: 7px 0 9px;
+    font-size: 9.5px;
+    line-height: 1.35;
+  }
+
+  .seal-continue-btn {
+    grid-column: 2;
+    grid-row: 5;
+    min-height: 44px;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 8px;
+  }
+
+  .seal-glow-aura {
+    top: 50%;
+    left: 88px;
+    width: 190px;
+    height: 190px;
+  }
+
+  .record-drawer {
+    width: min(560px, 100vw);
+  }
+
+  .drawer-top {
+    height: 48px;
+    padding: 0 10px 0 14px;
+  }
+
+  .drawer-top button {
+    width: 42px;
+    height: 42px;
+  }
+
+  .record-heading {
+    padding: 14px 16px 12px;
+  }
+
+  .record-heading h2 {
+    margin: 5px 0 7px;
+    font-size: 28px;
+  }
+
+  .record-heading p {
+    font-size: 12px;
+    line-height: 1.42;
+  }
+}
