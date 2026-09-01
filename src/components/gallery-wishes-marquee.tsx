@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import type { Language } from "@/lib/types";
 import { playClickSfx, playPaperSfx } from "@/lib/sound-effects";
 import {
@@ -8,12 +8,14 @@ import {
   type AvatarOption,
   DEFAULT_AVATARS,
   NATIONALITIES,
-  getStoredGuestbook,
-  saveStoredGuestbook,
+  createGuestbookEntry,
+  formatGuestbookTimestamp,
+  getCachedGuestbook,
+  listGuestbookEntries,
+  migrateLegacyGuestbookEntries,
   subscribeGuestbook,
 } from "@/lib/guestbook";
 import { FloatingWishesScreen } from "./floating-wishes-screen";
-import { AdminGuestbookModal } from "./admin-guestbook-modal";
 
 interface GalleryWishesMarqueeProps {
   language: Language;
@@ -27,16 +29,11 @@ export function GalleryWishesMarquee({
   muted,
   volume,
 }: GalleryWishesMarqueeProps) {
-  const [entries, setEntries] = useState<GuestbookEntry[]>(() => getStoredGuestbook());
+  const [entries, setEntries] = useState<GuestbookEntry[]>(() => getCachedGuestbook());
   const [isCinemaOpen, setIsCinemaOpen] = useState(false);
-  const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
-
-  // Secret 5-second hold state
-  const [holdProgress, setHoldProgress] = useState(0);
-  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const holdIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  const holdStartRef = useRef<number>(0);
-  const HOLD_DURATION_MS = 5000;
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [guestbookError, setGuestbookError] = useState("");
+  const [website, setWebsite] = useState("");
 
   // Form State
   const [authorName, setAuthorName] = useState("");
@@ -46,65 +43,73 @@ export function GalleryWishesMarquee({
   const [sentSuccess, setSentSuccess] = useState(false);
 
   useEffect(() => {
-    return subscribeGuestbook((updated) => setEntries(updated));
+    let active = true;
+    const unsubscribe = subscribeGuestbook((updated) => {
+      if (active) setEntries(updated);
+    });
+    void (async () => {
+      try {
+        await migrateLegacyGuestbookEntries();
+        const loaded = await listGuestbookEntries();
+        if (active) setEntries(loaded);
+      } catch {
+        if (active) {
+          setGuestbookError(
+            language === "vi"
+              ? "Chưa kết nối được sổ lưu bút chung. Bạn vẫn có thể xem bản đã lưu gần nhất."
+              : "The shared guestbook is temporarily unavailable. Showing the latest saved copy.",
+          );
+        }
+      }
+    })();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
-  function startHold() {
-    holdStartRef.current = Date.now();
-    setHoldProgress(0.1);
-
-    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-
-    holdIntervalRef.current = setInterval(() => {
-      const elapsed = Date.now() - holdStartRef.current;
-      const pct = Math.min(100, (elapsed / HOLD_DURATION_MS) * 100);
-      setHoldProgress(pct);
-    }, 40);
-
-    holdTimerRef.current = setTimeout(() => {
-      if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-      setHoldProgress(0);
-      playClickSfx({ muted, volume });
-      if (typeof navigator !== "undefined" && navigator.vibrate) {
-        navigator.vibrate([100, 50, 150]);
-      }
-      setIsAdminModalOpen(true);
-    }, HOLD_DURATION_MS);
-  }
-
-  function cancelHold() {
-    if (holdIntervalRef.current) clearInterval(holdIntervalRef.current);
-    if (holdTimerRef.current) clearTimeout(holdTimerRef.current);
-    setHoldProgress(0);
-  }
-
-  function handleSubmitFeedback(e: React.FormEvent) {
+  async function handleSubmitFeedback(e: React.FormEvent) {
     e.preventDefault();
-    if (!feedbackText.trim()) return;
+    if (!feedbackText.trim() || website || isSubmitting) return;
+
+    const lastSubmit = Number(localStorage.getItem("tau_di_san_guestbook_last_submit") ?? 0);
+    if (Date.now() - lastSubmit < 10_000) {
+      setGuestbookError(
+        language === "vi"
+          ? "Bạn hãy chờ vài giây trước khi gửi thêm một lưu bút nhé."
+          : "Please wait a few seconds before sending another note.",
+      );
+      return;
+    }
 
     playPaperSfx({ muted, volume });
-
-    const newEntry: GuestbookEntry = {
-      id: "entry-" + Date.now(),
-      name: authorName.trim() || (language === "vi" ? "Lữ khách phương xa" : "Anonymous Passenger"),
-      character: selectedAvatar.icon,
-      characterName: language === "vi" ? selectedAvatar.labelVi : selectedAvatar.labelEn,
-      countryCode: selectedNation.code,
-      countryName: language === "vi" ? selectedNation.nameVi : selectedNation.nameEn,
-      flag: selectedNation.flag,
-      content: feedbackText.trim(),
-      timestamp: language === "vi" ? "Vừa xong" : "Just now",
-    };
-
-    const updated = [newEntry, ...entries];
-    setEntries(updated);
-    saveStoredGuestbook(updated);
-
-    setFeedbackText("");
-    setAuthorName("");
-    setSentSuccess(true);
-    setTimeout(() => setSentSuccess(false), 3500);
+    setIsSubmitting(true);
+    setGuestbookError("");
+    try {
+      const saved = await createGuestbookEntry({
+        name: authorName.trim() || (language === "vi" ? "Lữ khách phương xa" : "Anonymous Passenger"),
+        character: selectedAvatar.icon,
+        characterName: language === "vi" ? selectedAvatar.labelVi : selectedAvatar.labelEn,
+        countryCode: selectedNation.code,
+        countryName: language === "vi" ? selectedNation.nameVi : selectedNation.nameEn,
+        flag: selectedNation.flag,
+        content: feedbackText.trim(),
+      });
+      setEntries((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
+      localStorage.setItem("tau_di_san_guestbook_last_submit", String(Date.now()));
+      setFeedbackText("");
+      setAuthorName("");
+      setSentSuccess(true);
+      setTimeout(() => setSentSuccess(false), 3500);
+    } catch {
+      setGuestbookError(
+        language === "vi"
+          ? "Lưu bút chưa gửi được. Vui lòng kiểm tra mạng và thử lại."
+          : "Your note could not be sent. Check your connection and try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   function handleOpenCinema() {
@@ -130,30 +135,7 @@ export function GalleryWishesMarquee({
       <div className="compact-tribute-header">
         <div className="compact-tribute-titles">
           <span className="compact-tribute-kicker">
-            <span
-              className={`admin-secret-trigger ${holdProgress > 0 ? "holding" : ""}`}
-              onMouseDown={startHold}
-              onMouseUp={cancelHold}
-              onMouseLeave={cancelHold}
-              onTouchStart={startHold}
-              onTouchEnd={cancelHold}
-              onTouchCancel={cancelHold}
-              title={language === "vi" ? "🎬 (Giữ 5s để mở Chế độ Quản trị Bí mật)" : "🎬 (Hold 5s for Secret Admin Mode)"}
-              aria-label="Secret Admin Mode Trigger"
-            >
-              <span className="admin-trigger-emoji">🎬</span>
-              {holdProgress > 0 && (
-                <span className="admin-trigger-progress-badge">
-                  <span
-                    className="admin-progress-fill"
-                    style={{ width: `${holdProgress}%` }}
-                  />
-                  <span className="admin-progress-seconds">
-                    {Math.max(1, Math.ceil((HOLD_DURATION_MS - (holdProgress / 100) * HOLD_DURATION_MS) / 1000))}s
-                  </span>
-                </span>
-              )}
-            </span>
+            <span className="admin-trigger-emoji" aria-hidden="true">🎬</span>
             <span>{language === "vi" ? "SỔ LƯU BÚT & MÀN CHIẾU CUỘN TRI ÂN" : "GUESTBOOK & ENDING MOVIE CREDITS"}</span>
           </span>
           <h3 className="compact-tribute-heading">
@@ -186,6 +168,16 @@ export function GalleryWishesMarquee({
 
       {/* 2. Streamlined Quick Guestbook Form */}
       <form onSubmit={handleSubmitFeedback} className="compact-guestbook-form">
+        <input
+          type="text"
+          name="website"
+          value={website}
+          onChange={(event) => setWebsite(event.target.value)}
+          tabIndex={-1}
+          autoComplete="off"
+          aria-hidden="true"
+          style={{ position: "absolute", left: "-10000px", width: 1, height: 1 }}
+        />
         <div className="compact-input-row">
           <input
             type="text"
@@ -211,12 +203,23 @@ export function GalleryWishesMarquee({
           <button
             type="submit"
             className="compact-submit-btn"
-            disabled={!feedbackText.trim()}
+            disabled={!feedbackText.trim() || isSubmitting}
           >
             <span>✍️</span>
-            <span>{language === "vi" ? "GỬI LƯU BÚT" : "SUBMIT NOTE"}</span>
+            <span>
+              {isSubmitting
+                ? language === "vi" ? "ĐANG GỬI..." : "SENDING..."
+                : language === "vi" ? "GỬI LƯU BÚT" : "SUBMIT NOTE"}
+            </span>
           </button>
         </div>
+
+        {guestbookError && (
+          <div className="compact-success-toast animate-fade-in" role="alert">
+            <span>⚠️</span>
+            <span>{guestbookError}</span>
+          </div>
+        )}
 
         {sentSuccess && (
           <div className="compact-success-toast animate-fade-in">
@@ -262,7 +265,7 @@ export function GalleryWishesMarquee({
             >
               <div className="note-pill-author">
                 <span className="note-author-name">{entry.flag} {entry.name}</span>
-                <span className="note-time">{entry.timestamp}</span>
+                <span className="note-time">{formatGuestbookTimestamp(entry, language)}</span>
               </div>
               <p className="note-pill-content">“{entry.content}”</p>
             </div>
@@ -276,25 +279,15 @@ export function GalleryWishesMarquee({
           language={language}
           entries={entries}
           onClose={() => setIsCinemaOpen(false)}
-          onAddEntry={(newEntry) => {
-            const updated = [newEntry, ...entries];
-            setEntries(updated);
-            saveStoredGuestbook(updated);
+          onAddEntry={async (newEntry) => {
+            const saved = await createGuestbookEntry(newEntry);
+            setEntries((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
           }}
           muted={muted}
           volume={volume}
         />
       )}
 
-      {/* Secret Admin Guestbook Manager Modal */}
-      {isAdminModalOpen && (
-        <AdminGuestbookModal
-          language={language}
-          onClose={() => setIsAdminModalOpen(false)}
-          muted={muted}
-          volume={volume}
-        />
-      )}
     </section>
   );
 }

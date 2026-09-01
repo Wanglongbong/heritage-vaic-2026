@@ -109,7 +109,7 @@ type SceneState = {
   treeViewGroup: THREE.Group;
   topQrGroup: THREE.Group;
   topQrMaterials: THREE.MeshBasicMaterial[];
-  qrShadowMaterial: THREE.MeshBasicMaterial;
+  qrShadowMaterials: THREE.MeshBasicMaterial[];
   leaves: THREE.Group;
   fallingLeaves: FallingLeaf[];
   fallingLeavesGroup: THREE.Group;
@@ -128,6 +128,11 @@ type SceneState = {
   disposeInteraction: () => void;
   frame: number;
 };
+
+// Keep a tiny non-zero polar angle for stable camera orientation while making
+// the final QR view effectively perpendicular, so the train's vertical faces
+// disappear by projection instead of opacity or a downward translation.
+const QR_TOP_POLAR = 0.0015;
 
 function seededRandom(seed: number) {
   let state = seed >>> 0;
@@ -154,10 +159,10 @@ function getTopFitZoom(container: HTMLElement) {
   const landscapeLightbox = width > height && Boolean(container.closest(".memory-tree-lightbox-card"));
   // Include a generous quiet zone so the outer QR modules never meet the
   // stage border on narrow portrait screens.
-  const qrWorldSizeWithQuietZone = landscapeLightbox ? 56 : 58;
+  const qrWorldSizeWithQuietZone = BANK_QR_MATRIX.size + (landscapeLightbox ? 16 : 10);
   const fitWidth = (view * (width / height)) / qrWorldSizeWithQuietZone;
   const fitHeight = view / qrWorldSizeWithQuietZone;
-  return THREE.MathUtils.clamp(Math.min(fitWidth, fitHeight) * (landscapeLightbox ? 0.98 : 0.9), 0.34, landscapeLightbox ? 1.16 : 1);
+  return THREE.MathUtils.clamp(Math.min(fitWidth, fitHeight) * 0.9, 0.34, landscapeLightbox ? 1.05 : 1);
 }
 
 function getTrainModuleSupport(position: THREE.Vector3): TrainModuleSupport {
@@ -389,8 +394,9 @@ function buildMemoryScene(
   plate.position.y = -0.48;
   root.add(plate);
 
-  const tileGeometry = new THREE.BoxGeometry(0.9, 0.1, 0.9);
-  const darkPositions: THREE.Vector3[] = [];
+  // Keep neighbouring dark cells visually continuous in scan view. Wider
+  // gaps look attractive up close but break QR detection on large displays.
+  const tileGeometry = new THREE.BoxGeometry(0.99, 0.1, 0.99);
   const landscapePositions: THREE.Vector3[] = [];
   const lightReliefPositions: THREE.Vector3[] = [];
   const leafModulePositions: THREE.Vector3[] = [];
@@ -406,6 +412,8 @@ function buildMemoryScene(
     "south-west": { dark: [], light: [] },
   };
   const centre = (BANK_QR_MATRIX.size - 1) / 2;
+  const finderGardenOffset = centre - 3;
+  const alignmentGardenCentre = BANK_QR_MATRIX.size - 7 - centre;
 
   BANK_QR_MATRIX.modules.forEach((row, rowIndex) => {
     row.forEach((dark, columnIndex) => {
@@ -429,7 +437,6 @@ function buildMemoryScene(
         if (!finderId) lightReliefPositions.push(position);
         return;
       }
-      darkPositions.push(position);
       const visualRole = classifyQrDarkModule(rowIndex, columnIndex, BANK_QR_MATRIX.size);
       if (visualRole === "train") trainModulePositions.push(position);
       else if (visualRole === "canopy") leafModulePositions.push(position);
@@ -439,25 +446,46 @@ function buildMemoryScene(
   });
 
   const groundGrassPositions = [...landscapePositions, ...bareProtectedPositions];
+  const qrGrassPositions = [...groundGrassPositions, ...trainModulePositions];
 
   const dummy = new THREE.Object3D();
-  const qrShadowMaterial = new THREE.MeshBasicMaterial({
-    color: 0x81763e,
-    transparent: true,
-    opacity: 0,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const qrShadowTiles = new THREE.InstancedMesh(
-    tileGeometry,
-    qrShadowMaterial,
-    darkPositions.length,
+  const grassModuleColors = [0xa9a06a, 0xb8ad62, 0xc5b66e, 0xd0bf6e];
+  const autumnModuleColors = [0xf59e0b, 0xea580c, 0xd97706, 0xfbbf24, 0xb45309];
+  const hedgeModuleColors = [0x6f8b45, 0x5d783f, 0x496b38, 0x66834c];
+  const moduleColorAt = (palette: number[], index: number) => new THREE.Color(palette[index % palette.length]);
+  // Match the deployed diorama: one translucent olive foundation sits below
+  // the coloured QR relief while the original 3D scene remains visible.
+  const deployedQrFoundationColors = [0x81763e];
+  const qrShadowMaterials: THREE.MeshBasicMaterial[] = [];
+  const addQrShadowLayer = (positions: THREE.Vector3[], palette: number[]) => {
+    const material = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      toneMapped: false,
+    });
+    const tiles = new THREE.InstancedMesh(tileGeometry, material, positions.length);
+    positions.forEach((position, index) => {
+      setInstance(tiles, dummy, index, new THREE.Vector3(position.x, 0.02, position.z), new THREE.Vector3(1, 1, 1));
+      tiles.setColorAt(index, moduleColorAt(palette, index));
+    });
+    tiles.instanceMatrix.needsUpdate = true;
+    if (tiles.instanceColor) tiles.instanceColor.needsUpdate = true;
+    qrShadowMaterials.push(material);
+    root.add(tiles);
+  };
+  addQrShadowLayer(
+    [
+      ...landscapePositions,
+      ...bareProtectedPositions,
+      ...leafModulePositions,
+      ...trainModulePositions,
+      ...finderDarkPositions,
+      ...alignmentDarkPositions,
+    ],
+    deployedQrFoundationColors,
   );
-  darkPositions.forEach((position, index) => {
-    setInstance(qrShadowTiles, dummy, index, new THREE.Vector3(position.x, 0.02, position.z), new THREE.Vector3(1, 1, 1));
-  });
-  qrShadowTiles.instanceMatrix.needsUpdate = true;
-  root.add(qrShadowTiles);
 
   const treeViewGroup = new THREE.Group();
   root.add(treeViewGroup);
@@ -465,8 +493,8 @@ function buildMemoryScene(
   const grassGroup = new THREE.Group();
   const patchGeometry = new THREE.BoxGeometry(0.88, 0.11, 0.88);
   const patchMaterial = new THREE.MeshStandardMaterial({ color: 0xa9a06a, roughness: 0.94, flatShading: true });
-  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, groundGrassPositions.length);
-  groundGrassPositions.forEach((position, index) => {
+  const grassPatches = new THREE.InstancedMesh(patchGeometry, patchMaterial, qrGrassPositions.length);
+  qrGrassPositions.forEach((position, index) => {
     setInstance(grassPatches, dummy, index, new THREE.Vector3(position.x, 0.165, position.z), new THREE.Vector3(1, 1, 1));
   });
   grassPatches.instanceMatrix.needsUpdate = true;
@@ -516,15 +544,15 @@ function buildMemoryScene(
   trainModulePositions.forEach((position) => {
     const roofY = getTrainModuleHeight(position);
     for (let blade = 0; blade < bladesPerModule; blade += 1) {
-      const height = 0.15 + random() * 0.17;
-      const offsetX = (random() - 0.5) * 0.42;
-      const offsetZ = (random() - 0.5) * 0.42;
+      const height = 0.2 + random() * 0.34;
+      const offsetX = (random() - 0.5) * 0.58;
+      const offsetZ = (random() - 0.5) * 0.58;
       const bladePosition = new THREE.Vector3(
         position.x + offsetX,
-        roofY + 0.08 + (0.72 * height) / 2,
+        roofY + 0.11 + (0.72 * height) / 2,
         position.z + offsetZ,
       );
-      const bladeScale = new THREE.Vector3(0.82 + random() * 0.28, height, 0.82 + random() * 0.28);
+      const bladeScale = new THREE.Vector3(0.72 + random() * 0.58, height, 0.72 + random() * 0.58);
       const rotationY = random() * Math.PI;
       setInstance(grassBlades, dummy, bladeIndex, bladePosition, bladeScale, rotationY);
       grassBlades.setColorAt(bladeIndex, bladeColors[(bladeIndex + blade) % bladeColors.length]);
@@ -532,9 +560,9 @@ function buildMemoryScene(
         position: bladePosition,
         scale: bladeScale,
         phase: random() * Math.PI * 2,
-        lean: 0.055 + random() * 0.045,
-        windX: 0.034 + random() * 0.024,
-        windZ: 0.022 + random() * 0.018,
+        lean: 0.065 + random() * 0.055,
+        windX: 0.04 + random() * 0.03,
+        windZ: 0.026 + random() * 0.022,
         rotationY,
       });
       bladeIndex += 1;
@@ -563,30 +591,29 @@ function buildMemoryScene(
   treeViewGroup.add(landscapeDetails);
 
   const topQrGroup = new THREE.Group();
+  // Keep the warm, jewel-like modules from the original diorama. A continuous
+  // shadow layer underneath still closes every QR cell in the final scan view.
   const leafModuleGeometry = new THREE.BoxGeometry(0.74, 0.34, 0.74);
-  const leafModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x9b7724, transparent: true, opacity: 0.12, toneMapped: false });
+  const leafModuleMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, toneMapped: false });
   const leafModules = new THREE.InstancedMesh(leafModuleGeometry, leafModuleMaterial, leafModulePositions.length);
   leafModulePositions.forEach((position, index) => {
     setInstance(leafModules, dummy, index, new THREE.Vector3(position.x, 0.24, position.z), new THREE.Vector3(1, 1, 1));
+    leafModules.setColorAt(index, moduleColorAt(autumnModuleColors, index));
   });
   leafModules.instanceMatrix.needsUpdate = true;
+  if (leafModules.instanceColor) leafModules.instanceColor.needsUpdate = true;
   topQrGroup.add(leafModules);
 
   const trainModuleGeometry = new THREE.BoxGeometry(0.76, 0.36, 0.76);
-  const trainModuleMaterial = new THREE.MeshBasicMaterial({ color: 0xb99632, transparent: true, opacity: 0.12, toneMapped: false });
-  const trainModules = new THREE.InstancedMesh(trainModuleGeometry, trainModuleMaterial, trainModulePositions.length);
-  trainModulePositions.forEach((position, index) => {
-    setInstance(trainModules, dummy, index, new THREE.Vector3(position.x, 0.25, position.z), new THREE.Vector3(1, 1, 1));
-  });
-  trainModules.instanceMatrix.needsUpdate = true;
-  topQrGroup.add(trainModules);
-
-  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0x496b38, transparent: true, opacity: 0.12, toneMapped: false });
-  const finderModules = new THREE.InstancedMesh(trainModuleGeometry, finderModuleMaterial, finderDarkPositions.length);
-  finderDarkPositions.forEach((position, index) => {
+  const finderModuleMaterial = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.12, toneMapped: false });
+  const structuralDarkPositions = [...finderDarkPositions, ...alignmentDarkPositions];
+  const finderModules = new THREE.InstancedMesh(trainModuleGeometry, finderModuleMaterial, structuralDarkPositions.length);
+  structuralDarkPositions.forEach((position, index) => {
     setInstance(finderModules, dummy, index, new THREE.Vector3(position.x, 0.26, position.z), new THREE.Vector3(1, 1, 1));
+    finderModules.setColorAt(index, moduleColorAt(hedgeModuleColors, index));
   });
   finderModules.instanceMatrix.needsUpdate = true;
+  if (finderModules.instanceColor) finderModules.instanceColor.needsUpdate = true;
   topQrGroup.add(finderModules);
 
   topQrGroup.visible = true;
@@ -638,25 +665,25 @@ function buildMemoryScene(
   finderGardenGroup.add(paleGardenModules);
 
   const gardenMaterials = new Map<string, THREE.MeshStandardMaterial>();
-  const lotusGarden = finderPositions["north-west"].dark.filter((position, index) => index % 6 === 2 && Math.hypot(position.x + 17, position.z + 17) > 1.4);
+  const lotusGarden = finderPositions["north-west"].dark.filter((position, index) => index % 6 === 2 && Math.hypot(position.x + finderGardenOffset, position.z + finderGardenOffset) > 1.4);
   lotusGarden.forEach((position, index) => addLotus(finderGardenGroup, gardenMaterials, position, 0.76 + (index % 3) * 0.08));
-  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.52, -17), 0.96, haloTexture, lanternHalos);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-finderGardenOffset, 0.52, -finderGardenOffset), 0.96, haloTexture, lanternHalos);
 
-  const bambooGarden = finderPositions["north-east"].dark.filter((position, index) => index % 7 === 1 && Math.hypot(position.x - 17, position.z + 17) > 1.4);
+  const bambooGarden = finderPositions["north-east"].dark.filter((position, index) => index % 7 === 1 && Math.hypot(position.x - finderGardenOffset, position.z + finderGardenOffset) > 1.4);
   bambooGarden.forEach((position, index) => addBamboo(finderGardenGroup, gardenMaterials, position, 0.82 + (index % 2) * 0.12));
-  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(17, 0.52, -17), 0.96, haloTexture, lanternHalos);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(finderGardenOffset, 0.52, -finderGardenOffset), 0.96, haloTexture, lanternHalos);
 
-  const lanternGarden = finderPositions["south-west"].dark.filter((position, index) => index % 5 === 0 && Math.hypot(position.x + 17, position.z - 17) > 1.4);
+  const lanternGarden = finderPositions["south-west"].dark.filter((position, index) => index % 5 === 0 && Math.hypot(position.x + finderGardenOffset, position.z - finderGardenOffset) > 1.4);
   lanternGarden.forEach((position, index) => {
     addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(position.x, 0.5, position.z), 0.78 + (index % 2) * 0.08, haloTexture, lanternHalos);
   });
-  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-17, 0.54, 17), 1.02, haloTexture, lanternHalos);
+  addLanternWithHalo(finderGardenGroup, lanternMaterials, new THREE.Vector3(-finderGardenOffset, 0.54, finderGardenOffset), 1.02, haloTexture, lanternHalos);
   treeViewGroup.add(finderGardenGroup);
 
   const alignmentGardenGroup = new THREE.Group();
   const alignmentHedges = new THREE.InstancedMesh(hedgeGeometry, hedgeMaterial, alignmentDarkPositions.length);
   alignmentDarkPositions.forEach((position, index) => {
-    const centreModule = position.x === 14 && position.z === 14;
+    const centreModule = position.x === alignmentGardenCentre && position.z === alignmentGardenCentre;
     setInstance(
       alignmentHedges,
       dummy,
@@ -669,8 +696,9 @@ function buildMemoryScene(
   alignmentGardenGroup.add(alignmentHedges);
   const alignmentHedgeCrowns = new THREE.InstancedMesh(hedgeCrownGeometry, hedgeCrownMaterial, alignmentDarkPositions.length);
   alignmentDarkPositions.forEach((position, index) => {
-    const crownPosition = new THREE.Vector3(position.x, position.x === 14 && position.z === 14 ? 0.79 : 0.67, position.z);
-    const crownScale = new THREE.Vector3(0.96, position.x === 14 && position.z === 14 ? 1.16 : 0.92 + (index % 2) * 0.08, 0.96);
+    const centreModule = position.x === alignmentGardenCentre && position.z === alignmentGardenCentre;
+    const crownPosition = new THREE.Vector3(position.x, centreModule ? 0.79 : 0.67, position.z);
+    const crownScale = new THREE.Vector3(0.96, centreModule ? 1.16 : 0.92 + (index % 2) * 0.08, 0.96);
     setInstance(alignmentHedgeCrowns, dummy, index, crownPosition, crownScale);
     hedgeCrowns.push({ mesh: alignmentHedgeCrowns, index, position: crownPosition, scale: crownScale, phase: 80 + index * 0.67 });
   });
@@ -682,14 +710,25 @@ function buildMemoryScene(
   });
   alignmentLightModules.instanceMatrix.needsUpdate = true;
   alignmentGardenGroup.add(alignmentLightModules);
-  addLanternWithHalo(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(14, 0.56, 14), 1.02, haloTexture, lanternHalos);
-  [[12, 12], [16, 12], [12, 16], [16, 16]].forEach(([x, z]) => {
+  addLanternWithHalo(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(alignmentGardenCentre, 0.56, alignmentGardenCentre), 1.02, haloTexture, lanternHalos);
+  const alignmentLanternOffset = 2;
+  [
+    [alignmentGardenCentre - alignmentLanternOffset, alignmentGardenCentre - alignmentLanternOffset],
+    [alignmentGardenCentre + alignmentLanternOffset, alignmentGardenCentre - alignmentLanternOffset],
+    [alignmentGardenCentre - alignmentLanternOffset, alignmentGardenCentre + alignmentLanternOffset],
+    [alignmentGardenCentre + alignmentLanternOffset, alignmentGardenCentre + alignmentLanternOffset],
+  ].forEach(([x, z]) => {
     addLanternWithHalo(alignmentGardenGroup, lanternMaterials, new THREE.Vector3(x, 0.46, z), 0.58, haloTexture, lanternHalos);
   });
   treeViewGroup.add(alignmentGardenGroup);
 
   if (!mobile) {
-    [[-17, -17], [17, -17], [-17, 17], [14, 14]].forEach(([x, z]) => {
+    [
+      [-finderGardenOffset, -finderGardenOffset],
+      [finderGardenOffset, -finderGardenOffset],
+      [-finderGardenOffset, finderGardenOffset],
+      [alignmentGardenCentre, alignmentGardenCentre],
+    ].forEach(([x, z]) => {
       const gardenLight = new THREE.PointLight(0xffad45, 5.5, 8, 2);
       gardenLight.position.set(x, 2.1, z);
       treeViewGroup.add(gardenLight);
@@ -777,8 +816,7 @@ function buildMemoryScene(
 
   const leaves = new THREE.Group();
   const leafGeometry = new THREE.BoxGeometry(0.9, 0.48, 0.9);
-  const autumnColors = [0xf59e0b, 0xea580c, 0xd97706, 0xfbbf24, 0xb45309];
-  const leafMaterials = autumnColors.map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true }));
+  const leafMaterials = autumnModuleColors.map((color) => new THREE.MeshStandardMaterial({ color, roughness: 0.92, flatShading: true }));
   leafModulePositions.forEach((modulePosition, moduleIndex) => {
     const radius = Math.hypot(modulePosition.x, modulePosition.z);
     const layers = radius < 5.2 ? 3 : 2;
@@ -811,7 +849,7 @@ function buildMemoryScene(
   const fallingLeavesGroup = new THREE.Group();
   const fallingLeaves: FallingLeaf[] = [];
   const fallingLeafGeometry = new THREE.BoxGeometry(0.32, 0.04, 0.24);
-  const fallingLeafMaterials = autumnColors.slice(0, 4).map((color) => new THREE.MeshBasicMaterial({ color, toneMapped: false }));
+  const fallingLeafMaterials = autumnModuleColors.slice(0, 4).map((color) => new THREE.MeshBasicMaterial({ color, toneMapped: false }));
   const fallingLeafCount = mobile ? 32 : 65;
   for (let index = 0; index < fallingLeafCount; index += 1) {
     const mesh = new THREE.Mesh(fallingLeafGeometry, fallingLeafMaterials[index % fallingLeafMaterials.length]);
@@ -833,6 +871,10 @@ function buildMemoryScene(
   const train = new THREE.Group();
   const trainMaterials = new Map<string, THREE.MeshStandardMaterial>();
   addBox(train, trainMaterials, [14.8, 0.68, 3.1], [0, 0.78, 8], "#35161a");
+  // Cover the narrow exposed top of the rear underframe. From the final
+  // perpendicular view it now merges into a light QR cell instead of leaving
+  // a dark vertical tail beside the train's mapped grass modules.
+  addBox(train, trainMaterials, [0.34, 0.08, 3.04], [-7.25, 1.15, 8], "#f7f3ec");
   addBox(train, trainMaterials, [13.9, 2.3, 2.9], [-0.2, 2.05, 8], "#8c1f20");
   addBox(train, trainMaterials, [13.4, 0.52, 3.2], [-0.35, 3.42, 8], "#f7f3ec");
   addBox(train, trainMaterials, [2.8, 3.1, 3], [6.2, 2.45, 8], "#74191a");
@@ -885,15 +927,11 @@ function buildMemoryScene(
   train.add(headlamp);
   addBox(train, trainMaterials, [0.5, 0.22, 0.5], [9.02, 0.76, 8], "#27161c");
   addBox(train, trainMaterials, [0.42, 0.42, 0.42], [9.3, 0.76, 8], "#c58a38");
-  trainModulePositions.forEach((position, index) => {
+  trainModulePositions.forEach((position) => {
     const roofY = getTrainModuleHeight(position);
-    addBox(
-      train,
-      trainMaterials,
-      [0.78, 0.12, 0.78],
-      [position.x, roofY, position.z],
-      index % 5 === 0 ? "#a77d20" : "#b99632",
-    );
+    const roofGrassPatch = new THREE.Mesh(patchGeometry, patchMaterial);
+    roofGrassPatch.position.set(position.x, roofY, position.z);
+    train.add(roofGrassPatch);
   });
   const wheelMaterial = new THREE.MeshStandardMaterial({ color: 0x1c1717, roughness: 1, flatShading: true });
   [-5.4, -2.6, 1.2, 4.7, 7.2].forEach((x) => {
@@ -1024,8 +1062,8 @@ function buildMemoryScene(
     const w = rect.width || container.clientWidth || container.offsetWidth || (window.innerWidth < 600 ? 320 : 560);
     const h = rect.height || container.clientHeight || container.offsetHeight || (window.innerWidth < 600 ? 320 : 500);
     return {
-      width: Math.max(260, Math.min(w, 1200)),
-      height: Math.max(260, Math.min(h, 900)),
+      width: Math.max(260, Math.round(w)),
+      height: Math.max(260, Math.round(h)),
     };
   };
 
@@ -1039,11 +1077,11 @@ function buildMemoryScene(
     camera.top = view / 2;
     camera.bottom = -view / 2;
     const landscapeLightbox = width > height && Boolean(container.closest(".memory-tree-lightbox-card"));
-    const fitWorldSize = landscapeLightbox ? 56 : 58;
+    const fitWorldSize = BANK_QR_MATRIX.size + (landscapeLightbox ? 16 : 10);
     const nextTopFitZoom = THREE.MathUtils.clamp(
-      Math.min((view * aspect) / fitWorldSize, view / fitWorldSize) * (landscapeLightbox ? 0.98 : 0.9),
+      Math.min((view * aspect) / fitWorldSize, view / fitWorldSize) * 0.9,
       0.34,
-      landscapeLightbox ? 1.16 : 1,
+      landscapeLightbox ? 1.05 : 1,
     );
     const isTopView = orbit.targetScanProgress > 0.5 || orbit.scanProgress > 0.72;
     const wasFitted = Math.abs(orbit.targetZoom - lastTopFitZoom) < 0.035;
@@ -1053,7 +1091,10 @@ function buildMemoryScene(
     }
     lastTopFitZoom = nextTopFitZoom;
     camera.updateProjectionMatrix();
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, mobile ? 1.75 : 1.8));
+    const desiredPixelRatio = Math.max(1, Math.min(window.devicePixelRatio || 1, width < 720 ? 2 : 2.25));
+    const maxRenderPixels = width < 720 ? 5_000_000 : 16_000_000;
+    const pixelBudgetRatio = Math.sqrt(maxRenderPixels / Math.max(1, width * height));
+    renderer.setPixelRatio(Math.min(desiredPixelRatio, Math.max(1, pixelBudgetRatio)));
     renderer.setSize(width, height, false);
   };
   resize();
@@ -1081,8 +1122,8 @@ function buildMemoryScene(
       root,
       treeViewGroup,
       topQrGroup,
-      topQrMaterials: [leafModuleMaterial, trainModuleMaterial, finderModuleMaterial],
-      qrShadowMaterial,
+      topQrMaterials: [leafModuleMaterial, finderModuleMaterial],
+      qrShadowMaterials,
       leaves,
       fallingLeaves,
       fallingLeavesGroup,
@@ -1121,7 +1162,7 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
     if (!sceneState) return;
     if (isTop) {
       sceneState.orbit.targetAzimuth = 0;
-      sceneState.orbit.targetPolar = 0.015;
+      sceneState.orbit.targetPolar = QR_TOP_POLAR;
       sceneState.orbit.targetZoom = getTopFitZoom(containerRef.current ?? document.documentElement);
       sceneState.orbit.targetScanProgress = 1;
       sceneState.orbit.snapping = "top";
@@ -1163,9 +1204,9 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
       resizeObserver = built.resizeObserver;
       if (isTop) {
         sceneState.orbit.azimuth = 0;
-        sceneState.orbit.polar = 0.015;
+        sceneState.orbit.polar = QR_TOP_POLAR;
         sceneState.orbit.targetAzimuth = 0;
-        sceneState.orbit.targetPolar = 0.015;
+        sceneState.orbit.targetPolar = QR_TOP_POLAR;
         sceneState.orbit.zoom = getTopFitZoom(container);
         sceneState.orbit.targetZoom = sceneState.orbit.zoom;
         sceneState.orbit.scanProgress = 1;
@@ -1200,11 +1241,11 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
         orbit.azimuth += delta * spinSpeed;
       }
 
-      const response = reducedMotion ? 1 : Math.min(1, delta * (orbit.snapping ? 5.6 : 11));
+      const response = reducedMotion ? 1 : Math.min(1, delta * (orbit.snapping ? 2.2 : 11));
       orbit.azimuth += (orbit.targetAzimuth - orbit.azimuth) * response;
       orbit.polar += (orbit.targetPolar - orbit.polar) * response;
       orbit.zoom += (orbit.targetZoom - orbit.zoom) * response;
-      orbit.scanProgress += (orbit.targetScanProgress - orbit.scanProgress) * (reducedMotion ? 1 : Math.min(1, delta * 5.8));
+      orbit.scanProgress += (orbit.targetScanProgress - orbit.scanProgress) * (reducedMotion ? 1 : Math.min(1, delta * 2));
       if (orbit.snapping && Math.abs(orbit.polar - orbit.targetPolar) < 0.0015 && Math.abs(orbit.azimuth - orbit.targetAzimuth) < 0.002) {
         orbit.snapping = null;
       }
@@ -1234,7 +1275,9 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
       sceneState.topQrMaterials.forEach((material) => {
         material.opacity = THREE.MathUtils.lerp(0.12, 0.7, qrReveal);
       });
-      sceneState.qrShadowMaterial.opacity = THREE.MathUtils.lerp(0.04, 0.54, qrReveal);
+      sceneState.qrShadowMaterials.forEach((material) => {
+        material.opacity = THREE.MathUtils.lerp(0.04, 0.54, qrReveal);
+      });
       sceneState.woodMaterial.opacity = THREE.MathUtils.lerp(1, 0.02, qrReveal);
 
       const time = performance.now() * 0.001;
@@ -1282,10 +1325,10 @@ function MemoryTreeCanvas({ isTop, isAutoOrbiting = false, language, viewCommand
       });
       sceneState.leaves.rotation.y = Math.sin(time * 0.34) * 0.008 * motion;
       sceneState.leaves.rotation.z = Math.sin(time * 0.53) * 0.004 * motion;
-      if (!reducedMotion) {
+      {
         sceneState.grassBladeData.forEach((blade, index) => {
-          const longWave = Math.sin(time * 1.35 + blade.phase);
-          const flutter = Math.sin(time * 3.15 + blade.phase * 1.73);
+          const longWave = reducedMotion ? 0 : Math.sin(time * 1.35 + blade.phase);
+          const flutter = reducedMotion ? 0 : Math.sin(time * 3.15 + blade.phase * 1.73);
           const gust = longWave * 0.72 + flutter * 0.28;
           sceneState.grassBladeObject.position.set(
             blade.position.x + gust * blade.windX,
@@ -1379,7 +1422,9 @@ export function ThankYouDiorama({
   const [isTop, setIsTop] = useState(false);
   const [viewCommand, setViewCommand] = useState(0);
   const [isAutoOrbiting, setIsAutoOrbiting] = useState(false);
-  const [isZoomed, setIsZoomed] = useState(false);
+  const [isZoomed, setIsZoomed] = useState(() => import.meta.env.DEV
+    && typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).get("preview") === "memory-tree");
   const [copied, setCopied] = useState(false);
   const [zoomCommand, setZoomCommand] = useState<{ id: number; action: "in" | "out" | "reset" }>({ id: 0, action: "reset" });
 

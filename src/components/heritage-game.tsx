@@ -576,14 +576,19 @@ function VolumeControl({
 }
 
 export function HeritageGame() {
+  const isLocalMemoryTreePreview = import.meta.env.DEV
+    && typeof window !== "undefined"
+    && new URLSearchParams(window.location.search).get("preview") === "memory-tree";
+  const previewVisited = () => new Set(experienceStops.flatMap((item) => item.hotspots.map((hotspot) => `${item.id}:${hotspot.id}`)));
+  const previewSealed = () => new Set(experienceStops.map((item) => item.id));
   const [language, setLanguage] = useState<Language>("vi");
-  const [phase, setPhase] = useState<JourneyPhase>("landing");
-  const [stopIndex, setStopIndex] = useState(0);
-  const [pendingStopIndex, setPendingStopIndex] = useState(0);
+  const [phase, setPhase] = useState<JourneyPhase>(() => isLocalMemoryTreePreview ? "ending" : "landing");
+  const [stopIndex, setStopIndex] = useState(() => isLocalMemoryTreePreview ? experienceStops.length - 1 : 0);
+  const [pendingStopIndex, setPendingStopIndex] = useState(() => isLocalMemoryTreePreview ? experienceStops.length - 1 : 0);
   const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
   const [openHotspot, setOpenHotspot] = useState<ExperienceHotspot | null>(null);
-  const [visited, setVisited] = useState<Set<string>>(new Set());
-  const [sealed, setSealed] = useState<Set<string>>(new Set());
+  const [visited, setVisited] = useState<Set<string>>(() => isLocalMemoryTreePreview ? previewVisited() : new Set());
+  const [sealed, setSealed] = useState<Set<string>>(() => isLocalMemoryTreePreview ? previewSealed() : new Set());
   const [sealStopId, setSealStopId] = useState<string | null>(null);
   const [museumRecord, setMuseumRecord] = useState<MuseumRecord | null>(null);
   const [muted, setMuted] = useState(false);
@@ -658,10 +663,10 @@ export function HeritageGame() {
     const savedVolume = window.localStorage.getItem("heritage-volume");
     const restore = window.setTimeout(() => {
       if (savedLanguage === "vi" || savedLanguage === "en") setLanguage(savedLanguage);
-      if (savedVisited) {
+      if (!isLocalMemoryTreePreview && savedVisited) {
         try { setVisited(new Set(JSON.parse(savedVisited) as string[])); } catch { /* ignore invalid local state */ }
       }
-      if (savedSeals) {
+      if (!isLocalMemoryTreePreview && savedSeals) {
         try { setSealed(new Set(JSON.parse(savedSeals) as string[])); } catch { /* ignore invalid local state */ }
       }
       if (savedMuted === "true") setMuted(true);
@@ -673,19 +678,19 @@ export function HeritageGame() {
       }
     }, 0);
     return () => window.clearTimeout(restore);
-  }, []);
+  }, [isLocalMemoryTreePreview]);
 
   useEffect(() => {
     window.localStorage.setItem("heritage-language", language);
   }, [language]);
 
   useEffect(() => {
-    window.localStorage.setItem("heritage-visited-v2", JSON.stringify([...visited]));
-  }, [visited]);
+    if (!isLocalMemoryTreePreview) window.localStorage.setItem("heritage-visited-v2", JSON.stringify([...visited]));
+  }, [isLocalMemoryTreePreview, visited]);
 
   useEffect(() => {
-    window.localStorage.setItem("heritage-seals-v1", JSON.stringify([...sealed]));
-  }, [sealed]);
+    if (!isLocalMemoryTreePreview) window.localStorage.setItem("heritage-seals-v1", JSON.stringify([...sealed]));
+  }, [isLocalMemoryTreePreview, sealed]);
 
   useEffect(() => {
     window.localStorage.setItem("heritage-muted", String(muted));

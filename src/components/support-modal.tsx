@@ -10,8 +10,11 @@ import {
   DEFAULT_AVATARS,
   NATIONALITIES,
   QUICK_EMOJIS,
-  getStoredGuestbook,
-  saveStoredGuestbook,
+  createGuestbookEntry,
+  formatGuestbookTimestamp,
+  getCachedGuestbook,
+  listGuestbookEntries,
+  migrateLegacyGuestbookEntries,
   subscribeGuestbook,
 } from "@/lib/guestbook";
 
@@ -24,10 +27,24 @@ interface SupportModalProps {
 
 export function SupportModal({ language, onClose, muted, volume }: SupportModalProps) {
   // Guestbook State
-  const [guestbook, setGuestbook] = useState<GuestbookEntry[]>(() => getStoredGuestbook());
+  const [guestbook, setGuestbook] = useState<GuestbookEntry[]>(() => getCachedGuestbook());
 
   useEffect(() => {
-    return subscribeGuestbook((updated) => setGuestbook(updated));
+    let active = true;
+    const unsubscribe = subscribeGuestbook((updated) => {
+      if (active) setGuestbook(updated);
+    });
+    void (async () => {
+      try {
+        await migrateLegacyGuestbookEntries();
+        const loaded = await listGuestbookEntries();
+        if (active) setGuestbook(loaded);
+      } catch {}
+    })();
+    return () => {
+      active = false;
+      unsubscribe();
+    };
   }, []);
 
   const [authorName, setAuthorName] = useState("");
@@ -37,6 +54,9 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
   const [selectedNation, setSelectedNation] = useState(NATIONALITIES[0]);
   const [feedbackText, setFeedbackText] = useState("");
   const [sentSuccess, setSentSuccess] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+  const [website, setWebsite] = useState("");
   const [isFormOpen, setIsFormOpen] = useState(true);
   const [isFloatingWishesOpen, setIsFloatingWishesOpen] = useState(false);
 
@@ -50,32 +70,37 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
     setFeedbackText((prev) => prev + emoji);
   }
 
-  function handleSubmitFeedback(e: React.FormEvent) {
+  async function handleSubmitFeedback(e: React.FormEvent) {
     e.preventDefault();
-    if (!feedbackText.trim()) return;
+    if (!feedbackText.trim() || website || isSubmitting) return;
 
     playPaperSfx({ muted, volume });
-
-    const newEntry: GuestbookEntry = {
-      id: "entry-" + Date.now(),
-      name: authorName.trim() || (language === "vi" ? "Lữ khách phương xa" : "Anonymous Passenger"),
-      character: selectedAvatar.icon,
-      characterName: language === "vi" ? selectedAvatar.labelVi : selectedAvatar.labelEn,
-      countryCode: selectedNation.code,
-      countryName: language === "vi" ? selectedNation.nameVi : selectedNation.nameEn,
-      flag: selectedNation.flag,
-      content: feedbackText.trim(),
-      timestamp: language === "vi" ? "Vừa xong" : "Just now",
-    };
-
-    const updated = [newEntry, ...guestbook];
-    setGuestbook(updated);
-    saveStoredGuestbook(updated);
-
-    setFeedbackText("");
-    setAuthorName("");
-    setSentSuccess(true);
-    setTimeout(() => setSentSuccess(false), 3000);
+    setIsSubmitting(true);
+    setSubmitError("");
+    try {
+      const saved = await createGuestbookEntry({
+        name: authorName.trim() || (language === "vi" ? "Lữ khách phương xa" : "Anonymous Passenger"),
+        character: selectedAvatar.icon,
+        characterName: language === "vi" ? selectedAvatar.labelVi : selectedAvatar.labelEn,
+        countryCode: selectedNation.code,
+        countryName: language === "vi" ? selectedNation.nameVi : selectedNation.nameEn,
+        flag: selectedNation.flag,
+        content: feedbackText.trim(),
+      });
+      setGuestbook((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
+      setFeedbackText("");
+      setAuthorName("");
+      setSentSuccess(true);
+      setTimeout(() => setSentSuccess(false), 3000);
+    } catch {
+      setSubmitError(
+        language === "vi"
+          ? "Chưa gửi được lưu bút. Hãy chờ vài giây, kiểm tra mạng rồi thử lại."
+          : "The note could not be sent. Wait a moment, check your connection, and try again.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   return (
@@ -149,6 +174,16 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
             {/* FORM GỬI LƯU BÚT */}
             {isFormOpen && (
               <form className="guestbook-clean-form" onSubmit={handleSubmitFeedback}>
+                <input
+                  type="text"
+                  name="website"
+                  value={website}
+                  onChange={(event) => setWebsite(event.target.value)}
+                  tabIndex={-1}
+                  autoComplete="off"
+                  aria-hidden="true"
+                  style={{ position: "absolute", left: "-10000px", width: 1, height: 1 }}
+                />
                 <div className="form-pickers-row">
                   {/* Select Avatar with Hover / Click Plus Button */}
                   <div
@@ -297,7 +332,7 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
                         : "Share your experience, cultural insights, or suggestions..."
                     }
                     value={feedbackText}
-                    maxLength={400}
+                    maxLength={260}
                     onChange={(e) => setFeedbackText(e.target.value)}
                     required
                   />
@@ -327,8 +362,12 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
                       ✓ {language === "vi" ? "Đã lưu bút thành công! Cảm ơn bạn rất nhiều ❤️" : "Note posted successfully! Thank you so much ❤️"}
                     </span>
                   )}
-                  <button type="submit" className="form-submit-ticket-btn" disabled={!feedbackText.trim()}>
-                    <span>📜</span> {language === "vi" ? "ĐÓNG DẤU LƯU BÚT" : "POST GUESTBOOK NOTE"}
+                  {submitError && <span className="form-success-badge" role="alert">⚠️ {submitError}</span>}
+                  <button type="submit" className="form-submit-ticket-btn" disabled={!feedbackText.trim() || isSubmitting}>
+                    <span>📜</span>{" "}
+                    {isSubmitting
+                      ? language === "vi" ? "ĐANG GỬI..." : "POSTING..."
+                      : language === "vi" ? "ĐÓNG DẤU LƯU BÚT" : "POST GUESTBOOK NOTE"}
                   </button>
                 </div>
               </form>
@@ -385,7 +424,7 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
                           <span className="ticket-role-name">{entry.characterName} · {entry.countryName}</span>
                         </div>
                       </div>
-                      <span className="ticket-timestamp">{entry.timestamp}</span>
+                      <span className="ticket-timestamp">{formatGuestbookTimestamp(entry, language)}</span>
                     </div>
                     <p className="ticket-body-text">{entry.content}</p>
                     <span className="ticket-seal-stamp" aria-hidden="true">ĐÃ LƯU BÚT</span>
@@ -480,12 +519,9 @@ export function SupportModal({ language, onClose, muted, volume }: SupportModalP
           language={language}
           entries={guestbook}
           onClose={() => setIsFloatingWishesOpen(false)}
-          onAddEntry={(newEntry) => {
-            const updated = [newEntry, ...guestbook];
-            setGuestbook(updated);
-            try {
-              localStorage.setItem("tau_di_san_guestbook", JSON.stringify(updated));
-            } catch {}
+          onAddEntry={async (newEntry) => {
+            const saved = await createGuestbookEntry(newEntry);
+            setGuestbook((current) => [saved, ...current.filter((entry) => entry.id !== saved.id)]);
           }}
           muted={muted ?? false}
           volume={volume ?? 1}

@@ -3706,6 +3706,14 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   white-space: nowrap;
 }
 
+.wishes-quick-send-error {
+  margin: 5px 12px 0;
+  color: #ffd0c7;
+  font: 700 11px/1.35 var(--sans);
+  text-align: center;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.8);
+}
+
 .wishes-send-submit-btn:hover:not(:disabled) {
   background: linear-gradient(135deg, #15803d 0%, #166534 100%);
   transform: translateY(-1px);

@@ -8,13 +8,13 @@ import {
   exitCinemaToGoldenEmbers,
   updateEndingMusicVolume,
 } from "@/lib/ending-music";
-import type { GuestbookEntry } from "@/lib/guestbook";
+import type { GuestbookEntry, NewGuestbookEntry } from "@/lib/guestbook";
 
 interface FloatingWishesScreenProps {
   language: Language;
   entries: GuestbookEntry[];
   onClose: () => void;
-  onAddEntry?: (newEntry: GuestbookEntry) => void;
+  onAddEntry?: (newEntry: NewGuestbookEntry) => void | Promise<void>;
   muted: boolean;
   volume: number;
 }
@@ -31,6 +31,8 @@ export function FloatingWishesScreen({
   const [speedMultiplier, setSpeedMultiplier] = useState<1 | 1.6 | 0.6>(1);
   const [quickInput, setQuickInput] = useState("");
   const [quickSender, setQuickSender] = useState("");
+  const [isSendingWish, setIsSendingWish] = useState(false);
+  const [sendWishError, setSendWishError] = useState("");
   const [heartCount, setHeartCount] = useState(198);
   const [floatingHearts, setFloatingHearts] = useState<{ id: number; x: number; y: number }[]>([]);
   const [isMusicEnabled, setIsMusicEnabled] = useState(true);
@@ -150,14 +152,13 @@ export function FloatingWishesScreen({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onClose, muted, volume]);
 
-  function handleSendQuickWish(e?: React.FormEvent) {
+  async function handleSendQuickWish(e?: React.FormEvent) {
     if (e) e.preventDefault();
-    if (!quickInput.trim()) return;
+    if (!quickInput.trim() || isSendingWish) return;
 
     playPaperSfx({ muted, volume });
 
-    const newWish: GuestbookEntry = {
-      id: "credits-quick-" + Date.now(),
+    const newWish: NewGuestbookEntry = {
       name: quickSender.trim() || (language === "vi" ? "Lữ khách đồng hành" : "Heritage Traveler"),
       character: "📜",
       characterName: language === "vi" ? "Người gửi lời chúc" : "Passenger",
@@ -165,14 +166,24 @@ export function FloatingWishesScreen({
       countryName: "Việt Nam",
       flag: "🇻🇳",
       content: quickInput.trim(),
-      timestamp: language === "vi" ? "Vừa gửi" : "Just now",
     };
 
-    if (onAddEntry) {
-      onAddEntry(newWish);
+    setIsSendingWish(true);
+    setSendWishError("");
+    try {
+      if (onAddEntry) await onAddEntry(newWish);
+      setQuickInput("");
+      setQuickSender("");
+      triggerFloatingHeart(window.innerWidth / 2, window.innerHeight / 2);
+    } catch {
+      setSendWishError(
+        language === "vi"
+          ? "Chưa gửi được lưu bút. Hãy kiểm tra mạng và thử lại."
+          : "The note could not be sent. Check your connection and try again.",
+      );
+    } finally {
+      setIsSendingWish(false);
     }
-    setQuickInput("");
-    triggerFloatingHeart(window.innerWidth / 2, window.innerHeight / 2);
   }
 
   function triggerFloatingHeart(x: number, y: number) {
@@ -476,12 +487,17 @@ export function FloatingWishesScreen({
             <button
               type="submit"
               className="wishes-send-submit-btn"
-              disabled={!quickInput.trim()}
+              disabled={!quickInput.trim() || isSendingWish}
             >
-              <span aria-hidden="true">➤</span>
-              <span className="wishes-send-label">{language === "vi" ? "GỬI VÀO MÀN CHIẾU" : "ADD TO CREDITS"}</span>
+              <span aria-hidden="true">{isSendingWish ? "…" : "➤"}</span>
+              <span className="wishes-send-label">
+                {isSendingWish
+                  ? language === "vi" ? "ĐANG GỬI" : "SENDING"
+                  : language === "vi" ? "GỬI VÀO MÀN CHIẾU" : "ADD TO CREDITS"}
+              </span>
             </button>
           </div>
+          {sendWishError && <p className="wishes-quick-send-error" role="alert">{sendWishError}</p>}
         </form>
       </footer>
     </div>
