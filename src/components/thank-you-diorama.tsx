@@ -1419,6 +1419,9 @@ export function ThankYouDiorama({
   compact?: boolean;
 }) {
   const ui = text[language];
+  const supportNote = language === "vi"
+    ? "☕ 2K–3K · Một cốc trà đá là em cũng vui rồi ạ"
+    : "☕ Even 2K–3K for an iced tea would make me happy";
   const [isTop, setIsTop] = useState(false);
   const [viewCommand, setViewCommand] = useState(0);
   const [isAutoOrbiting, setIsAutoOrbiting] = useState(false);
@@ -1634,7 +1637,10 @@ export function ThankYouDiorama({
               <div className="lightbox-footer">
                 <div className="lightbox-bank-info">
                   <span className="bank-logo">🏛️ MB BANK</span>
-                  <span className="bank-account">STK: <strong>513244</strong></span>
+                  <span className="bank-account-stack">
+                    <span className="bank-account">STK: <strong>513244</strong></span>
+                    <small className="bank-support-note">{supportNote}</small>
+                  </span>
                   <span className="bank-name">VŨ ANH QUÂN</span>
                   <button
                     type="button"
@@ -1821,7 +1827,10 @@ export function ThankYouDiorama({
           <div className="lightbox-footer">
             <div className="lightbox-bank-info">
               <span className="bank-logo">🏛️ MB BANK</span>
-              <span className="bank-account">STK: <strong>513244</strong></span>
+              <span className="bank-account-stack">
+                <span className="bank-account">STK: <strong>513244</strong></span>
+                <small className="bank-support-note">{supportNote}</small>
+              </span>
               <span className="bank-name">VŨ ANH QUÂN</span>
               <button
                 type="button"

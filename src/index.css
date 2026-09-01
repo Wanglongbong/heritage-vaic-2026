@@ -4501,6 +4501,35 @@ button:focus-visible, a:focus-visible, input:focus-visible { outline: 2px solid 
   font-size: 15px;
 }
 
+.bank-account-stack {
+  min-width: 0;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.bank-support-note {
+  color: rgba(255, 222, 148, 0.78);
+  font: 600 10px/1.15 var(--sans);
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+@media (max-width: 720px) {
+  .bank-support-note {
+    font-size: 7.5px;
+    letter-spacing: -0.01em;
+  }
+}
+
+@media (max-width: 480px) and (orientation: portrait) {
+  .bank-support-note {
+    max-width: 25ch;
+    white-space: normal;
+  }
+}
+
 .bank-copy-btn {
   padding: 6px 14px;
   border-radius: 6px;
